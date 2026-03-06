@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alcove</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div class="container">
+    <header>
+      <h1 class="title">Alcove</h1>
+      <p class="tagline">Your documents. Your machine. No telemetry.</p>
+    </header>
+
+    {% block content %}{% endblock %}
+
+    <footer>
+      <p>Local-first retrieval &mdash; your data never leaves your disk.</p>
+    </footer>
+  </div>
+</body>
+</html>

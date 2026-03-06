@@ -1,0 +1,159 @@
+from __future__ import annotations
+
+import html
+import json
+import os
+import re
+from pathlib import Path
+
+from fastapi import FastAPI, Request, UploadFile, File
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from starlette.templating import Jinja2Templates
+import uvicorn
+
+from alcove.web import TEMPLATES_DIR, STATIC_DIR
+from .retriever import query_text
+
+app = FastAPI(title="Alcove")
+
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+SUPPORTED_EXTENSIONS = {
+    ".txt", ".pdf", ".epub",
+    ".html", ".htm",
+    ".md", ".rst",
+    ".csv", ".tsv",
+    ".json", ".jsonl",
+    ".docx",
+}
+
+
+class QueryIn(BaseModel):
+    query: str
+    k: int = 3
+
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+
+@app.get("/", response_class=HTMLResponse)
+def root(request: Request):
+    return templates.TemplateResponse("search.html", {"request": request})
+
+
+@app.get("/search", response_class=HTMLResponse)
+def search(request: Request, q: str = "", k: int = 5):
+    results: list = []
+    if q.strip():
+        raw = query_text(q, k)
+        documents = raw.get("documents", [[]])[0]
+        metadatas = raw.get("metadatas", [[]])[0]
+        distances = raw.get("distances", [[]])[0]
+
+        for doc, meta, dist in zip(documents, metadatas, distances):
+            escaped = html.escape(doc)
+            highlighted = _highlight(escaped, q)
+            results.append({
+                "text": highlighted,
+                "source": meta.get("source", "unknown"),
+                "score": round(1.0 - dist, 3) if dist <= 1.0 else round(dist, 3),
+            })
+
+    return templates.TemplateResponse(
+        "results.html",
+        {"request": request, "query": q, "results": results},
+    )
+
+
+@app.post("/query")
+def query(inp: QueryIn):
+    return query_text(inp.query, inp.k)
+
+
+@app.post("/ingest")
+async def ingest(files: list[UploadFile] = File(...)):
+    raw_dir = os.getenv("RAW_DIR", "data/raw")
+    chunks_file = os.getenv("CHUNKS_FILE", "data/processed/chunks.jsonl")
+    raw_path = Path(raw_dir)
+    raw_path.mkdir(parents=True, exist_ok=True)
+
+    saved_files: list = []
+    skipped_files: list = []
+    for f in files:
+        ext = Path(f.filename or "").suffix.lower()
+        if ext not in SUPPORTED_EXTENSIONS:
+            skipped_files.append({
+                "filename": f.filename or "(unknown)",
+                "reason": f"Unsupported format: {ext or '(none)'}",
+            })
+            continue
+        safe_name = Path(f.filename or "upload").name  # strip directory traversal
+        dest = raw_path / safe_name
+        content = await f.read()
+        dest.write_bytes(content)
+        saved_files.append(safe_name)
+
+    # Only run pipelines if we have files to process
+    if saved_files:
+        # Run ingest pipeline (extract + chunk)
+        from alcove.ingest.pipeline import run as ingest_run
+
+        ingest_run(raw_dir=raw_dir, out_file=chunks_file)
+
+        # Count chunks per uploaded file from chunks.jsonl
+        chunk_counts: dict = {}
+        chunks_path = Path(chunks_file)
+        if chunks_path.exists():
+            with chunks_path.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    rec = json.loads(line)
+                    source = rec.get("source", "")
+                    fname = Path(source).name
+                    if fname in saved_files:
+                        chunk_counts[fname] = chunk_counts.get(fname, 0) + 1
+
+        # Run index pipeline
+        from alcove.index.pipeline import run as index_run
+
+        index_run(chunks_file=chunks_file)
+    else:
+        chunk_counts = {}
+
+    # Build response: indexed files + skipped files
+    response = []
+    for fname in saved_files:
+        response.append({
+            "filename": fname,
+            "chunks": chunk_counts.get(fname, 0),
+            "status": "indexed",
+        })
+    for skipped in skipped_files:
+        response.append({
+            "filename": skipped["filename"],
+            "chunks": 0,
+            "status": "skipped",
+            "reason": skipped["reason"],
+        })
+
+    return JSONResponse(content=response)
+
+
+def _highlight(escaped_text: str, query: str) -> str:
+    """Insert <mark> tags around query terms in already-HTML-escaped text."""
+    terms = [t for t in query.split() if len(t) >= 2]
+    result = escaped_text
+    for term in terms:
+        pattern = re.compile(re.escape(term), re.IGNORECASE)
+        result = pattern.sub(lambda m: f"<mark>{m.group(0)}</mark>", result)
+    return result
+
+
+if __name__ == "__main__":
+    host = os.getenv("API_HOST", "127.0.0.1")
+    port = int(os.getenv("API_PORT", "8000"))
+    uvicorn.run(app, host=host, port=port)

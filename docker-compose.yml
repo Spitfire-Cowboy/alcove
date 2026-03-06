@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    image: alcove:latest
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
+    command: ["alcove", "serve", "--host", "0.0.0.0"]

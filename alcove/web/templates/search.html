@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main id="main-content">
+  <form class="search-form" method="GET" action="/search" role="search">
+    <label for="search-input" class="sr-only">Search your documents</label>
+    <input id="search-input" type="text" name="q" placeholder="Search your documents..." autofocus aria-label="Search your documents">
+    <button type="submit">Search</button>
+  </form>
+
+  <div class="upload-zone"
+       id="upload-zone"
+       role="button"
+       tabindex="0"
+       aria-label="Upload files — drop files here or press Enter to browse">
+    <p>Drop files here or click to browse</p>
+    <input type="file" id="file-input"
+           accept=".txt,.pdf,.epub,.html,.htm,.md,.rst,.csv,.tsv,.json,.jsonl,.docx"
+           aria-label="Choose files to upload"
+           multiple hidden>
+  </div>
+  <div class="upload-status" id="upload-status" aria-live="polite" aria-atomic="true"></div>
+  <p class="formats-note">Supports PDF, EPUB, TXT, HTML, Markdown, RST, CSV, JSON, JSONL, DOCX</p>
+</main>
+
+<script>
+(function () {
+  const zone = document.getElementById("upload-zone");
+  const input = document.getElementById("file-input");
+  const status = document.getElementById("upload-status");
+
+  zone.addEventListener("click", function () {
+    input.click();
+  });
+
+  zone.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      input.click();
+    }
+  });
+
+  zone.addEventListener("dragover", function (e) {
+    e.preventDefault();
+    zone.classList.add("dragover");
+  });
+
+  zone.addEventListener("dragleave", function () {
+    zone.classList.remove("dragover");
+  });
+
+  zone.addEventListener("drop", function (e) {
+    e.preventDefault();
+    zone.classList.remove("dragover");
+    input.files = e.dataTransfer.files;
+    uploadFiles(input.files);
+  });
+
+  input.addEventListener("change", function () {
+    uploadFiles(input.files);
+  });
+
+  function uploadFiles(files) {
+    if (!files.length) return;
+    var formData = new FormData();
+    for (var i = 0; i < files.length; i++) {
+      formData.append("files", files[i]);
+    }
+    status.textContent = "Uploading...";
+    fetch("/ingest", { method: "POST", body: formData })
+      .then(function (res) {
+        if (!res.ok) {
+          return res.json().then(function (err) {
+            throw new Error(err.error || "Upload failed");
+          });
+        }
+        return res.json();
+      })
+      .then(function (data) {
+        status.classList.remove("error");
+        var indexed = [];
+        var skipped = [];
+        for (var j = 0; j < data.length; j++) {
+          if (data[j].status === "skipped") {
+            skipped.push(data[j].filename + " (skipped — " + data[j].reason + ")");
+          } else {
+            indexed.push(data[j].filename + " \u2014 " + data[j].chunks + " chunks");
+          }
+        }
+        var msg = "";
+        if (indexed.length) msg += indexed.join(", ");
+        if (skipped.length) {
+          if (msg) msg += ". ";
+          msg += "Skipped: " + skipped.join(", ");
+        }
+        if (!msg) msg = "No supported files found.";
+        status.textContent = msg;
+        if (skipped.length && !indexed.length) status.classList.add("error");
+      })
+      .catch(function (e) {
+        status.textContent = e.message || "Upload failed. Please try again.";
+        status.classList.add("error");
+      });
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main id="main-content">
+  <h2 class="results-heading">Results for: {{ query | e }}</h2>
+
+  {% if results %}
+  <div class="results-list" role="region" aria-label="Search results">
+    {% for r in results %}
+    {% set _fname = r.source.split('/')|last %}
+    {% set ext = _fname.rsplit('.', 1)[1].upper() if '.' in _fname else '?' %}
+    <div class="result-card" aria-label="Result from {{ r.source | e }}, score {{ '%.3f' | format(r.score) }}">
+      <div class="result-meta">
+        <span class="result-source">{{ r.source | e }}</span>
+        <span class="file-badge">{{ ext }}</span>
+        <span class="result-score">{{ "%.3f" | format(r.score) }}</span>
+      </div>
+      <div class="result-chunk">{{ r.text | safe }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="no-results">No results found for '{{ query | e }}'</p>
+  {% endif %}
+
+  <a class="back-link" href="/">&larr; Back to search</a>
+</main>
+{% endblock %}

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 56" height="56" width="320">
+  <!-- Lock icon -->
+  <g transform="translate(4, 4)" fill="none" stroke="#d2a56e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Lock body -->
+    <rect x="4" y="20" width="28" height="22" rx="3" fill="#d2a56e" fill-opacity="0.12"/>
+    <!-- Shackle -->
+    <path d="M10 20V14a8 8 0 0 1 16 0v6"/>
+    <!-- Keyhole -->
+    <circle cx="18" cy="31" r="3" fill="#d2a56e"/>
+    <line x1="18" y1="34" x2="18" y2="38" stroke="#d2a56e" stroke-width="2.5"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="56" y="39" font-family="'SF Mono','Cascadia Code','Fira Code','JetBrains Mono',Menlo,Monaco,Consolas,monospace" font-size="32" font-weight="700" fill="#d2a56e" letter-spacing="0.04em">Alcove</text>
+</svg>

@@ -1,0 +1,38 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write   # required for OIDC trusted-publisher auth
+
+jobs:
+  build-and-publish:
+    name: Build and publish alcove-search
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: pip install --upgrade build
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # No API token needed — uses OIDC trusted publisher.
+        # One-time setup required on pypi.org:
+        #   1. Create account at https://pypi.org
+        #   2. Go to Account -> Publishing -> Add a new pending publisher
+        #   3. Fill in: owner=Pro777, repo=alcove,
+        #      workflow=publish.yml, environment=(leave blank)

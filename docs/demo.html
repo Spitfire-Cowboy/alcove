@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Alcove interactive CLI demo -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alcove — Interactive Demo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1a1a2e;
+    --term-bg: #0d1117;
+    --term-border: #30363d;
+    --text: #c9d1d9;
+    --green: #7ee787;
+    --cyan: #79c0ff;
+    --yellow: #e3b341;
+    --white: #f0f6fc;
+    --muted: #8b949e;
+    --accent: #d2a56e;
+    --accent-glow: #d2a56e40;
+    --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  .demo-wrap {
+    width: 100%;
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  /* Terminal chrome */
+  .terminal {
+    background: var(--term-bg);
+    border: 1px solid var(--term-border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04);
+  }
+
+  .title-bar {
+    background: linear-gradient(180deg, #2d333b 0%, #22272e 100%);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--term-border);
+    user-select: none;
+  }
+
+  .tl { width: 12px; height: 12px; border-radius: 50%; }
+  .tl-r { background: #ff5f57; }
+  .tl-y { background: #febc2e; }
+  .tl-g { background: #28c840; }
+
+  .title-bar-text {
+    flex: 1;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-sans);
+    letter-spacing: .3px;
+  }
+
+  /* Progress strip under title bar */
+  .progress-strip {
+    height: 2px;
+    background: var(--term-border);
+  }
+  .progress-strip-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width .4s ease;
+  }
+
+  .term-body {
+    padding: 20px 22px 24px;
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    line-height: 1.7;
+    min-height: 420px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Scene system */
+  .scene {
+    position: absolute;
+    inset: 20px 22px 24px;
+    opacity: 0;
+    transition: opacity .5s ease;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .scene.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Line rendering */
+  .line {
+    opacity: 0;
+    transform: translateY(5px);
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 1.7em;
+  }
+  .line.visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity .3s ease, transform .3s ease;
+  }
+
+  .prompt { color: var(--green); font-weight: 600; }
+  .cmd    { color: var(--white); }
+  .output { color: var(--text); }
+  .dim    { color: var(--muted); }
+  .ok     { color: var(--green); }
+  .hl     { color: var(--accent); }
+  .cyan   { color: var(--cyan); }
+
+  /* Typing cursor */
+  .cursor {
+    display: inline-block;
+    width: 8px;
+    height: 15px;
+    background: var(--green);
+    vertical-align: text-bottom;
+    animation: blink 1s step-end infinite;
+    margin-left: 1px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* JSON result card */
+  .json-card {
+    background: #161b22;
+    border: 1px solid var(--term-border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 4px 0 6px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  .json-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity .4s ease, transform .4s ease;
+  }
+  .json-key   { color: var(--cyan); }
+  .json-str   { color: var(--accent); }
+  .json-num   { color: var(--yellow); }
+  .json-brace { color: var(--muted); }
+  .json-match { color: var(--green); font-style: normal; }
+
+  /* End card */
+  .end-card {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 14px;
+    opacity: 0;
+    transform: scale(.97);
+    transition: opacity .6s ease, transform .6s ease;
+  }
+  .scene.active .end-card {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .end-icon {
+    width: 48px; height: 48px;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 24px var(--accent-glow);
+    margin-bottom: 2px;
+  }
+  .end-icon svg { width: 22px; height: 22px; }
+  .end-card .tagline {
+    font-family: var(--font-mono);
+    font-size: 17px;
+    color: var(--white);
+    line-height: 1.5;
+    letter-spacing: .3px;
+  }
+  .end-card .sub {
+    font-size: 13px;
+    color: var(--muted);
+    max-width: 380px;
+    line-height: 1.65;
+  }
+  .end-card a {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 9px 22px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 6px;
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    transition: background .2s, color .2s;
+  }
+  .end-card a:hover {
+    background: var(--accent);
+    color: var(--term-bg);
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    user-select: none;
+  }
+  .nav-btn {
+    background: transparent;
+    border: 1px solid var(--term-border);
+    color: var(--muted);
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    transition: border-color .2s, color .2s;
+  }
+  .nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .nav-btn:disabled { opacity: .25; cursor: default; }
+  .pause-btn {
+    background: transparent;
+    border: 1px solid var(--term-border);
+    color: var(--muted);
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    transition: border-color .2s, color .2s;
+    font-family: var(--font-mono);
+  }
+  .pause-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .pause-btn.paused { color: var(--green); border-color: var(--green); }
+  .dots { display: flex; gap: 8px; }
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--term-border);
+    cursor: pointer;
+    transition: background .3s, box-shadow .3s;
+  }
+  .dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+  .dot:hover:not(.active) { background: var(--muted); }
+
+  .scene-label {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    min-height: 16px;
+  }
+
+  @media (max-width: 600px) {
+    body { padding: 1rem; }
+    .term-body { font-size: 12px; min-height: 360px; padding: 14px; }
+    .scene { inset: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="demo-wrap">
+  <div class="terminal">
+    <div class="title-bar">
+      <div class="tl tl-r"></div>
+      <div class="tl tl-y"></div>
+      <div class="tl tl-g"></div>
+      <div class="title-bar-text">alcove &mdash; ~/projects/alcove</div>
+    </div>
+    <div class="progress-strip"><div class="progress-strip-fill" id="progressFill"></div></div>
+    <div class="term-body">
+      <div class="scene" id="s0"></div>
+      <div class="scene" id="s1"></div>
+      <div class="scene" id="s2"></div>
+      <div class="scene" id="s3"></div>
+      <div class="scene" id="s4">
+        <div class="end-card">
+          <div class="end-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <div class="tagline">Your documents. Your machine.<br>No telemetry.</div>
+          <div class="sub">Alcove is a free, local-first retrieval starter kit. Your data never leaves your disk.</div>
+          <a href="https://github.com/Pro777/alcove">View on GitHub &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scene-label" id="sceneLabel"></div>
+
+  <div class="controls">
+    <button class="nav-btn" id="prevBtn" aria-label="Previous">&#9664;</button>
+    <div class="dots" id="dots"></div>
+    <button class="pause-btn" id="pauseBtn" aria-label="Pause" title="Pause / Resume autoplay">&#9208;</button>
+    <button class="nav-btn" id="nextBtn" aria-label="Next">&#9654;</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var SCENES = [
+    {
+      label: '1 \u00b7 Install',
+      lines: [
+        ['prompt', 'pip install alcove-search'],
+        ['output', 'Collecting alcove-search\u2026'],
+        ['dim',    '  Downloading alcove_search-0.2.0-py3-none-any.whl (31 kB)'],
+        ['output', 'Collecting dependencies\u2026'],
+        ['dim',    '  chromadb>=0.5  fastapi>=0.110  pypdf>=4'],
+        ['dim',    '  ebooklib>=0.18  beautifulsoup4>=4.12'],
+        ['output', 'Installing collected packages\u2026'],
+        ['ok',     '  \u2713 Successfully installed alcove-search 0.2.0'],
+        ['blank',  ''],
+        ['ok',     'Run: alcove seed-demo  \u2014  then: alcove serve'],
+      ]
+    },
+    {
+      label: '2 \u00b7 Seed Demo',
+      lines: [
+        ['prompt', 'alcove seed-demo'],
+        ['output', 'Fetching seed corpus (public domain)\u2026'],
+        ['dim',    '  fetching gutenberg_alice_11\u2026'],
+        ['ok',     '  \u2713 alice.txt                        174 KB  sha256 ok'],
+        ['dim',    '  fetching gutenberg_frankenstein_84\u2026'],
+        ['ok',     '  \u2713 frankenstein.txt                 449 KB  sha256 ok'],
+        ['dim',    '  fetching gutenberg_federalist_1404\u2026'],
+        ['ok',     '  \u2713 federalist_papers.txt          1,204 KB  sha256 ok'],
+        ['dim',    '  fetching archives_declaration\u2026'],
+        ['ok',     '  \u2713 declaration_transcript.html       14 KB  sha256 ok'],
+        ['dim',    '  fetching archives_constitution\u2026'],
+        ['ok',     '  \u2713 constitution_transcript.html      52 KB  sha256 ok'],
+        ['output', 'Chunking 5 documents\u2026'],
+        ['ok',     '  \u2713 wrote 247 chunks \u2192 data/processed/chunks.jsonl'],
+        ['output', 'Building local index\u2026'],
+        ['ok',     '  \u2713 indexed 247 chunks into ChromaDB'],
+        ['blank',  ''],
+        ['ok',     'done: 5 seed docs fetched, chunked, and indexed locally'],
+      ]
+    },
+    {
+      label: '3 \u00b7 Query',
+      lines: [
+        ['prompt', 'alcove query "What does the Constitution say about liberty?"'],
+        ['output', 'Querying local index\u2026'],
+        ['blank',  ''],
+        ['json', 0],
+        ['json', 1],
+        ['json', 2],
+      ]
+    },
+    {
+      label: '4 \u00b7 Serve',
+      lines: [
+        ['prompt', 'alcove serve'],
+        ['output', 'Loading index\u2026'],
+        ['ok',     '  \u2713 247 chunks ready'],
+        ['blank',  ''],
+        ['output', 'Starting Alcove web UI\u2026'],
+        ['ok',     '  \u2713 Listening on http://localhost:8000'],
+        ['blank',  ''],
+        ['dim',    '  Open your browser \u2014 search, upload, explore.'],
+        ['dim',    '  Press Ctrl-C to stop.'],
+      ]
+    },
+    {
+      label: '5 \u00b7 Trust',
+      lines: []
+    }
+  ];
+
+  // JSON result data — no HTML strings; built as DOM in buildJsonCard()
+  var JSON_RESULTS = [
+    {
+      source: 'constitution_transcript.html',
+      score: '0.847',
+      chunkParts: [
+        { text: 'We the People of the United States, in Order to form a more perfect Union, establish Justice, insure domestic Tranquility, provide for the common defence, promote the general Welfare, and secure the Blessings of ' },
+        { text: 'Liberty', hl: true },
+        { text: ' to ourselves and our Posterity\u2026' }
+      ]
+    },
+    {
+      source: 'federalist_papers.txt',
+      score: '0.791',
+      chunkParts: [
+        { text: '...the people of this country, enlightened as they are with regard to the nature, and interested, as the great body of them are, in the effects of good government, will never be satisfied till ' },
+        { text: 'liberty', hl: true },
+        { text: ' has found a secure foundation\u2026' }
+      ]
+    },
+    {
+      source: 'declaration_transcript.html',
+      score: '0.763',
+      chunkParts: [
+        { text: '...that they are endowed by their Creator with certain unalienable Rights, that among these are Life, ' },
+        { text: 'Liberty', hl: true },
+        { text: ' and the pursuit of Happiness\u2026' }
+      ]
+    }
+  ];
+
+  // State
+  var current = -1;
+  var timers = [];
+  var autoTimer = null;
+  var paused = false;
+
+  var progressFill = document.getElementById('progressFill');
+  var labelEl = document.getElementById('sceneLabel');
+  var dotsEl = document.getElementById('dots');
+  var prevBtn = document.getElementById('prevBtn');
+  var nextBtn = document.getElementById('nextBtn');
+  var pauseBtn = document.getElementById('pauseBtn');
+
+  // Build dots
+  for (var i = 0; i < SCENES.length; i++) {
+    var d = document.createElement('div');
+    d.className = 'dot';
+    d.setAttribute('data-idx', i);
+    d.addEventListener('click', function() { pauseAutoplay(); goTo(parseInt(this.getAttribute('data-idx'))); });
+    dotsEl.appendChild(d);
+  }
+
+  // Helper: create a span with a class and text content
+  function sp(cls, text) {
+    var s = document.createElement('span');
+    s.className = cls;
+    s.textContent = text;
+    return s;
+  }
+
+  // Build a JSON result card entirely from DOM — no HTML strings
+  function buildJsonCard(result) {
+    var card = document.createElement('div');
+    card.className = 'json-card';
+
+    function br() { return document.createElement('br'); }
+    function txt(s) { return document.createTextNode(s); }
+
+    card.appendChild(sp('json-brace', '{'));
+    card.appendChild(br());
+
+    card.appendChild(txt('  '));
+    card.appendChild(sp('json-key', '"source"'));
+    card.appendChild(txt(': '));
+    card.appendChild(sp('json-str', '"' + result.source + '"'));
+    card.appendChild(txt(','));
+    card.appendChild(br());
+
+    card.appendChild(txt('  '));
+    card.appendChild(sp('json-key', '"score"'));
+    card.appendChild(txt(':  '));
+    card.appendChild(sp('json-num', result.score));
+    card.appendChild(txt(','));
+    card.appendChild(br());
+
+    card.appendChild(txt('  '));
+    card.appendChild(sp('json-key', '"chunk"'));
+    card.appendChild(txt(':  '));
+
+    var strSpan = document.createElement('span');
+    strSpan.className = 'json-str';
+    strSpan.appendChild(txt('"'));
+    for (var i = 0; i < result.chunkParts.length; i++) {
+      var p = result.chunkParts[i];
+      if (p.hl) {
+        strSpan.appendChild(sp('json-match', p.text));
+      } else {
+        strSpan.appendChild(txt(p.text));
+      }
+    }
+    strSpan.appendChild(txt('"'));
+    card.appendChild(strSpan);
+    card.appendChild(br());
+
+    card.appendChild(sp('json-brace', '}'));
+    return card;
+  }
+
+  function clearTimers() {
+    for (var i = 0; i < timers.length; i++) clearTimeout(timers[i]);
+    timers = [];
+    if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+  }
+
+  function goTo(idx) {
+    if (idx < 0 || idx >= SCENES.length || idx === current) return;
+    clearTimers();
+
+    // Deactivate old
+    if (current >= 0) {
+      document.getElementById('s' + current).classList.remove('active');
+    }
+
+    current = idx;
+    updateUI();
+
+    var el = document.getElementById('s' + current);
+
+    // Rebuild dynamic scenes
+    if (current <= 3) {
+      while (el.firstChild) el.removeChild(el.firstChild);
+      buildScene(current, el);
+    }
+
+    // Activate after brief crossfade gap
+    setTimeout(function() {
+      el.classList.add('active');
+      if (current <= 3) {
+        runAnimation(current, el);
+      } else {
+        scheduleAutoAdvance(6000);
+      }
+    }, 100);
+  }
+
+  function buildScene(idx, container) {
+    var lines = SCENES[idx].lines;
+    for (var i = 0; i < lines.length; i++) {
+      var spec = lines[i];
+      var type = spec[0];
+      var content = spec[1];
+      var el;
+
+      if (type === 'json') {
+        el = buildJsonCard(JSON_RESULTS[content]);
+      } else {
+        el = document.createElement('div');
+        el.className = 'line';
+        if (type === 'prompt') {
+          el.appendChild(sp('prompt', '$ '));
+          var cmdSpan = document.createElement('span');
+          cmdSpan.className = 'cmd';
+          el.appendChild(cmdSpan);
+          el.setAttribute('data-cmd', content);
+        } else if (type === 'ok') {
+          el.appendChild(sp('ok', content));
+        } else if (type === 'dim') {
+          el.appendChild(sp('dim', content));
+        } else if (type === 'blank') {
+          el.textContent = '\u00a0';
+        } else {
+          el.appendChild(sp('output', content));
+        }
+      }
+
+      container.appendChild(el);
+    }
+  }
+
+  function runAnimation(idx, container) {
+    var children = container.children;
+    var delay = 200;
+
+    for (var i = 0; i < children.length; i++) {
+      (function(child, d) {
+        var cmdText = child.getAttribute('data-cmd');
+
+        if (cmdText) {
+          // Prompt line: show, then type
+          timers.push(setTimeout(function() {
+            child.classList.add('visible');
+            var cmdSpan = child.querySelector('.cmd');
+            var cursor = document.createElement('span');
+            cursor.className = 'cursor';
+            cmdSpan.after(cursor);
+            typeChar(cmdSpan, cmdText, 0, cursor);
+          }, d));
+        } else {
+          // Static line or json card: cascade in
+          timers.push(setTimeout(function() {
+            child.classList.add('visible');
+          }, d));
+        }
+      })(children[i], delay);
+
+      // Calculate next delay
+      var cmdText = children[i].getAttribute('data-cmd');
+      if (cmdText) {
+        delay += cmdText.length * 32 + 600;
+      } else if (children[i].classList.contains('json-card')) {
+        delay += 350;
+      } else {
+        delay += 80;
+      }
+    }
+
+    // Auto-advance after animation completes
+    var autoDelay = (idx === 2 || idx === 3) ? 5500 : 4000;
+    scheduleAutoAdvance(delay + autoDelay);
+  }
+
+  function typeChar(el, text, idx, cursor) {
+    if (idx >= text.length) {
+      timers.push(setTimeout(function() {
+        if (cursor.parentNode) cursor.remove();
+      }, 400));
+      return;
+    }
+    el.textContent = text.slice(0, idx + 1);
+    var speed = 25 + Math.random() * 25;
+    if (text[idx] === ' ') speed += 12;
+    if (text[idx] === '"') speed += 30;
+    timers.push(setTimeout(function() {
+      typeChar(el, text, idx + 1, cursor);
+    }, speed));
+  }
+
+  function scheduleAutoAdvance(ms) {
+    if (paused) return;
+    if (autoTimer) clearTimeout(autoTimer);
+    autoTimer = setTimeout(function() {
+      if (paused) return;
+      if (current < SCENES.length - 1) {
+        goTo(current + 1);
+      } else {
+        goTo(0); // loop
+      }
+    }, ms);
+  }
+
+  function pauseAutoplay() {
+    paused = true;
+    if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+    pauseBtn.textContent = '\u25b6';
+    pauseBtn.classList.add('paused');
+    pauseBtn.title = 'Resume autoplay';
+  }
+
+  function resumeAutoplay() {
+    paused = false;
+    pauseBtn.textContent = '\u23f8';
+    pauseBtn.classList.remove('paused');
+    pauseBtn.title = 'Pause autoplay';
+    scheduleAutoAdvance(4000);
+  }
+
+  function updateUI() {
+    progressFill.style.width = ((current + 1) / SCENES.length * 100) + '%';
+    labelEl.textContent = SCENES[current].label;
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = false;
+    var dots = dotsEl.querySelectorAll('.dot');
+    for (var i = 0; i < dots.length; i++) {
+      dots[i].classList.toggle('active', i === current);
+    }
+  }
+
+  // Navigation — manual interaction pauses autoplay
+  prevBtn.addEventListener('click', function() { pauseAutoplay(); goTo(current - 1); });
+  nextBtn.addEventListener('click', function() {
+    pauseAutoplay();
+    if (current >= SCENES.length - 1) goTo(0);
+    else goTo(current + 1);
+  });
+
+  pauseBtn.addEventListener('click', function() {
+    if (paused) resumeAutoplay();
+    else pauseAutoplay();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight') { e.preventDefault(); pauseAutoplay(); goTo(current + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); pauseAutoplay(); goTo(current - 1); }
+    if (e.key === ' ') { e.preventDefault(); if (paused) resumeAutoplay(); else pauseAutoplay(); }
+  });
+
+  // Start
+  goTo(0);
+})();
+</script>
+</body>
+</html>

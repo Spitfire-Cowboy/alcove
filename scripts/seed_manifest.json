@@ -1,0 +1,58 @@
+[
+  {
+    "id": "gutenberg_alice_11",
+    "filename": "alice.txt",
+    "url": "https://www.gutenberg.org/files/11/11-0.txt",
+    "sha256": "a3a27f8edbf7fcd9b8ba8435494440e24952deaa3e2f2d65192d4cb7ca403754",
+    "license": "Public Domain (Project Gutenberg U.S.)",
+    "source": "Project Gutenberg"
+  },
+  {
+    "id": "gutenberg_frankenstein_84",
+    "filename": "frankenstein.txt",
+    "url": "https://www.gutenberg.org/files/84/84-0.txt",
+    "sha256": "06c37d2c52d208d3d81eb12c3b10b5edbd7728b73554325ddceadbe2fb427e77",
+    "license": "Public Domain (Project Gutenberg U.S.)",
+    "source": "Project Gutenberg"
+  },
+  {
+    "id": "gutenberg_federalist_1404",
+    "filename": "federalist_papers.txt",
+    "url": "https://www.gutenberg.org/files/1404/1404-0.txt",
+    "sha256": "70437e5aac8975fbed95baeb149b76e5e6f03b20da833c80610156f327d4bdba",
+    "license": "Public Domain (Project Gutenberg U.S.)",
+    "source": "Project Gutenberg"
+  },
+  {
+    "id": "archives_declaration_transcript",
+    "filename": "declaration_transcript.html",
+    "url": "https://www.archives.gov/founding-docs/declaration-transcript",
+    "sha256": [
+      "5026ad07bb72160392f405b83c02212b0311467024d174c7b6d16c4c936a1ef2",
+      "9710158f52a627cb2c21d7079bd1976b38e0569efdd6e7a5ba8b39b58c6478cd"
+    ],
+    "must_contain": [
+      "IN CONGRESS, July 4, 1776",
+      "Declaration of Independence"
+    ],
+    "allow_hash_drift": true,
+    "license": "Public Domain (U.S. Federal Government Work)",
+    "source": "U.S. National Archives"
+  },
+  {
+    "id": "archives_constitution_transcript",
+    "filename": "constitution_transcript.html",
+    "url": "https://www.archives.gov/founding-docs/constitution-transcript",
+    "sha256": [
+      "933ad8d96c1bc1074be5604363fc50b1cbf8b8b9453bb1decfaae3b1afe7726c",
+      "29b995a7c4fcc2c5757b4894a2d4904e57df85b2320479b1eded47645da66aa4"
+    ],
+    "must_contain": [
+      "Constitution of the United States",
+      "We the People"
+    ],
+    "allow_hash_drift": true,
+    "license": "Public Domain (U.S. Federal Government Work)",
+    "source": "U.S. National Archives"
+  }
+]

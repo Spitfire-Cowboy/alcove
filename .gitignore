@@ -1,0 +1,14 @@
+.env
+.venv/
+.pytest_cache/
+__pycache__/
+*.pyc
+data/chroma/*
+!data/chroma/.gitkeep
+data/zvec/
+data/raw/seed/*
+!data/raw/seed/.gitkeep
+data/processed/*.jsonl
+data/processed/seed_index.json
+!data/processed/.gitkeep
+!data/raw/.gitkeep
