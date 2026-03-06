@@ -43,7 +43,14 @@ def health():
 
 @app.get("/", response_class=HTMLResponse)
 def root(request: Request):
-    return templates.TemplateResponse("search.html", {"request": request})
+    from alcove.index.backend import get_backend
+    from alcove.index.embedder import get_embedder
+    try:
+        backend = get_backend(get_embedder())
+        doc_count = backend.count()
+    except Exception:
+        doc_count = 0
+    return templates.TemplateResponse("search.html", {"request": request, "doc_count": doc_count})
 
 
 @app.get("/search", response_class=HTMLResponse)

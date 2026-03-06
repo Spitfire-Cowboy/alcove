@@ -2,6 +2,13 @@
 
 {% block content %}
 <main id="main-content">
+  {% if doc_count == 0 %}
+  <div class="welcome-banner" role="status">
+    <h2>Welcome to Alcove</h2>
+    <p>Your index is empty. Upload documents below or run <code>alcove seed-demo</code> to get started.</p>
+  </div>
+  {% endif %}
+
   <form class="search-form" method="GET" action="/search" role="search">
     <label for="search-input" class="sr-only">Search your documents</label>
     <input id="search-input" type="text" name="q" placeholder="Search your documents..." autofocus aria-label="Search your documents">

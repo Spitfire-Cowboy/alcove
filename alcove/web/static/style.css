@@ -91,6 +91,39 @@ header {
   margin-top: 0.4rem;
 }
 
+/* ---- Welcome Banner ---- */
+
+.welcome-banner {
+  background: var(--bg-card);
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.welcome-banner h2 {
+  font-family: var(--font-sans);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 0.5rem;
+}
+
+.welcome-banner p {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.welcome-banner code {
+  font-family: var(--font-mono);
+  background: var(--amber-glow);
+  color: var(--amber);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
 /* ---- Search Form ---- */
 
 .search-form {
