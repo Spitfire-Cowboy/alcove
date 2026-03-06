@@ -34,7 +34,7 @@ class ChromaBackend:
 
 
 class ZvecBackend:
-    """Vector backend backed by local zvec (alibaba/zvec)."""
+    """Vector backend backed by local zvec."""
 
     def __init__(self, embedder):
         import zvec as _zvec

@@ -9,6 +9,8 @@
 
 **Alcove** is a local-first document search library. Install it, point it at your files, and search. No server, no sign-up, no data leaves your disk.
 
+> **[Watch the 30-second demo](https://pro777.github.io/alcove/demo.html)**
+
 ## ✨ Features
 
 - **🔒 Private** — documents stay on your machine, no cloud calls, no telemetry
@@ -33,8 +35,6 @@ alcove serve              # open http://localhost:8000
 ```
 
 <img src="docs/assets/web-ui-screenshot.png" alt="Alcove web UI" width="760">
-
-> [Watch the 30-second CLI demo](https://pro777.github.io/alcove/demo.html)
 
 ## 🔒 Trust Model
 

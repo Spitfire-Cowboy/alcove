@@ -1,38 +1,21 @@
 # Roadmap
 
-## Current milestone: MVP baseline
+## ✅ Current release (v0.2.0)
 
-Get the private repo to a stable, tested, public-fork-ready state.
+- Three-stage pipeline (ingest → index → query)
+- Public-domain seed corpus with SHA-256 manifest
+- Web UI (upload + search)
+- PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, TXT
+- ChromaDB and zvec vector backends
+- CI across Python 3.10, 3.11, 3.12
 
-### Completed
+## 🔜 Planned
 
-- [x] Three-stage pipeline (ingest → index → query)
-- [x] Public-domain seed corpus with SHA-256 manifest
-- [x] Deterministic smoke tests (7 passing)
-- [x] README, docs, trust boundary, security posture
-- [x] GitHub issue templates
-- [x] LLM ephemera scrub
-- [x] Stale branches cleaned
+- More document formats (RTF, ODT, PPTX, XLSX)
+- Real semantic search out of the box
+- Desktop app packaging for non-technical users
 
-### In progress
+## ⛔ Out of scope
 
-- [ ] Create public fork with clean history (#14)
-
-## Next milestone: real retrieval
-
-- [ ] Swap hash embedder for real embedding model (#13)
-- [ ] Add zvec as alternative vector backend (#10)
-- [ ] Add GitHub Actions CI (#11)
-
-## North star
-
-- [ ] Desktop app packaging (.dmg) for non-technical users (#12)
-- [ ] Multi-backend configuration (ChromaDB + zvec)
-- [ ] Real semantic search out of the box
-
-## Out of scope (today)
-
-- Hosted services
-- Exploratory product surfaces
 - Hosted services or SaaS features
-- Brand/marketing sweep
+- Cloud storage integrations
