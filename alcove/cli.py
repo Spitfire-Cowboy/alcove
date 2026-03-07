@@ -1,8 +1,10 @@
-"""Alcove CLI — local-first document retrieval."""
+"""Alcove CLI -- local-first document retrieval."""
 
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import sys
 
 from alcove import __version__
@@ -15,7 +17,6 @@ def cmd_serve(args):
 
 
 def cmd_ingest(args):
-    import os
     from alcove.ingest.pipeline import run
     if args.chunk_size is not None:
         os.environ["CHUNK_SIZE"] = str(args.chunk_size)
@@ -23,11 +24,56 @@ def cmd_ingest(args):
     print(f"wrote {n} chunks")
 
 
-def cmd_query(args):
-    import json
+def _format_search_results(result):
+    """Print search results in human-readable format."""
+    ids = result.get("ids", [[]])[0]
+    documents = result.get("documents", [[]])[0]
+    distances = result.get("distances", [[]])[0]
+
+    if not ids:
+        print("No results found.")
+        return
+
+    for i, (doc_id, doc, dist) in enumerate(zip(ids, documents, distances)):
+        if i > 0:
+            print()
+        score = 1.0 - dist if dist is not None else 0.0
+        source = doc_id if doc_id else "(unknown)"
+        excerpt = (doc[:200] + "...") if doc and len(doc) > 200 else (doc or "")
+        print(f'  score: {score:.3f}  |  {source}')
+        print(f'  "{excerpt}"')
+
+
+def cmd_search(args):
     from alcove.query.retriever import query_text
     result = query_text(args.query, n_results=args.k)
-    print(json.dumps(result, indent=2))
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        _format_search_results(result)
+
+
+def cmd_status(_args):
+    from alcove.index.embedder import get_embedder
+    from alcove.index.backend import get_backend
+
+    index_path = os.getenv("CHROMA_PATH", "./data/chroma")
+    embedder_name = os.getenv("EMBEDDER", "hash")
+    backend_name = os.getenv("VECTOR_BACKEND", "chromadb")
+
+    try:
+        embedder = get_embedder()
+        backend = get_backend(embedder)
+        count = backend.count()
+        count_str = str(count)
+    except Exception as exc:
+        count_str = f"(unavailable: {exc})"
+
+    print(f"  index path:     {index_path}")
+    print(f"  backend:        {backend_name}")
+    print(f"  embedder:       {embedder_name}")
+    print(f"  vectors:        {count_str}")
+    print(f"  network:        none required")
 
 
 def cmd_plugins(_args):
@@ -56,6 +102,17 @@ def cmd_seed_demo(_args):
         subprocess.check_call([sys.executable, str(script_path)])
 
 
+def _add_search_parser(sub, name, hidden=False):
+    """Add a search/query subparser. Used for both the primary and alias."""
+    help_text = argparse.SUPPRESS if hidden else "Search local index"
+    p = sub.add_parser(name, help=help_text)
+    p.add_argument("query", help="Search terms")
+    p.add_argument("--k", type=int, default=3, help="Number of results (default: 3)")
+    p.add_argument("--json", action="store_true", default=False, help="Output raw JSON instead of formatted results")
+    p.set_defaults(func=cmd_search)
+    return p
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="alcove",
@@ -76,11 +133,15 @@ def main():
     p_ingest.add_argument("--chunk-size", type=int, default=None, help="Chunk size in characters (default: 1000)")
     p_ingest.set_defaults(func=cmd_ingest)
 
-    # query
-    p_query = sub.add_parser("query", help="Search local index")
-    p_query.add_argument("query", help="Search terms")
-    p_query.add_argument("--k", type=int, default=3)
-    p_query.set_defaults(func=cmd_query)
+    # search (primary)
+    _add_search_parser(sub, "search")
+
+    # query (hidden alias for backwards compatibility)
+    _add_search_parser(sub, "query", hidden=True)
+
+    # status
+    p_status = sub.add_parser("status", help="Show index and configuration status")
+    p_status.set_defaults(func=cmd_status)
 
     # seed-demo
     p_seed = sub.add_parser("seed-demo", help="Fetch and index demo corpus")
