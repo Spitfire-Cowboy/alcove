@@ -41,6 +41,25 @@ body {
 
 /* ---- Accessibility ---- */
 
+/* Touch targets: WCAG 2.5.5 recommends 44x44px minimum for interactive controls.
+   Buttons achieve this via padding (0.75rem vertical + 1rem line-height at 16px = ~49px).
+   Upload zone achieves this via its 2rem padding block.
+   The back-link and skip-link are inline anchors; min-height is set to ensure tap size. */
+
+.back-link,
+.skip-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* focus-visible for anchor links (skip-link already has :focus; add :focus-visible too) */
+a:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

@@ -19,15 +19,16 @@
        id="upload-zone"
        role="button"
        tabindex="0"
-       aria-label="Upload files — drop files here or press Enter to browse">
+       aria-label="Upload files — drop files here or press Enter to browse"
+       aria-describedby="formats-note">
     <p>Drop files here or click to browse</p>
     <input type="file" id="file-input"
            accept=".txt,.pdf,.epub,.html,.htm,.md,.rst,.csv,.tsv,.json,.jsonl,.docx"
            aria-label="Choose files to upload"
            multiple hidden>
   </div>
-  <div class="upload-status" id="upload-status" aria-live="polite" aria-atomic="true"></div>
-  <p class="formats-note">Supports PDF, EPUB, TXT, HTML, Markdown, RST, CSV, JSON, JSONL, DOCX</p>
+  <div class="upload-status" id="upload-status" aria-live="polite" aria-atomic="true" aria-busy="false"></div>
+  <p class="formats-note" id="formats-note">Supports PDF, EPUB, TXT, HTML, Markdown, RST, CSV, JSON, JSONL, DOCX</p>
 </main>
 
 <script>
@@ -74,6 +75,7 @@
       formData.append("files", files[i]);
     }
     status.textContent = "Uploading...";
+    status.setAttribute("aria-busy", "true");
     fetch("/ingest", { method: "POST", body: formData })
       .then(function (res) {
         if (!res.ok) {
@@ -84,7 +86,9 @@
         return res.json();
       })
       .then(function (data) {
+        status.setAttribute("aria-busy", "false");
         status.classList.remove("error");
+        status.removeAttribute("aria-invalid");
         var indexed = [];
         var skipped = [];
         for (var j = 0; j < data.length; j++) {
@@ -105,6 +109,8 @@
         if (skipped.length && !indexed.length) status.classList.add("error");
       })
       .catch(function (e) {
+        status.setAttribute("aria-busy", "false");
+        status.setAttribute("aria-invalid", "true");
         status.textContent = e.message || "Upload failed. Please try again.";
         status.classList.add("error");
       });

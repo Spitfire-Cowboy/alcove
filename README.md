@@ -61,6 +61,10 @@ alcove serve              # open http://localhost:8000
 - [Seed Corpus](docs/SEED_CORPUS.md)
 - [Roadmap](docs/ROADMAP.md)
 
+## Accessibility
+
+Alcove targets WCAG AA compliance. See [ACCESSIBILITY.md](ACCESSIBILITY.md) for details.
+
 ## 📄 License
 
 [Apache 2.0](LICENSE)

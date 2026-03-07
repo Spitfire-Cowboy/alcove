@@ -5,12 +5,13 @@
   <h2 class="results-heading">Results for: {{ query | e }}</h2>
 
   {% if results %}
-  <div class="results-list" role="region" aria-label="Search results">
+  <div class="results-list" role="region" aria-label="Search results" aria-live="assertive" aria-atomic="false">
     {% for r in results %}
     {% set _fname = r.source.split('/')|last %}
     {% set ext = _fname.rsplit('.', 1)[1].upper() if '.' in _fname else '?' %}
-    <div class="result-card" aria-label="Result from {{ r.source | e }}, score {{ '%.3f' | format(r.score) }}">
-      <div class="result-meta">
+    {% set card_id = "card-meta-" ~ loop.index %}
+    <div class="result-card" aria-describedby="{{ card_id }}">
+      <div class="result-meta" id="{{ card_id }}">
         <span class="result-source">{{ r.source | e }}</span>
         <span class="file-badge">{{ ext }}</span>
         <span class="result-score">{{ "%.3f" | format(r.score) }}</span>
