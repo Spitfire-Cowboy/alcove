@@ -10,7 +10,19 @@ def test_alcove_help_exits_zero():
     assert result.returncode == 0
     assert "serve" in result.stdout
     assert "ingest" in result.stdout
-    assert "query" in result.stdout
+    # search is the primary command; query is a hidden alias
+    assert "search" in result.stdout
+    assert "status" in result.stdout
+
+
+def test_alcove_query_alias_still_works():
+    """The 'query' alias must remain functional for backwards compatibility."""
+    result = subprocess.run(
+        [sys.executable, "-m", "alcove", "query", "--help"],
+        capture_output=True, text=True
+    )
+    assert result.returncode == 0
+    assert "--k" in result.stdout
 
 
 def test_alcove_version():
