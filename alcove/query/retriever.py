@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from typing import List, Optional
+
 from alcove.index.backend import get_backend
 from alcove.index.embedder import get_embedder
 
 
-def query_text(q: str, n_results: int = 3):
+def query_text(q: str, n_results: int = 3, collections: Optional[List[str]] = None):
     embedder = get_embedder()
     backend = get_backend(embedder)
     emb = embedder.embed([q])[0]
-    return backend.query(emb, k=n_results)
+    return backend.query(emb, k=n_results, collections=collections)

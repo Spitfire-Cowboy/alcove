@@ -20,8 +20,14 @@
         autofocus
         aria-label="Search your documents">
     </div>
+    <input type="hidden" id="collections-hidden" name="collections" value="">
     <button type="submit" class="search-btn">Search</button>
   </form>
+
+  <div class="collections-filter" id="collections-filter" role="group" aria-label="Filter by collection" style="display:none;">
+    <span class="collections-label">Collections:</span>
+    <div class="collections-checkboxes" id="collections-checkboxes"></div>
+  </div>
 
   <div
     class="upload-zone"
@@ -51,6 +57,41 @@
   <p class="formats-note" id="formats-note">
     Supports PDF, EPUB, TXT, HTML, Markdown, RST, CSV, JSON, JSONL, DOCX
   </p>
+
+<script>
+(function () {
+  fetch("/collections")
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      if (!data || !data.length) return;
+      var wrap = document.getElementById("collections-filter");
+      var box = document.getElementById("collections-checkboxes");
+      var hidden = document.getElementById("collections-hidden");
+      wrap.style.display = "";
+      for (var i = 0; i < data.length; i++) {
+        var c = data[i];
+        var label = document.createElement("label");
+        label.className = "collection-chip";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.value = c.name;
+        cb.className = "collection-cb";
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(" " + c.name + " (" + c.doc_count + ")"));
+        box.appendChild(label);
+      }
+      // On form submit, gather checked collections into the hidden field
+      var form = document.querySelector(".search-form");
+      form.addEventListener("submit", function () {
+        var checked = box.querySelectorAll("input:checked");
+        var vals = [];
+        for (var j = 0; j < checked.length; j++) vals.push(checked[j].value);
+        hidden.value = vals.join(",");
+      });
+    })
+    .catch(function () { /* silently ignore if collections endpoint fails */ });
+})();
+</script>
 
 <script>
 (function () {

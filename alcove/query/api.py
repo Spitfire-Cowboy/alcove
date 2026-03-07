@@ -5,8 +5,9 @@ import json
 import os
 import re
 from pathlib import Path
+from typing import List, Optional
 
-from fastapi import FastAPI, Request, UploadFile, File
+from fastapi import FastAPI, Query, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -34,6 +35,7 @@ SUPPORTED_EXTENSIONS = {
 class QueryIn(BaseModel):
     query: str
     k: int = 3
+    collections: Optional[List[str]] = None
 
 
 @app.get("/health")
@@ -54,10 +56,13 @@ def root(request: Request):
 
 
 @app.get("/search", response_class=HTMLResponse)
-def search(request: Request, q: str = "", k: int = 5):
+def search(request: Request, q: str = "", k: int = 5, collections: str = ""):
+    coll_list: Optional[List[str]] = None
+    if collections.strip():
+        coll_list = [c.strip() for c in collections.split(",") if c.strip()]
     results: list = []
     if q.strip():
-        raw = query_text(q, k)
+        raw = query_text(q, k, collections=coll_list)
         documents = raw.get("documents", [[]])[0]
         metadatas = raw.get("metadatas", [[]])[0]
         distances = raw.get("distances", [[]])[0]
@@ -68,6 +73,7 @@ def search(request: Request, q: str = "", k: int = 5):
             results.append({
                 "text": highlighted,
                 "source": meta.get("source", "unknown"),
+                "collection": meta.get("collection", "default"),
                 "score": round(1.0 - dist, 3) if dist <= 1.0 else round(dist, 3),
             })
 
@@ -79,11 +85,14 @@ def search(request: Request, q: str = "", k: int = 5):
 
 @app.post("/query")
 def query(inp: QueryIn):
-    return query_text(inp.query, inp.k)
+    return query_text(inp.query, inp.k, collections=inp.collections)
 
 
 @app.post("/ingest")
-async def ingest(files: list[UploadFile] = File(...)):
+async def ingest(
+    files: list[UploadFile] = File(...),
+    collection: str = Query("default", description="Target collection name"),
+):
     raw_dir = os.getenv("RAW_DIR", "data/raw")
     chunks_file = os.getenv("CHUNKS_FILE", "data/processed/chunks.jsonl")
     raw_path = Path(raw_dir)
@@ -124,10 +133,10 @@ async def ingest(files: list[UploadFile] = File(...)):
                     if fname in saved_files:
                         chunk_counts[fname] = chunk_counts.get(fname, 0) + 1
 
-        # Run index pipeline
+        # Run index pipeline with collection name
         from alcove.index.pipeline import run as index_run
 
-        index_run(chunks_file=chunks_file)
+        index_run(chunks_file=chunks_file, collection=collection)
     else:
         chunk_counts = {}
 
@@ -138,6 +147,7 @@ async def ingest(files: list[UploadFile] = File(...)):
             "filename": fname,
             "chunks": chunk_counts.get(fname, 0),
             "status": "indexed",
+            "collection": collection,
         })
     for skipped in skipped_files:
         response.append({
@@ -148,6 +158,18 @@ async def ingest(files: list[UploadFile] = File(...)):
         })
 
     return JSONResponse(content=response)
+
+
+@app.get("/collections")
+def list_collections():
+    """Return all named collections with their document counts."""
+    from alcove.index.backend import get_backend
+    from alcove.index.embedder import get_embedder
+    try:
+        backend = get_backend(get_embedder())
+        return backend.list_collections()
+    except Exception:
+        return []
 
 
 def _highlight(escaped_text: str, query: str) -> str:
