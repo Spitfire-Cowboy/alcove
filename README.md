@@ -23,7 +23,11 @@ Alcove runs a three-stage pipeline: ingest, index, query. Each stage is independ
 data/raw/*  →  chunks.jsonl  →  vector store  →  search results
 ```
 
-**Ingest** discovers files recursively and extracts text using format-specific extractors. PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, RST, TSV, and plain text all work out of the box. **Index** embeds the chunks and writes them to a local vector store (ChromaDB by default; zvec as an alternative). **Query** retrieves results through a CLI or a built-in web interface with upload support.
+**Ingest** discovers files recursively and extracts text using format-specific extractors. PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, RST, TSV, and plain text all work out of the box. 
+
+**Index** embeds the chunks and writes them to a local vector store (ChromaDB by default; zvec as an alternative). 
+
+**Query** retrieves results through a CLI or a built-in web interface with upload support.
 
 The pipeline is fixed. The corpus is variable. That makes Alcove a platform, not a product: the same architecture indexes a personal research library, a community archive, or a municipal records collection.
 
