@@ -1,5 +1,4 @@
 <img src="docs/assets/logo.svg" alt="Alcove" height="56">
-
 <p>
   <a href="https://github.com/Pro777/alcove/actions/workflows/ci.yml"><img src="https://github.com/Pro777/alcove/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://codecov.io/gh/Pro777/alcove"><img src="https://codecov.io/gh/Pro777/alcove/graph/badge.svg?token=A8R18L65TL" alt="Coverage"></a>
@@ -67,15 +66,19 @@ Custom extractors, embedders, and vector backends plug in via Python entry point
 
 Local disk only. No outbound network calls. No telemetry. No account to create.
 
-We do not want your data.
+**🔒 We do not want your data.**
 
-This is not a feature; it is a design constraint. The architecture assumes the operator owns the hardware, controls the storage, and decides what enters the index. If you need encryption at rest, use your OS disk encryption. If you need authentication, put a reverse proxy in front of the API. Alcove handles search. You handle custody.
+This is not a feature; it is a design constraint. The architecture assumes the operator owns the hardware, controls the storage, and decides what enters the index.
+
+If you need encryption at rest, use your OS disk encryption. If you need authentication, put a reverse proxy in front of the API. Alcove handles search. You handle custody.
 
 ## Where it is going
 
 v0.3.0 is a working search platform. The trajectory is broader: streaming ingest, browsable corpus navigation, an agent-facing retrieval surface, and cross-modal indexing beyond text. Eventually, federated indexes that let separate Alcove instances share a query surface without sharing raw data. That is the "share it with the universe" part.
 
-The full roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md). Alcove will not become a SaaS product.
+The full roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md).
+
+Alcove will not become a SaaS product.
 
 ## Documentation
 
