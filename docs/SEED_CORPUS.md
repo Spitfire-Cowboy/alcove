@@ -1,15 +1,15 @@
-# 📚 Seed Corpus (Public Domain Only)
+# Seed Corpus
 
-Alcove includes a tiny runtime-fetched seed corpus for deterministic demos.
+Alcove includes a small runtime-fetched seed corpus for deterministic demos. All texts are public domain.
 
-## 🤔 Why these sources
+## Why these sources
 
-- **Legally clear** — public-domain texts only
-- **Tangible** — recognizable, human-readable content for immediate search demos
-- **Small footprint** — no large binaries committed
-- **Reproducible** — source URL + SHA-256 manifest validation
+- Legally clear: public-domain texts only
+- Tangible: recognizable, human-readable content for immediate search demos
+- Small footprint: no large binaries committed
+- Reproducible: source URL plus SHA-256 manifest validation
 
-## 📖 Included sources
+## Included sources
 
 1. **Alice's Adventures in Wonderland** (Project Gutenberg #11)
    - URL: `https://www.gutenberg.org/files/11/11-0.txt`
@@ -31,7 +31,7 @@ Alcove includes a tiny runtime-fetched seed corpus for deterministic demos.
    - URL: `https://www.archives.gov/founding-docs/constitution-transcript`
    - Public domain status: U.S. federal government work (public domain)
 
-## 🔁 Reproducibility
+## Reproducibility
 
 ```bash
 python3 scripts/fetch_seed_corpus.py

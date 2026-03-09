@@ -1,4 +1,4 @@
-# 🛡️ Security Policy
+# Security Policy
 
 ## Supported versions
 
@@ -6,9 +6,9 @@
 |---------|-----------|
 | 0.3.x   | Yes       |
 
-## 🚨 Reporting a vulnerability
+## Reporting a vulnerability
 
-**Do not open a public issue for security vulnerabilities.**
+Do not open a public issue for security vulnerabilities.
 
 Email security reports to the repository owner via GitHub private vulnerability reporting:
 
@@ -18,9 +18,11 @@ Email security reports to the repository owner via GitHub private vulnerability 
 
 You should receive an acknowledgment within 48 hours. We will work with you to understand the scope and coordinate a fix before any public disclosure.
 
-## 🔒 Security model
+## Security model
 
 Alcove is local-first. Your data never leaves your disk.
+
+The architecture assumes the operator owns the hardware, controls the storage, and decides what enters the index. We do not want your data. This is not a feature; it is a design constraint.
 
 ### What Alcove does
 
@@ -30,27 +32,27 @@ Alcove is local-first. Your data never leaves your disk.
 
 ### What Alcove does not do
 
-- Authentication or authorization (the API is open to anyone who can reach the port)
-- Encryption at rest (relies on OS-level disk encryption)
-- Input sanitization beyond the documented vectors (see attack surface table below)
+- Authentication or authorization. The API is open to anyone who can reach the port.
+- Encryption at rest. Use OS-level disk encryption.
+- Input sanitization beyond the documented attack surface.
 
-### 🎯 Known attack surface
+### Known attack surface
 
 | Surface | Mitigation | Status |
 |---------|-----------|--------|
 | XSS in search results | `html.escape()` before `<mark>` insertion | Implemented |
 | Path traversal via file upload | `Path(filename).name` strips directory components | Implemented |
 | File type validation | Extension allowlist on upload | Implemented |
-| API is unauthenticated | Bind to localhost in production; do not expose to internet | Documented |
+| API is unauthenticated | Bind to localhost in production; use a reverse proxy if you need authentication | Documented |
 | ChromaDB telemetry | Disabled by default (`ANONYMIZED_TELEMETRY=False`) | Implemented |
 
-### 👷 Operator responsibilities
+### Operator responsibilities
 
 - Bind `alcove serve` to `127.0.0.1` if not behind a reverse proxy
 - Use OS-level disk encryption for data at rest
 - Keep dependencies updated (`pip install --upgrade alcove-search`)
 - Do not expose the API to the public internet without adding authentication
 
-## ⚠️ Non-claims
+## Non-claims
 
-Alcove is not a security product. It does not provide enterprise IAM, compliance controls, or audit logging.
+Alcove is not a security product. It does not provide enterprise IAM, compliance controls, or audit logging. Alcove handles search. You handle custody.

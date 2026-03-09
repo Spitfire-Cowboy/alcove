@@ -1,20 +1,16 @@
-# 🏗️ Architecture
+# Architecture
 
-## Pipeline (local-only default)
+The README describes three stages: ingest, index, query. They are independent modules that operate over local files only. Each can be swapped out entirely via the plugin system without touching the others.
 
-1. **📥 Ingest** — `alcove/ingest` discovers files in `data/raw/**` and extracts text using format-specific extractors, then chunks into JSONL.
+## Pipeline
 
-2. **📊 Index** — `alcove/index` reads chunks and writes embeddings + metadata to a local vector store (ChromaDB by default).
-
-3. **🔍 Query** — `alcove/query` retrieves results via CLI or a built-in FastAPI web service.
-
-## Data flow
+Ingest discovers files in `data/raw/**`, extracts text using format-specific extractors, and chunks the result into `data/processed/chunks.jsonl`. Index reads those chunks, computes embeddings, and writes embeddings plus metadata to a local vector store. Query retrieves results via CLI or a built-in FastAPI web service. Data flows left to right with no backpressure; each stage is silent on disk until the next stage reads it.
 
 ```
 data/raw/*  →  data/processed/chunks.jsonl  →  vector store  →  query responses
 ```
 
-## 📄 Supported formats
+## Supported formats
 
 | Format | Extension | Dependency |
 |--------|-----------|------------|
@@ -30,16 +26,16 @@ data/raw/*  →  data/processed/chunks.jsonl  →  vector store  →  query resp
 | JSONL | `.jsonl` | — |
 | DOCX | `.docx` | python-docx (optional) |
 
-## 🧠 Embedders
+## Embedders
 
 | Name | Env value | Description |
 |------|-----------|-------------|
-| Hash (default) | `EMBEDDER=hash` | Deterministic SHA-256 hash — offline, zero download, good for smoke tests |
+| Hash (default) | `EMBEDDER=hash` | Deterministic SHA-256 hash; offline, zero download, good for smoke tests |
 | Sentence Transformers | `EMBEDDER=sentence-transformers` | Real semantic search via `all-MiniLM-L6-v2` (~80 MB model downloaded on first use) |
 
-Set the embedder with the `EMBEDDER` environment variable. Third-party embedders can be installed as plugins (see below).
+Set the embedder with the `EMBEDDER` environment variable. Custom embedders can be installed as plugins.
 
-## 💾 Vector backends
+## Vector backends
 
 | Name | Env value | Dependency |
 |------|-----------|------------|
@@ -48,9 +44,9 @@ Set the embedder with the `EMBEDDER` environment variable. Third-party embedders
 
 Set the backend with the `VECTOR_BACKEND` environment variable.
 
-## 🔌 Plugin system
+## Plugin system
 
-Alcove discovers plugins via [Python entry points](https://packaging.python.org/en/latest/specifications/entry-points/). Three extension groups are available:
+Custom extractors, embedders, and vector backends plug in via Python entry points. Alcove discovers plugins at startup and merges them with builtins; plugins take precedence in name collisions.
 
 | Group | Purpose | Example entry point |
 |-------|---------|---------------------|
@@ -65,16 +61,10 @@ To create a plugin, add an `[project.entry-points]` section in your package's `p
 rtf = "my_plugin:extract_rtf"
 ```
 
-Plugins are merged with builtins at runtime. Plugin extractors and backends take precedence over builtins with the same name.
+## Boundary
 
-## 🛡️ Boundary
+Operator owns host and storage. The system makes no outbound network calls by default; sentence-transformers downloads its model once on first use only. Telemetry is disabled by default. This boundary keeps the system local-first and under operator control.
 
-- Operator owns host + storage
-- No default outbound network calls (sentence-transformers downloads a model on first use only)
-- Telemetry disabled by default
+## Tradeoffs
 
-## ⚖️ Tradeoffs
-
-- Hash embedder ships as default for zero-download offline use — swap to sentence-transformers for real semantic quality
-- Thin implementation for speed-to-demo
-- ChromaDB for broad compatibility; zvec for lighter footprint
+Hash embedder is the default because it requires zero downloads and runs offline; swap to sentence-transformers if semantic quality matters more than speed-to-demo. ChromaDB is chosen for broad compatibility; zvec for lighter footprint. The implementation prioritizes simplicity over optimization, trading some throughput for faster iteration and easier debugging.
