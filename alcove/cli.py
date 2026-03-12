@@ -44,20 +44,9 @@ def _format_search_results(result):
         print(f'  "{excerpt}"')
 
 
-def _dispatch_search(query, k=3, mode="semantic"):
-    """Route to the correct retriever based on search mode."""
-    from alcove.query.retriever import query_hybrid, query_keyword, query_text
-    if mode == "keyword":
-        return query_keyword(query, n_results=k)
-    elif mode == "hybrid":
-        return query_hybrid(query, n_results=k)
-    else:
-        return query_text(query, n_results=k)
-
-
 def cmd_search(args):
-    mode = getattr(args, "mode", "semantic")
-    result = _dispatch_search(args.query, k=args.k, mode=mode)
+    from alcove.query.retriever import query_text
+    result = query_text(args.query, n_results=args.k)
     if args.json:
         print(json.dumps(result, indent=2))
     else:
@@ -98,21 +87,6 @@ def cmd_plugins(_args):
         print(f"  {p['type']:10s}  {p['name']:20s}  {p['module']}")
 
 
-def cmd_collections(_args):
-    from alcove.index.backend import get_backend
-    from alcove.index.embedder import get_embedder
-    try:
-        backend = get_backend(get_embedder())
-        colls = backend.list_collections()
-    except Exception:
-        colls = []
-    if not colls:
-        print("No collections found.")
-        return
-    for c in colls:
-        print(f"  {c['name']}  ({c['doc_count']} docs)")
-
-
 def cmd_seed_demo(_args):
     import subprocess
     from pathlib import Path
@@ -128,6 +102,13 @@ def cmd_seed_demo(_args):
         subprocess.check_call([sys.executable, str(script_path)])
 
 
+def cmd_wordpress_plugin(args):
+    from alcove.wordpress import export_wordpress_plugin
+
+    zip_path = export_wordpress_plugin(args.output)
+    print(f"wrote WordPress plugin to {zip_path}")
+
+
 def _add_search_parser(sub, name, hidden=False):
     """Add a search/query subparser. Used for both the primary and alias."""
     help_text = argparse.SUPPRESS if hidden else "Search local index"
@@ -135,10 +116,6 @@ def _add_search_parser(sub, name, hidden=False):
     p.add_argument("query", help="Search terms")
     p.add_argument("--k", type=int, default=3, help="Number of results (default: 3)")
     p.add_argument("--json", action="store_true", default=False, help="Output raw JSON instead of formatted results")
-    p.add_argument(
-        "--mode", choices=["semantic", "keyword", "hybrid"],
-        default="semantic", help="Search mode (default: semantic)",
-    )
     p.set_defaults(func=cmd_search)
     return p
 
@@ -169,10 +146,6 @@ def main():
     # query (hidden alias for backwards compatibility)
     _add_search_parser(sub, "query", hidden=True)
 
-    # collections
-    p_colls = sub.add_parser("collections", help="List named collections")
-    p_colls.set_defaults(func=cmd_collections)
-
     # status
     p_status = sub.add_parser("status", help="Show index and configuration status")
     p_status.set_defaults(func=cmd_status)
@@ -184,6 +157,11 @@ def main():
     # plugins
     p_plugins = sub.add_parser("plugins", help="List installed plugins")
     p_plugins.set_defaults(func=cmd_plugins)
+
+    # wordpress-plugin
+    p_wordpress = sub.add_parser("wordpress-plugin", help="Export an installable WordPress plugin")
+    p_wordpress.add_argument("--output", default="dist", help="Directory where the plugin ZIP will be written")
+    p_wordpress.set_defaults(func=cmd_wordpress_plugin)
 
     args = parser.parse_args()
     if not args.command:

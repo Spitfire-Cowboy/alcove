@@ -18,7 +18,7 @@ EMBEDDER=sentence-transformers alcove seed-demo
 EMBEDDER=sentence-transformers alcove serve
 ```
 
-This downloads `all-MiniLM-L6-v2` (~80 MB) on first use. The model is cached locally; subsequent runs are offline.
+This downloads `all-MiniLM-L6-v2` (~80 MB) on first use. The model is cached locally, so subsequent runs are offline.
 
 ## Custom documents
 
@@ -27,7 +27,7 @@ alcove ingest /path/to/your/files
 alcove serve
 ```
 
-Files can also be uploaded through the web UI at `http://localhost:8000`.
+Or use the web UI to upload files directly at `http://localhost:8000`.
 
 ## Web UI and API
 
@@ -37,10 +37,23 @@ alcove serve
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | Web UI (search and file upload) |
+| `/` | GET | Web UI (search + file upload) |
 | `/query` | POST | `{ "query": "...", "k": 3 }` |
 | `/ingest` | POST | File upload (multipart) |
 | `/health` | GET | Readiness check |
+
+## WordPress plugin export
+
+```bash
+alcove wordpress-plugin --output dist
+```
+
+Upload `dist/alcove-search-wordpress.zip` through the WordPress admin, activate it, and set the Alcove API base URL under `Settings > Alcove Search`.
+
+The plugin provides:
+
+- Shortcode: `[alcove_search]`
+- Classic widget: `Alcove Search`
 
 ## Environment variables
 
@@ -60,11 +73,9 @@ alcove serve
 docker compose up -d --build
 ```
 
-The container exposes port 8000 and includes a `/health` endpoint for readiness checks.
-
 ## Backup
 
-Back up `data/raw`, `data/processed`, and `data/chroma` (or `data/zvec` if using the zvec backend). These directories contain everything Alcove needs to reconstruct the index.
+Back up `data/raw`, `data/processed`, and `data/chroma` (or `data/zvec` if using the zvec backend).
 
 ## Running tests
 
