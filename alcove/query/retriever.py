@@ -41,7 +41,7 @@ def query_hybrid(
     sem_dists = semantic.get("distances", [[]])[0]
     sem_metas = semantic.get("metadatas", [[]])[0]
 
-    for i, (doc_id, doc, dist) in enumerate(zip(sem_ids, sem_docs, sem_dists)):
+    for i, (doc_id, doc, dist) in enumerate(zip(sem_ids, sem_docs, sem_dists, strict=True)):
         meta = sem_metas[i] if i < len(sem_metas) else {}
         merged[doc_id] = {
             "document": doc,
