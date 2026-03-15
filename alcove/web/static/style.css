@@ -989,7 +989,6 @@ a:hover {
     overflow-x: auto;
     gap: 0.5rem;
     padding-bottom: 0.25rem;
-    -webkit-overflow-scrolling: touch;
   }
 
   .sidebar-collections .collection-chip {

@@ -22,7 +22,7 @@
           <span class="collection-badge" title="Collection: {{ r.collection | e }}">{{ r.collection | e }}</span>
           {% endif %}
         </div>
-        <div class="result-score-block" aria-label="Relevance score {{ '%.3f' | format(r.score) }}">
+        <div class="result-score-block" tabindex="0" aria-label="Relevance score {{ '%.3f' | format(r.score) }}">
           <span class="score-label">Score</span>
           <div class="score-bar-wrap" role="progressbar" aria-valuenow="{{ score_pct }}" aria-valuemin="0" aria-valuemax="100">
             <div class="score-bar-fill" style="width: {{ score_pct }}%"></div>
