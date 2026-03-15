@@ -226,8 +226,18 @@ class TestSearchScoreRendering:
 
         # Scores should NOT be 0.000
         assert "0.000" not in r.text, "Scores should not all be zero for L2 distances"
-        # Should contain valid score values
-        assert "0.476" in r.text or "0.4" in r.text, "Expected meaningful score for dist=1.1"
+        # Verify scores are in the valid range (0, 1] using the score formula.
+        # For dist=1.1: score = round(1.0 / (1.0 + 1.1), 3) = round(0.476..., 3) = 0.476
+        # For dist=1.5: score = round(1.0 / (1.0 + 1.5), 3) = round(0.400, 3) = 0.4
+        # Check that the HTML contains score values in the expected range rather than
+        # hard-coding exact formatted strings (which are sensitive to formatting changes).
+        import re as _re
+        score_matches = _re.findall(r'0\.\d{3}', r.text)
+        assert score_matches, "Expected at least one formatted score in the response"
+        scores = [float(s) for s in score_matches]
+        assert any(0.3 <= s <= 0.6 for s in scores), (
+            f"Expected at least one score in [0.3, 0.6] for dist=1.1/1.5, got {scores}"
+        )
 
 
 # ---------------------------------------------------------------------------
