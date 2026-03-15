@@ -132,10 +132,10 @@ class TestResultsTemplate:
         assert 'aria-label="Search results"' in html, \
             "results region must be labelled \"Search results\""
 
-    def test_results_region_aria_live_assertive(self):
+    def test_results_region_aria_live_polite(self):
         html = _read("results.html")
-        assert 'aria-live="assertive"' in html, \
-            "results region must have aria-live=\"assertive\" for immediate announcement"
+        assert 'aria-live="polite"' in html, \
+            "results region must have aria-live=\"polite\" for non-disruptive announcement"
 
     def test_result_cards_use_aria_describedby(self):
         html = _read("results.html")
