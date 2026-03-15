@@ -1009,7 +1009,6 @@ a:hover {
   }
 
   .result-score-block {
-    align-items: flex-start;
     flex-direction: row;
     align-items: center;
     gap: 0.5rem;
