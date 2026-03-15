@@ -21,6 +21,7 @@ except ImportError:
 from fastapi import FastAPI, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from markupsafe import Markup
 from pydantic import BaseModel
 from starlette.templating import Jinja2Templates
 import uvicorn
@@ -242,10 +243,12 @@ def search(request: Request, q: str = "", k: int = 20, collections: str = "", mo
 
             for doc, meta, dist in zip(documents, metadatas, distances):
                 snippets_raw = _extract_snippets(doc, q)
-                snippets_html = [_highlight(html.escape(s), q) for s in snippets_raw]
+                # Wrap in Markup so Jinja2 does not re-escape the <mark> highlight tags.
+                # Input is html.escape()'d first, so this is safe (no raw user content).
+                snippets_html = [Markup(_highlight(html.escape(s), q)) for s in snippets_raw]
 
                 full_escaped = html.escape(doc)
-                full_highlighted = _highlight(full_escaped, q)
+                full_highlighted = Markup(_highlight(full_escaped, q))
 
                 source = meta.get("source", "unknown") if isinstance(meta, dict) else "unknown"
                 results.append({
