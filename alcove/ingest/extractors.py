@@ -159,8 +159,11 @@ def extract_xml(path: Path) -> str:
                     lines.append("")
 
             if local in USLM_TEXT_TAGS:
-                # For structural containers, recurse into children
+                # For structural containers, collect direct text then recurse into children
                 if local in USLM_BLOCK_TAGS:
+                    direct_text = (elem.text or "").strip()
+                    if direct_text:
+                        lines.append(direct_text)
                     for child in elem:
                         walk(child, depth + 1)
                     if lines and lines[-1] != "":

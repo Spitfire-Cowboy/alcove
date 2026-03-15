@@ -189,6 +189,7 @@ def test_extract_xml_uslm_bill(tmp_path):
     f.write_text(_USLM_BILL_XML, encoding="utf-8")
     result = extract_xml(f)
     assert "A Bill to Promote Local Document Retrieval" in result
+    assert "Whereas local search matters;" in result
     assert "Alcove Act" in result
     assert "<" not in result, "XML tags should not appear in output"
 
@@ -237,10 +238,13 @@ def test_pipeline_dispatches_xml(tmp_path):
     """Pipeline routes .xml files through extract_xml and writes chunks."""
     import json
     from alcove.ingest.pipeline import run
-    f = tmp_path / "bill.xml"
+    # Keep out_file outside raw_dir to prevent the pipeline from re-ingesting its own output.
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    f = raw / "bill.xml"
     f.write_text(_USLM_BILL_XML, encoding="utf-8")
     out = tmp_path / "chunks.jsonl"
-    n = run(raw_dir=str(tmp_path), out_file=str(out))
+    n = run(raw_dir=str(raw), out_file=str(out))
     assert n >= 1
     records = [json.loads(line) for line in out.read_text().splitlines()]
     combined = " ".join(r["chunk"] for r in records)
