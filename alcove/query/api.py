@@ -165,10 +165,12 @@ templates.env.globals["alcove_accent_color_light"] = os.environ.get("ALCOVE_ACCE
 _default_footer = f"{os.environ.get('ALCOVE_TITLE', 'Alcove')} \u00a9 {datetime.now(timezone.utc).year}"
 templates.env.globals["alcove_footer_text"] = os.environ.get("ALCOVE_FOOTER_TEXT", _default_footer)
 
-# Mount raw document directory so users can click through to source files
+# Mount raw document directory so users can click through to source files.
+# Create the directory if it doesn't exist so /files is always available,
+# even on fresh installs before the first /ingest call.
 _raw_dir = os.getenv("RAW_DIR", "data/raw")
-if Path(_raw_dir).is_dir():
-    app.mount("/files", StaticFiles(directory=_raw_dir), name="files")
+Path(_raw_dir).mkdir(parents=True, exist_ok=True)
+app.mount("/files", StaticFiles(directory=_raw_dir), name="files")
 
 SUPPORTED_EXTENSIONS = {
     ".txt", ".pdf", ".epub",
@@ -308,12 +310,16 @@ def view_document(request: Request, source: str = "", q: str = ""):
         return templates.TemplateResponse("view.html", ctx)
 
     try:
-        if doc_path.suffix.lower() == ".pdf":
+        suffix = doc_path.suffix.lower()
+        if suffix == ".pdf":
             from alcove.ingest.extractors import extract_pdf
             text = extract_pdf(doc_path)
-        elif doc_path.suffix.lower() == ".docx":
+        elif suffix == ".docx":
             from alcove.ingest.extractors import extract_docx
             text = extract_docx(doc_path)
+        elif suffix == ".epub":
+            from alcove.ingest.extractors import extract_epub
+            text = extract_epub(doc_path)
         else:
             text = doc_path.read_text(encoding="utf-8", errors="replace")
     except Exception as e:
