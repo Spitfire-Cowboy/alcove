@@ -65,10 +65,18 @@ class TestKeywordFieldName:
         assert len(ids) > 0, "Should find results when chunks use 'text' key"
         assert ids[0] == "t1"
 
-    def test_bm25_not_zero_division(self, chunks_with_chunk_key):
-        """Searching should never raise ZeroDivisionError (the original crash)."""
-        idx = KeywordIndex(chunks_file=chunks_with_chunk_key)
-        # This would ZeroDivisionError before the fix if all texts were empty
+    def test_bm25_not_zero_division(self, tmp_path):
+        """Searching an index built from empty-text chunks must not raise ZeroDivisionError."""
+        path = tmp_path / "empty_chunks.jsonl"
+        chunks = [
+            {"id": "e1", "chunk": "", "source": "a.txt"},
+            {"id": "e2", "chunk": "", "source": "b.txt"},
+        ]
+        with path.open("w") as fh:
+            for c in chunks:
+                fh.write(json.dumps(c) + "\n")
+        idx = KeywordIndex(chunks_file=str(path))
+        # Would ZeroDivisionError before the fix when all doc lengths are 0
         result = idx.search("gould", k=2)
         assert "ids" in result
 
@@ -165,6 +173,26 @@ class TestScoreFormula:
             f"dist={dist} -> score={score}, expected [{expected_min}, {expected_max}]"
         )
         assert 0.0 < score <= 1.0, f"Score {score} out of (0, 1] range"
+
+    def test_zero_score_guard_negative_distance(self, monkeypatch):
+        """A negative distance value (dist == -1 would cause 1/0) returns 0.0 without error."""
+        mock_result = {
+            "ids": [["doc1"]],
+            "documents": [["some text"]],
+            "distances": [[-1.0]],  # dist < 0 triggers the guard branch
+            "metadatas": [[{"source": "a.txt", "collection": "test"}]],
+        }
+        monkeypatch.setattr(
+            "alcove.query.api.query_text",
+            lambda q, n_results=3, collections=None: mock_result,
+        )
+
+        from fastapi.testclient import TestClient
+        from alcove.query.api import app
+        client = TestClient(app)
+        r = client.get("/search", params={"q": "test", "mode": "semantic"})
+        assert r.status_code == 200
+        assert "ZeroDivisionError" not in r.text
 
 
 # ---------------------------------------------------------------------------

@@ -216,7 +216,7 @@ def search(request: Request, q: str = "", k: int = 20, collections: str = "", mo
             metadatas = raw.get("metadatas", [[]])[0]
             distances = raw.get("distances", [[]])[0]
 
-            for doc, meta, dist in zip(documents, metadatas, distances):
+            for doc, meta, dist in zip(documents, metadatas, distances, strict=True):
                 snippets_raw = _extract_snippets(doc, q)
                 snippets_html = [_highlight(html.escape(s), q) for s in snippets_raw]
 

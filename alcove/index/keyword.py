@@ -45,7 +45,7 @@ class KeywordIndex:
                     })
                     tokenized.append(text.lower().split())
 
-        if tokenized:
+        if tokenized and any(tokenized):
             self._bm25 = BM25Okapi(tokenized)
         else:
             self._bm25 = None
