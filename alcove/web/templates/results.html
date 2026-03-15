@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{% if query %}{{ query }} - {{ alcove_title }} Search{% else %}Results - {{ alcove_title }}{% endif %}{% endblock %}
+{% block title %}{% if query %}{{ query | e }} - {{ alcove_title | e }} Search{% else %}Results - {{ alcove_title | e }}{% endif %}{% endblock %}
 
 {% block content %}
   <div class="main-layout">

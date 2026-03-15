@@ -134,7 +134,10 @@ class TestResultsTemplate:
 
     def test_results_region_aria_live_polite(self):
         html = _read("results.html")
-        assert 'aria-live="polite"' in html, \
+        # Scope the assertion to the actual Search results region, not just any element.
+        region = re.search(r'<[^>]*role="region"[^>]*aria-label="Search results"[^>]*>', html)
+        assert region, 'results region with role="region" aria-label="Search results" not found'
+        assert 'aria-live="polite"' in region.group(0), \
             "results region must have aria-live=\"polite\" for non-disruptive announcement"
 
     def test_result_cards_use_aria_describedby(self):
