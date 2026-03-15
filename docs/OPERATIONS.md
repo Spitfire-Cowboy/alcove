@@ -3,7 +3,7 @@
 ## First run
 
 ```bash
-pip install alcove-search
+python3 -m pip install alcove-search
 alcove seed-demo          # download sample corpus + build index
 alcove serve              # open http://localhost:8000
 ```
@@ -15,10 +15,12 @@ For how the pipeline works, see [Architecture](ARCHITECTURE.md).
 By default, Alcove uses a deterministic hash embedder (offline, no external models). For semantic search:
 
 ```bash
-pip install alcove-search[semantic]
+python3 -m pip install 'alcove-search[semantic]'
 EMBEDDER=sentence-transformers alcove seed-demo
 EMBEDDER=sentence-transformers alcove serve
 ```
+
+> **zsh users:** quote extras like `'alcove-search[semantic]'` or escape the brackets. Without quoting, zsh treats `[semantic]` as a glob and fails with `no matches found`.
 
 This downloads `all-MiniLM-L6-v2` (~80 MB) on first use. See [Seed Corpus](SEED_CORPUS.md) for what `seed-demo` includes. The model is cached locally; subsequent runs are offline.
 
@@ -73,6 +75,6 @@ Back up `data/raw`, `data/processed`, and `data/chroma` (or `data/zvec` if using
 ## Running tests
 
 ```bash
-pip install alcove-search[dev]
+python3 -m pip install 'alcove-search[dev]'
 pytest
 ```

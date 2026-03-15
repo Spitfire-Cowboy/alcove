@@ -37,20 +37,40 @@ Fixed pipeline, variable corpus. Custom extractors, embedders, and vector backen
 ## Quick start
 
 ```bash
-pip install alcove-search[semantic]
+python3 -m pip install 'alcove-search[semantic]'
 ```
 
 This pulls in sentence-transformers for real vector similarity (~80 MB model download on first use). The base package without `[semantic]` uses the hash embedder: useful for development and CI, but not for meaningful search.
+
+> **zsh users:** quote extras like `'alcove-search[semantic]'` or escape the brackets (`alcove-search\[semantic\]`). Without quoting, zsh treats `[semantic]` as a glob and fails with `no matches found`.
 
 <details>
 <summary>All install extras</summary>
 
 | Extra | Install command | What it adds |
 |-------|----------------|--------------|
-| Semantic search | `pip install alcove-search[semantic]` | Real vector similarity via sentence-transformers |
-| EPUB support | `pip install alcove-search[epub]` | `.epub` file ingestion |
-| DOCX support | `pip install alcove-search[docx]` | `.docx` file ingestion |
-| Everything | `pip install alcove-search[semantic,epub,docx]` | All of the above |
+| Semantic search | `python3 -m pip install 'alcove-search[semantic]'` | Real vector similarity via sentence-transformers |
+| EPUB support | `python3 -m pip install 'alcove-search[epub]'` | `.epub` file ingestion |
+| DOCX support | `python3 -m pip install 'alcove-search[docx]'` | `.docx` file ingestion |
+| Everything | `python3 -m pip install 'alcove-search[semantic,epub,docx]'` | All of the above |
+
+</details>
+
+<details>
+<summary>Local development setup (pyenv + virtualenv)</summary>
+
+For contributors or users with a mixed Homebrew/pyenv environment:
+
+```bash
+cd /path/to/alcove
+pyenv local 3.13.2
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e '.[semantic]'
+```
+
+This pins the interpreter and isolates dependencies so `which python` and `which pip` are unambiguous.
 
 </details>
 
