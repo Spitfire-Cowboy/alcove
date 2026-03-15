@@ -22,7 +22,7 @@ You should receive an acknowledgment within 48 hours. We will work with you to u
 
 Local disk only. No outbound network calls. No telemetry. No account to create.
 
-We do not want your data. The [architecture](ARCHITECTURE.md#boundary) assumes the operator owns the hardware, controls the storage, and decides what enters the index.
+We do not want your data. Alcove only retrieves and returns matching documents (does not generate or fabricate content). The [architecture](ARCHITECTURE.md#boundary) assumes the operator owns the hardware, controls the storage, and decides what enters the index.
 
 ### What Alcove does
 
