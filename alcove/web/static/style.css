@@ -360,7 +360,7 @@ button:focus-visible {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: var(--bg);
+  background: var(--bg-body);
   padding: 0.75rem 0;
   margin-bottom: 1rem;
 }
@@ -396,7 +396,7 @@ button:focus-visible {
 
 .search-form-inline .search-submit:hover {
   background: var(--gold);
-  color: var(--bg);
+  color: var(--text);
 }
 
 /* ---- Search Form ---- */
@@ -689,7 +689,9 @@ button:focus-visible {
   z-index: 10;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
-.result-score-block:hover .score-tip { display: block; }
+.result-score-block:hover .score-tip,
+.result-score-block:focus .score-tip,
+.result-score-block:focus-within .score-tip { display: block; }
 
 .score-label {
   font-size: 0.5625rem;
