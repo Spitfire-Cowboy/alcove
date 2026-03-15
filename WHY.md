@@ -32,4 +32,4 @@ These are the direction, not promises. Full plan: [ROADMAP.md](docs/ROADMAP.md).
 
 Most software picks a side: locked down, or accessible. Alcove holds both. Your files never leave. Your knowledge travels, on your terms.
 
-The world is building an AI layer on top of everything. Someone should make sure you get to decide whether your corner is included.
+The universe is building an AI layer on top of everything. Someone should make sure you get to decide whether your world is included.
