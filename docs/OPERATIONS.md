@@ -46,6 +46,19 @@ alcove serve
 
 Bind to a non-localhost address only after reviewing [Security: Operator Responsibilities](SECURITY.md#operator-responsibilities).
 
+## WordPress plugin export
+
+```bash
+alcove wordpress-plugin --output dist
+```
+
+Upload `dist/alcove-search-wordpress.zip` through the WordPress admin, activate it, and set the Alcove API base URL under `Settings > Alcove Search`.
+
+The plugin provides:
+
+- Shortcode: `[alcove_search]`
+- Classic widget: `Alcove Search`
+
 ## Environment variables
 
 | Variable | Default | Description |

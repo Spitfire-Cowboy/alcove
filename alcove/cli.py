@@ -128,6 +128,13 @@ def cmd_seed_demo(_args):
         subprocess.check_call([sys.executable, str(script_path)])
 
 
+def cmd_wordpress_plugin(args):
+    from alcove.wordpress import export_wordpress_plugin
+
+    zip_path = export_wordpress_plugin(args.output)
+    print(f"wrote WordPress plugin to {zip_path}")
+
+
 def _add_search_parser(sub, name, hidden=False):
     """Add a search/query subparser. Used for both the primary and alias."""
     help_text = argparse.SUPPRESS if hidden else "Search local index"
@@ -184,6 +191,11 @@ def main():
     # plugins
     p_plugins = sub.add_parser("plugins", help="List installed plugins")
     p_plugins.set_defaults(func=cmd_plugins)
+
+    # wordpress-plugin
+    p_wordpress = sub.add_parser("wordpress-plugin", help="Export an installable WordPress plugin")
+    p_wordpress.add_argument("--output", default="dist", help="Directory where the plugin ZIP will be written")
+    p_wordpress.set_defaults(func=cmd_wordpress_plugin)
 
     args = parser.parse_args()
     if not args.command:
