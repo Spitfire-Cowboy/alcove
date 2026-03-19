@@ -25,7 +25,8 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 def _root_path() -> str:
     """Return the URL prefix configured via ALCOVE_ROOT_PATH (e.g. '/demos')."""
-    return os.getenv("ALCOVE_ROOT_PATH", "").rstrip("/")
+    raw = os.getenv("ALCOVE_ROOT_PATH", "").strip().strip("/")
+    return "" if not raw else "/" + raw
 
 
 def _tpl(ctx: dict) -> dict:
@@ -118,6 +119,11 @@ async def ingest(
         description="Target collection name",
     ),
 ):
+    if os.getenv("ALCOVE_DEMO_ROOT", ""):
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "Ingest is disabled in demo/read-only mode."},
+        )
     raw_dir = os.getenv("RAW_DIR", "data/raw")
     chunks_file = os.getenv("CHUNKS_FILE", "data/processed/chunks.jsonl")
     raw_path = Path(raw_dir)

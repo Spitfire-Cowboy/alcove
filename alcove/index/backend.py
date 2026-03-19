@@ -61,12 +61,28 @@ class MultiChromaBackend:
         return cols
 
     def add(self, ids, embeddings, documents, metadatas):
-        """Add documents to the default/active collection (single-collection fallback)."""
-        collection_name = get_collection_name(os.getenv("CHROMA_COLLECTION", "alcove_docs"))
-        col = self._client.get_or_create_collection(name=collection_name)
-        for meta in metadatas:
-            meta.setdefault("collection", collection_name)
-        col.upsert(ids=ids, documents=documents, metadatas=metadatas, embeddings=embeddings)
+        """Add documents, routing each item to its logical collection from metadata."""
+        default_logical = os.getenv("CHROMA_COLLECTION", "alcove_docs")
+        # Group by logical collection name from per-item metadata
+        groups: dict = {}
+        for i, meta in enumerate(metadatas):
+            logical = meta.get("collection") or default_logical
+            if logical not in groups:
+                groups[logical] = {"ids": [], "embeddings": [], "documents": [], "metadatas": []}
+            meta.setdefault("collection", logical)
+            groups[logical]["ids"].append(ids[i])
+            groups[logical]["embeddings"].append(embeddings[i])
+            groups[logical]["documents"].append(documents[i])
+            groups[logical]["metadatas"].append(meta)
+        for logical, group in groups.items():
+            physical = get_collection_name(logical)
+            col = self._client.get_or_create_collection(name=physical)
+            col.upsert(
+                ids=group["ids"],
+                documents=group["documents"],
+                metadatas=group["metadatas"],
+                embeddings=group["embeddings"],
+            )
 
     def query(self, embedding, k=3, collections: Optional[List[str]] = None):
         """Fan out query to all (or filtered) collections and merge by distance."""
@@ -171,9 +187,15 @@ class MultiRootBackend:
                     col_names = [c.name for c in raw_cols]
                 else:
                     col_names = list(raw_cols)
-                # Prefer the collection named after the subdir; fall back to first
+                # Map logical subdir name to physical collection name via embedder prefix
                 name = subdir.name
-                target_name = name if name in col_names else col_names[0]
+                physical_name = get_collection_name(name)
+                if physical_name in col_names:
+                    target_name = physical_name
+                elif name in col_names:
+                    target_name = name
+                else:
+                    continue
                 matched = client.get_collection(name=target_name)
                 self._cols.append((name, client, matched))
             except Exception:
