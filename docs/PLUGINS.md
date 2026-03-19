@@ -2,7 +2,7 @@
 
 Potential Alcove plugins and the use cases that motivate them. Not all are implemented — this is a catalog of what's possible given the plugin architecture.
 
-> **Gate question for every plugin:** "Do we need to build this ourselves, or have some nerds already done this work for us?"
+> **Gate question for every plugin:** "Has the community already solved this, or do we need to build it ourselves?"
 
 Alcove is domain expert in one thing: its own source code. Everything else is a plugin. Two principles apply: wrap existing domain tooling rather than rebuilding it, and prefer a **view layer over a copy layer** — store manifests with provenance metadata, not duplicated data.
 
@@ -14,7 +14,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md#plugin-system) for the plugin interface co
 
 Fifteen verticals identified. The gate question separates them:
 
-**Deep nerd coverage — plugin and go:** birding, bioacoustics, music production, podcasting, film/post-production, photography, academic research, streaming/Twitch.
+**Strong community tooling — plugin and go:** birding, bioacoustics, music production, podcasting, film/post-production, photography, academic research, streaming/Twitch.
 
 **Partial coverage — some glue needed:** legal/e-discovery, journalism, real estate, insurance/claims, compliance/audit, architecture/construction.
 
@@ -60,7 +60,7 @@ Fifteen verticals identified. The gate question separates them:
 
 ## Domain Vertical: Birding & Ornithology
 
-The birding community has already built the stack. Alcove wraps it as local-first infrastructure.
+The birding community has built a deep, well-maintained stack. Alcove wraps it as local-first infrastructure.
 
 - **BirdNET** (`birdnetlib`): 6,000+ species detection from audio. Timestamp + confidence per detection.
 - **eBird API 2.0**: Real-time and historical sighting data, hotspots, regional lists.
