@@ -10,9 +10,9 @@ See [ARCHITECTURE.md](ARCHITECTURE.md#plugin-system) for the plugin interface co
 
 ---
 
-## Domain Verticals
+## Verticals
 
-Fifteen verticals identified. The gate question separates them:
+The gate question separates verticals into two tiers:
 
 **Strong community tooling — plugin and go:** birding, bioacoustics, music production, podcasting, film/post-production, photography, academic research, streaming/Twitch.
 
@@ -22,88 +22,112 @@ Fifteen verticals identified. The gate question separates them:
 
 ## Audio
 
-| Plugin | Libraries | What it enables |
-|--------|-----------|-----------------|
-| **Speech transcription** | `faster-whisper` | Any spoken audio → time-coded searchable text. Oral histories, interviews, field notes. |
-| **Speaker diarization** | `pyannote.audio` | Who said what. Combine with Whisper: every chunk gets a speaker label. |
-| **Semantic audio search** | `laion-clap` | CLAP embeds audio and text in the same space. Query: "rain on a metal roof," "someone laughing." |
-| **Sound classification** | YAMNet (`tensorflow`) | 521 sound event categories as metadata tags. Categorize mixed archives automatically. |
-| **Music fingerprinting** | `pyacoustid`, `chromaprint` | Identify songs in any audio file via AcoustID. Personal music libraries; copyright scanning. |
-| **Bioacoustics** | `birdnetlib`, `opensoundscape` | Species detection from field recordings — birds, bats, frogs, marine mammals. See Birding vertical. |
-| **Ocean hydrophones** | `soundfile`, `scipy` | Index passive acoustic archives: whale calls, shipping events, seismic activity. Data stays at the institution. |
+Speech, sound classification, music fingerprinting, bioacoustics, and hydrophone archives. [Full detail →](plugins/audio.md)
+
+| Plugin | Library | Description |
+|--------|---------|-------------|
+| [Speech transcription](plugins/audio.md#speech-transcription) | `faster-whisper` | Converts spoken audio to time-coded searchable text. |
+| [Speaker diarization](plugins/audio.md#speaker-diarization) | `pyannote.audio` | Segments audio by speaker; pairs with transcription for labeled chunks. |
+| [Semantic audio search](plugins/audio.md#semantic-audio-search) | `laion-clap` | Text-to-audio search with no transcription required. |
+| [Sound classification](plugins/audio.md#sound-classification) | YAMNet / `tensorflow` | Tags audio with 521 sound event categories from AudioSet. |
+| [Music fingerprinting](plugins/audio.md#music-fingerprinting) | `pyacoustid`, `chromaprint` | Identifies recordings via AcoustID and MusicBrainz. |
+| [Bioacoustics](plugins/audio.md#bioacoustics) | `birdnetlib`, `opensoundscape` | Species detection from field recordings. |
+| [Ocean hydrophones](plugins/audio.md#ocean-hydrophone-archives) | `soundfile`, `scipy` | Indexes passive acoustic monitoring archives locally. |
 
 ---
 
 ## Video
 
-| Plugin | Libraries | What it enables |
-|--------|-----------|-----------------|
-| **Scene detection** | `scenedetect`, `opencv-python` | Cut video into segments at scene boundaries; describe keyframes; index by timestamp. |
-| **Object detection** | `ultralytics` (YOLOv8) | Tag segments by detected objects. "All clips with a whiteboard visible." |
-| **OCR on frames** | `pytesseract`, `paddleocr` | Text in video — slides, signs, whiteboards — extracted and indexed. |
-| **Video understanding** | `ollama` + LLaVA-Video | Natural language questions answered with timestamp grounding. |
-| **Twitch / VOD** | `yt-dlp`, `faster-whisper` | Transcribe any platform VOD; make a streamer's back-catalog searchable. |
+Scene detection, object tagging, OCR on frames, local video understanding, and VOD transcription. [Full detail →](plugins/video.md)
+
+| Plugin | Library | Description |
+|--------|---------|-------------|
+| [Scene detection](plugins/video.md#scene-detection) | `scenedetect`, `opencv-python` | Cuts video at scene boundaries and indexes keyframes by timestamp. |
+| [Object detection](plugins/video.md#object-detection) | `ultralytics` (YOLOv8) | Tags video segments with detected object categories. |
+| [OCR on frames](plugins/video.md#ocr-on-frames) | `pytesseract`, `paddleocr` | Extracts text from slides, signs, and whiteboards visible in video. |
+| [Video understanding](plugins/video.md#video-understanding) | `ollama` + LLaVA-Video | Answers natural-language questions about video content with timestamp grounding. |
+| [VOD transcription](plugins/video.md#vod-transcription-twitch--youtube--etc) | `yt-dlp`, `faster-whisper` | Transcribes any platform VOD and makes it searchable. |
 
 ---
 
 ## Photos & Personal Media
 
-| Plugin | Libraries | What it enables |
-|--------|-----------|-----------------|
-| **CLIP photo search** | `open-clip-torch` | Semantic photo search on your own hardware. No upload, no cloud. |
-| **Face clustering** | `facenet-pytorch` | Group by person locally. No biometric data leaves the machine. |
-| **EXIF / GPS** | `exifread` | Location, date, camera as structured metadata. Compound queries with semantic embeddings. |
-| **Scene classification** | Places365 (`torch`) | 365 location categories as tags — beach, forest, kitchen, gallery. |
-| **iCloud Photo Library** | `osxphotos` | Read the local library directly on macOS; extract Apple's own metadata. |
+Semantic photo search, face clustering, EXIF metadata, scene tagging, and iCloud library access. [Full detail →](plugins/photos.md)
+
+| Plugin | Library | Description |
+|--------|---------|-------------|
+| [CLIP photo search](plugins/photos.md#clip-photo-search) | `open-clip-torch` | Semantic photo search on local hardware, no upload required. |
+| [Face clustering](plugins/photos.md#face-clustering) | `facenet-pytorch` | Groups photos by person locally; no biometric data leaves the machine. |
+| [EXIF / GPS](plugins/photos.md#exif-and-gps-metadata) | `exifread` | Extracts location, date, and camera metadata as structured fields. |
+| [Scene classification](plugins/photos.md#scene-classification) | Places365 / `torch` | Tags photos with 365 location categories. |
+| [iCloud Photo Library](plugins/photos.md#icloud-photo-library-macos) | `osxphotos` | Reads the local macOS Photos library and its metadata directly. |
 
 ---
 
-## Domain Vertical: Birding & Ornithology
+## Birding & Ornithology
 
-The birding community has built a deep, well-maintained stack. Alcove wraps it as local-first infrastructure.
+The birding community has a deep, well-maintained stack. Alcove wraps it as local-first infrastructure. [Full detail →](plugins/birding.md)
 
-- **BirdNET** (`birdnetlib`): 6,000+ species detection from audio. Timestamp + confidence per detection.
-- **eBird API 2.0**: Real-time and historical sighting data, hotspots, regional lists.
-- **ebirdst**: Species abundance rasters, range maps, migration routes.
-- **Macaulay Library**: 84M+ wildlife media assets, Cornell-hosted, API-accessible.
-- **NABirds**: 48K annotated images across 555 North American species.
-
-Cross-reference your field recordings against eBird occurrence data. Query: "detections that don't match expected seasonal presence," "species not yet on my county list."
+| Plugin | Library / API | Description |
+|--------|--------------|-------------|
+| [BirdNET detection](plugins/birding.md#birdnet-audio-detection) | `birdnetlib` | Detects 6,000+ species from audio with timestamps and confidence scores. |
+| [eBird API](plugins/birding.md#ebird-api-20) | eBird API 2.0 | Real-time and historical sighting data, hotspots, regional lists. |
+| [Range data](plugins/birding.md#species-range-and-abundance-data) | `ebirdst` | Species abundance rasters and migration routes. |
+| [Macaulay Library](plugins/birding.md#macaulay-library-integration) | Cornell API | Cross-reference detections against 84M+ wildlife media assets. |
+| [NABirds](plugins/birding.md#nabirds-image-reference) | NABirds v1 | 48K annotated images for image-based species identification. |
 
 ---
 
 ## Text & Documents
 
-A grab-bag of format support that broadens what a corpus can contain:
+Format support for Office files, RTF, HTML archives, Markdown, recipe data, and inventory scanning. [Full detail →](plugins/text-and-documents.md)
 
-- **Office formats** (`python-pptx`, `openpyxl`, `odfpy`): Slide decks, spreadsheets, OpenDocument.
-- **RTF** (`striprtf`): Legacy word processing. Archives are full of it.
-- **HTML / web archives** (`trafilatura`, `beautifulsoup4`): Downloaded sites, WARC files, browser exports.
-- **Markdown** (`mistletoe`): Obsidian vaults, Logseq graphs, wiki exports. Chunk by heading.
-- **Schema.org Recipe** (`extruct`, `recipe-scrapers`): Structured ingredient/method data for natural-language recipe search.
-- **Inventory scanning** (`pyzbar`, vision model): Barcode → product data → searchable inventory record.
+| Plugin | Library | Description |
+|--------|---------|-------------|
+| [Office formats](plugins/text-and-documents.md#office-formats) | `python-pptx`, `openpyxl`, `odfpy` | Extracts text from slide decks, spreadsheets, and OpenDocument files. |
+| [RTF](plugins/text-and-documents.md#rtf) | `striprtf` | Handles legacy RTF files common in legal and archival collections. |
+| [HTML / web archives](plugins/text-and-documents.md#html-and-web-archives) | `trafilatura`, `beautifulsoup4` | Extracts main content from downloaded pages and WARC files. |
+| [Markdown](plugins/text-and-documents.md#markdown) | `mistletoe` | Chunks Obsidian vaults, Logseq graphs, and wiki exports by heading. |
+| [Recipe data](plugins/text-and-documents.md#recipe-data) | `extruct`, `recipe-scrapers` | Extracts structured ingredient and method data from Schema.org markup. |
+| [Inventory scanning](plugins/text-and-documents.md#inventory-scanning) | `pyzbar` + vision model | Reads barcodes and creates searchable inventory records. |
 
 ---
 
 ## Language & Linguistics
 
-- **Multilingual** (`sentence-transformers` multilingual-e5): Cross-lingual search works out of the box. Documented deployments: English, Spanish, Latin, French, German, Samoan, Ojibwe, Tongan, and others.
-- **Endangered languages**: Audio transcription + OCR for elder recordings, curriculum materials, oral histories. Deployment model: institution runs Alcove on its own hardware; data does not leave the community. Grant paths: IMLS, ANA Language Preservation, NEH Digital Humanities.
-- **Constructed languages** (D'ni, Klingon, Na'vi, Tolkien): Too sparse for semantic embeddings. Use metadata-only retrieval: filter by language, canon status, source.
+Multilingual search, endangered language support, and constructed language guidance. [Full detail →](plugins/language.md)
+
+| Topic | Description |
+|-------|-------------|
+| [Multilingual](plugins/language.md#multilingual-search) | Cross-lingual search via multilingual-e5; 100+ languages, no per-language config. |
+| [Endangered languages](plugins/language.md#endangered-and-minority-languages) | Audio transcription and OCR for oral histories and curriculum materials; data stays local. |
+| [Constructed languages](plugins/language.md#constructed-languages) | Too sparse for embeddings; use metadata-only retrieval. |
 
 ---
 
-## Embedder & Backend Alternatives
+## Academic & Scholarly Publishing
 
-**Domain embedders** — swap the default for better in-domain retrieval:
-- Legal: `legal-bert`
-- Biomedical / scientific: `allenai/specter2`, `BiomedNLP-BiomedBERT`
-- Apple Silicon: `mlx-lm` for on-device throughput
+BibTeX sidecars, ORCID extraction, DOI normalization, and license classification. [Full detail →](plugins/academic.md)
 
-**Vector backends** — alternatives to ChromaDB:
-- `sqlite-vec`: Single-file, zero external process. Copy the `.db`, move the index.
-- `qdrant-client`: Lighter at scale; built-in sparse vector support for hybrid retrieval.
-- `weaviate-client`: Native BM25 + vector hybrid; strong metadata filter API.
+| Plugin | Library | Description |
+|--------|---------|-------------|
+| [BibTeX sidecar](plugins/academic.md#bibtex-sidecar) | `bibtexparser` | Parses `.bib` files alongside PDFs; author, DOI, abstract become searchable metadata. |
+| [ORCID extraction](plugins/academic.md#orcid-id-extraction) | stdlib + regex | Validates and extracts ORCID iDs from author fields. |
+| [DOI normalization](plugins/academic.md#doi-normalization) | stdlib + regex | Canonicalizes DOIs from any format for reliable deduplication. |
+| [CC license classification](plugins/academic.md#creative-commons-license-classification) | stdlib | Maps license strings to canonical CC identifiers. |
+
+---
+
+## Embedders & Backend Alternatives
+
+Swap the default embedder or vector store for domain-specific or scale requirements. [Full detail →](plugins/embedders-and-backends.md)
+
+| Option | Description |
+|--------|-------------|
+| [Domain embedders](plugins/embedders-and-backends.md#domain-embedders) | legal-bert, specter2, BiomedBERT, mlx-lm for Apple Silicon. |
+| [SQLite-vec](plugins/embedders-and-backends.md#vector-backends) | Single-file index, zero external process. |
+| [Qdrant](plugins/embedders-and-backends.md#vector-backends) | Lighter at scale; built-in sparse vector support. |
+| [Weaviate](plugins/embedders-and-backends.md#vector-backends) | Native BM25+vector hybrid; strong metadata filter API. |
 
 ---
 
