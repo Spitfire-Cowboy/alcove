@@ -89,9 +89,7 @@ Hydrophones dropped in the ocean produce continuous recordings of everything: wh
 
 Once indexed: "all blue whale calls recorded at Station NRS11 in February," "shipping events within 20km of the monitoring buoy," "unusual low-frequency events coinciding with the earthquake sequence." The corpus stays local; the hydrophone data never has to leave the research institution.
 
-Rarefied but real: RFCx (Rainforest Connection) deploys solar-powered acoustic sensors in rainforests to detect illegal logging and poaching in real time. Their archive is a candidate corpus — local retrieval over a distributed acoustic network, with provenance tied to sensor location and timestamp.
-
-Related: seismoacoustics (infrasound), cryosphere acoustics (glacial calving, ice sheet dynamics).
+Related: seismoacoustics (infrasound), cryosphere acoustics (glacial calving, ice sheet dynamics). Conservation organizations deploying distributed acoustic sensor networks (rainforest, wetland, reef monitoring) produce the same kind of archive — long-running recordings tied to GPS coordinates that benefit from local retrieval without cloud dependency.
 
 ---
 
@@ -108,7 +106,7 @@ PySceneDetect cuts a video into semantic segments at scene boundaries. Extract o
 **Plugin type:** extractor
 **Libraries:** `ultralytics` (YOLOv8), `torch`
 
-YOLO runs on M4 for lightweight use; GPU-accelerated on any CUDA device for throughput. Each detected object becomes a metadata tag on the corresponding video segment. "Find all clips with a dog," "segments where a whiteboard is visible," "scenes with more than four people."
+YOLO runs on Apple Silicon for lightweight use; GPU-accelerated on any CUDA device for throughput. Each detected object becomes a metadata tag on the corresponding video segment. "Find all clips with a dog," "segments where a whiteboard is visible," "scenes with more than four people."
 
 ### OCR on video frames
 **Plugin type:** extractor
@@ -132,7 +130,7 @@ CLIP embeds individual frames in the same space as text queries. X-CLIP and Vide
 **Plugin type:** extractor
 **Libraries:** `ollama` + LLaVA-Video; `transformers` (Video-LLaMA, mPLUG-Owl)
 
-Ask a natural language question about a video and get an answer grounded in specific timestamps. "What did John show on the whiteboard?" "At what point does the speaker change subjects?" "Describe everything that happens in the first two minutes." Heavier models (LLaVA-Video) run well on GPU; lighter variants run on M4.
+Ask a natural language question about a video and get an answer grounded in specific timestamps. "What was shown on the whiteboard?" "At what point does the speaker change subjects?" "Describe everything that happens in the first two minutes." Heavier models (LLaVA-Video) run well on GPU; lighter variants run on Apple Silicon.
 
 ### Twitch VOD & streaming media
 **Plugin type:** extractor
@@ -192,8 +190,6 @@ The birding vertical has the richest existing tooling of any domain. The nerds h
 - **NABirds dataset**: 48K annotated bird images across 555 North American species. Useful for fine-tuning visual classifiers.
 
 **What you can build:** A local corpus of field recordings, annotated with BirdNET detections, cross-referenced against eBird occurrence data for the same location and date. Queries: "all recordings with species not on my county list," "audio detections that don't match expected seasonal presence according to eBird," "photos of birds I haven't seen in a year."
-
-**Competitive birding & verification:** Proofofship (a sister project) serves as the verification layer for competitive sightings. Alcove indexes the evidence corpus; Proofofship attests the provenance chain. A contested rare bird report has a trail: the recording, the BirdNET confidence score, the eBird checklist, the attestation timestamp.
 
 **Pattern:** Cornell built the domain expertise across 80 years of ornithology. Alcove wraps it as local-first infrastructure — no account required, no data uploaded, no subscription to access your own field recordings.
 
