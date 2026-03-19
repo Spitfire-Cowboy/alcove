@@ -6,7 +6,29 @@ These are ideas and directions — not all of them are implemented. The plugin s
 
 ---
 
-## Audio & Acoustic Data
+## Plugin Philosophy
+
+> **Gate question for every plugin: "Do we need to build this ourselves, or have some nerds already done this work for us?"**
+
+Alcove is domain expert in exactly one thing: its own source code. Everything else is a plugin. This is by design — the birding community has built BirdNET; Cornell has built the eBird API and Macaulay Library; the bioacoustics community has built opensoundscape. The right move is to wrap that expertise as an extractor and let Alcove provide the local-first retrieval layer underneath.
+
+A second principle: **view layer, not copy layer.** When indexing large external datasets, Alcove should store manifests of pointers with provenance metadata, not duplicate the data itself. The index is the access layer; the source stays authoritative.
+
+---
+
+## Domain Verticals
+
+Fifteen verticals have been identified. The gate question separates them into two tiers:
+
+**Deep nerd coverage — plugin and go:** birding, bioacoustics, music production, podcasting, film/post-production, photography, academic research, security/surveillance, streaming/Twitch.
+
+**Partial coverage — some glue needed:** legal/e-discovery, journalism, real estate, insurance/claims, compliance/audit, architecture/construction.
+
+The entries below go deep on several of these. The rest are sketched at the end.
+
+---
+
+## Audio
 
 ### Speech transcription
 **Plugin type:** extractor
@@ -17,16 +39,46 @@ Transcribe spoken audio locally with OpenAI Whisper. The extractor runs inferenc
 
 Model size is configurable (`tiny` through `large-v3`); `base` is a reasonable default for most corpora.
 
+### Speaker diarization
+**Plugin type:** extractor
+**Libraries:** `pyannote.audio`, `speechbrain`
+
+Whisper tells you what was said; diarization tells you who said it. Combine both: every chunk gets a speaker label. A recorded meeting becomes queryable by participant: "what did Sarah say about the timeline?" A multi-interview oral history project gets per-subject retrieval.
+
+### Semantic audio search (CLAP)
+**Plugin type:** extractor + embedder
+**Library:** `laion-clap`, `msclap`
+
+CLAP (Contrastive Language-Audio Pretraining) embeds audio clips and natural language descriptions in the same space — the same insight as CLIP for images, applied to sound. Query by description: "find the clip where someone laughs," "birdsong from the hike," "rain on a metal roof." Works for any audio corpus where content-based retrieval beats filename-based search.
+
+### Sound event classification
+**Plugin type:** extractor
+**Libraries:** `tensorflow` + YAMNet, `torch-audiomentations`
+
+YAMNet classifies audio clips into 521 sound event categories (music, speech, animal sounds, environmental, etc.). Each classification becomes a searchable metadata tag. A mixed archive of field recordings, meetings, and media files gets automatically categorized without manual tagging.
+
+### Music identification & fingerprinting
+**Plugin type:** extractor
+**Libraries:** `pyacoustid`, `chromaprint`
+
+Chromaprint generates an acoustic fingerprint from any audio file; AcoustID matches it against a public database to return title, artist, and MusicBrainz ID. A personal music library becomes semantically indexed. A content creator can scan a project folder for inadvertent use of copyrighted material before publishing.
+
+### Sentiment & prosody analysis
+**Plugin type:** extractor
+**Libraries:** `transformers` (speech emotion recognition models), `praat-parselmouth`
+
+Not just what was said, but how. Sentiment models classify emotional tone per segment; Praat-parselmouth extracts prosodic features (pitch, speaking rate, intensity). Useful for meeting review, interview analysis, or any corpus where the emotional register of speech carries meaning.
+
 ### Bioacoustics & wildlife audio
 **Plugin type:** extractor
 **Libraries:** `birdnetlib` (wraps BirdNET-Analyzer), `opensoundscape`
 **Formats:** `.wav`, `.mp3`, `.flac`
 
-BirdNET is a neural network trained on 6,000+ bird species. Pass a field recording through the extractor and get back species detections with timestamps and confidence scores — which become searchable metadata. A corpus of dawn chorus recordings becomes queryable: "all recordings where a Wood Thrush was detected above 0.8 confidence," "sites where the Yellow Rail has been heard in the last five years."
+BirdNET is a Cornell-developed neural network trained on 6,000+ bird species. Pass a field recording through the extractor and get back species detections with timestamps and confidence scores — which become searchable metadata. A corpus of dawn chorus recordings becomes queryable: "all recordings where a Wood Thrush was detected above 0.8 confidence," "sites where the Yellow Rail has been heard in the last five years."
 
 `opensoundscape` generalizes beyond birds: bat echolocation, frog calls, insect stridulation, marine mammals. The same extraction pattern applies — acoustic event → text chunk with species, time, location, confidence.
 
-Motivating use cases: ornithological field surveys, biodiversity monitoring transects, citizen science sound archives (xeno-canto, Macaulay Library), acoustic ecology research.
+See the **Birding & Ornithology** vertical below for the full Cornell Lab stack.
 
 ### Ocean hydrophone & passive acoustic monitoring
 **Plugin type:** extractor
@@ -37,45 +89,117 @@ Hydrophones dropped in the ocean produce continuous recordings of everything: wh
 
 Once indexed: "all blue whale calls recorded at Station NRS11 in February," "shipping events within 20km of the monitoring buoy," "unusual low-frequency events coinciding with the earthquake sequence." The corpus stays local; the hydrophone data never has to leave the research institution.
 
+Rarefied but real: RFCx (Rainforest Connection) deploys solar-powered acoustic sensors in rainforests to detect illegal logging and poaching in real time. Their archive is a candidate corpus — local retrieval over a distributed acoustic network, with provenance tied to sensor location and timestamp.
+
 Related: seismoacoustics (infrasound), cryosphere acoustics (glacial calving, ice sheet dynamics).
 
-### Twitch VOD & streaming media transcription
+---
+
+## Video
+
+### Scene detection & keyframe extraction
+**Plugin type:** extractor
+**Libraries:** `scenedetect`, `opencv-python`, `ffmpeg-python`
+**Formats:** `.mp4`, `.mkv`, `.mov`
+
+PySceneDetect cuts a video into semantic segments at scene boundaries. Extract one representative frame per scene, describe it via a vision model, and index by timestamp. A documentary rough cut, a lecture with slides, or a surveillance archive becomes queryable by visual content.
+
+### Object detection in video
+**Plugin type:** extractor
+**Libraries:** `ultralytics` (YOLOv8), `torch`
+
+YOLO runs on M4 for lightweight use; GPU-accelerated on any CUDA device for throughput. Each detected object becomes a metadata tag on the corresponding video segment. "Find all clips with a dog," "segments where a whiteboard is visible," "scenes with more than four people."
+
+### OCR on video frames
+**Plugin type:** extractor
+**Libraries:** `tesseract` (pytesseract), `paddleocr`
+
+Text visible in video — signs, slides, whiteboards, on-screen titles, subtitles burned in — can be extracted from keyframes and indexed. A recorded presentation becomes searchable by slide text. A collection of instructional videos becomes retrievable by the formulas or diagrams shown on screen.
+
+### Action recognition
+**Plugin type:** extractor
+**Libraries:** `transformers` (VideoMAE, TimeSformer), `torch`
+
+What is happening in the video, not just what is visible in a single frame. Action recognition models classify temporal sequences: cooking, exercising, presenting, assembling, playing. Indexes a sports archive by play type, a home workout library by exercise, a manufacturing floor recording by process step.
+
+### Video semantic embeddings
+**Plugin type:** embedder
+**Libraries:** `transformers` (CLIP, X-CLIP, VideoCLIP)
+
+CLIP embeds individual frames in the same space as text queries. X-CLIP and VideoCLIP extend this to temporal clips. Query: "find segments that look like a campfire," "moments with emotional crowd reactions," "scenes set at night." No description required — the query is the retrieval key.
+
+### Local LLM video understanding
+**Plugin type:** extractor
+**Libraries:** `ollama` + LLaVA-Video; `transformers` (Video-LLaMA, mPLUG-Owl)
+
+Ask a natural language question about a video and get an answer grounded in specific timestamps. "What did John show on the whiteboard?" "At what point does the speaker change subjects?" "Describe everything that happens in the first two minutes." Heavier models (LLaVA-Video) run well on GPU; lighter variants run on M4.
+
+### Twitch VOD & streaming media
 **Plugin type:** extractor
 **Libraries:** `yt-dlp`, `faster-whisper`
 
-Download VOD audio, transcribe, chunk by segment. A streamer's full back-catalog becomes a searchable text corpus: "every time I talked about the map design in this game," "all the moments where chat went wild and I explained why." Works for any platform where `yt-dlp` can pull audio.
+Download VOD audio, transcribe, chunk by segment. A streamer's full back-catalog becomes a searchable text corpus: "every time I explained the decision to change the map design," "all the moments where I talked about ranked anxiety." Works for any platform where `yt-dlp` can pull audio. Combine with scene detection and object recognition for a richer index.
 
 ---
 
-## Visual & Document Intelligence
+## Photos & Personal Media
 
-### Image description via local vision model
+### CLIP-based semantic photo search
+**Plugin type:** extractor + embedder
+**Library:** `open-clip-torch`, `Pillow`
+**Formats:** `.jpg`, `.png`, `.heic`, `.webp`, `.tiff`
+
+Apple already does semantic photo search ("beach sunset," "dog playing"). CLIP provides the same capability on your own hardware, against your own index, without uploading a pixel. Query: "photos from the cabin trip," "pictures of the kids at the park," "anything that looks like a birthday." The embedding stays local; the index stays local; nothing touches a cloud service.
+
+### Face clustering
 **Plugin type:** extractor
-**Libraries:** `ollama` + LLaVA/LLaMA-Vision, `Pillow`
-**Formats:** `.jpg`, `.png`, `.tiff`, `.webp`
+**Libraries:** `facenet-pytorch` (MTCNN + InceptionResnet), `scikit-learn`
 
-Send an image to a locally-running vision model, get back a text description, index it. A physical archive of photographs becomes semantically searchable without uploading a single pixel to a cloud service. The description becomes the chunk; the original image path is the provenance.
+Group photos by person without uploading to any cloud. MTCNN detects faces; ArcFace or InceptionResnet embeds them; clustering groups them by identity. Once named, person labels become searchable metadata. A family archive gets organized by person. An oral history project clusters interview subjects. No biometric data leaves the machine.
 
-Stronger for documents: receipts, handwritten notes, whiteboards, serial number plates, screenshots with text. Pair with Tesseract for OCR-first fallback on clean printed text.
-
-### Barcode & physical inventory scanning
+### EXIF & GPS metadata extraction
 **Plugin type:** extractor
-**Libraries:** `zxing-cpp`, `pyzbar`, `Pillow`; vision model for unlabeled items
+**Library:** `exifread`, `Pillow`
 
-Photograph an object, scan its barcode or QR code, look up product data, index the record. Serial numbers, model numbers, purchase dates, storage locations, insurance values. A household or small institution (library, museum, makerspace) builds a searchable physical inventory with no SaaS subscription required.
+Every modern photo has embedded metadata: timestamp, GPS coordinates, camera model, focal length, exposure settings. Extract these as structured fields. "Photos taken in Denver," "everything shot with the 50mm before 2019," "the two weeks we were in Costa Rica" — all become valid queries without requiring image understanding.
 
-Use cases: estate management, insurance documentation, equipment room tracking, artifact cataloging.
+Combine with semantic embeddings for compound queries: "outdoor photos from the Colorado trip where there's a body of water visible."
 
-### Video keyframe extraction
+### Scene & location classification
 **Plugin type:** extractor
-**Libraries:** `opencv-python`, `ffmpeg-python`, vision model for description
-**Formats:** `.mp4`, `.mkv`, `.mov`
+**Libraries:** `torch` + Places365 model
 
-Sample frames at regular intervals or scene-change boundaries, describe each via vision model, index by timestamp. A documentary rough cut, a lecture recording with slides, a surveillance archive — all become queryable by visual content rather than just filename.
+Places365 classifies the location depicted in a photo into 365 scene categories: kitchen, forest, beach, gymnasium, art gallery, etc. The classification becomes a metadata tag. A mixed personal archive gets rough location labels without requiring GPS data in every file.
+
+### iCloud Photo Library
+**Plugin type:** extractor
+**Library:** `osxphotos`, `Pillow`
+
+`osxphotos` reads the local iCloud Photo Library on macOS without exporting — it accesses Apple's SQLite database directly and reads HEIC files from the local cache. Extract Apple's own metadata (albums, keywords, faces, places, favorites) alongside EXIF data, and index alongside CLIP embeddings for local semantic search over your full library.
 
 ---
 
-## Text Formats & Specialized Documents
+## Domain Vertical: Birding & Ornithology
+
+The birding vertical has the richest existing tooling of any domain. The nerds have already done the work; Alcove provides the local retrieval layer underneath.
+
+**Cornell Lab toolkit:**
+
+- **BirdNET-Analyzer** (`birdnetlib`): Species detection from audio. 6,000+ species. Runs locally. Output: species, timestamp, confidence, geographic filtering.
+- **eBird API 2.0**: Real-time and historical sighting data. Recent observations by location, regional species lists, hotspot data. Used with `ebird-api` Python client.
+- **ebirdst**: eBird Status & Trends — species abundance rasters, range maps, migration routes. R and Python interfaces.
+- **Macaulay Library**: 84M+ media assets (audio, photos, video). Largest wildlife media archive in the world. Cornell-hosted; accessible via API.
+- **NABirds dataset**: 48K annotated bird images across 555 North American species. Useful for fine-tuning visual classifiers.
+
+**What you can build:** A local corpus of field recordings, annotated with BirdNET detections, cross-referenced against eBird occurrence data for the same location and date. Queries: "all recordings with species not on my county list," "audio detections that don't match expected seasonal presence according to eBird," "photos of birds I haven't seen in a year."
+
+**Competitive birding & verification:** Proofofship (a sister project) serves as the verification layer for competitive sightings. Alcove indexes the evidence corpus; Proofofship attests the provenance chain. A contested rare bird report has a trail: the recording, the BirdNET confidence score, the eBird checklist, the attestation timestamp.
+
+**Pattern:** Cornell built the domain expertise across 80 years of ornithology. Alcove wraps it as local-first infrastructure — no account required, no data uploaded, no subscription to access your own field recordings.
+
+---
+
+## Text Formats & Documents
 
 ### Office formats (PPTX, XLSX, ODT)
 **Plugin type:** extractor
@@ -91,9 +215,9 @@ RTF is 40 years old and organizational archives are full of it. Strip the markup
 
 ### HTML & web archives
 **Plugin type:** extractor
-**Library:** `beautifulsoup4`
+**Library:** `beautifulsoup4`, `trafilatura`
 
-Local web archives (WARC files, downloaded site mirrors, browser exports). Strip tags, extract visible text, chunk by block element. Pair with `trafilatura` for article-optimized extraction that discards navigation and boilerplate.
+Local web archives (WARC files, downloaded site mirrors, browser exports). `trafilatura` does article-optimized extraction that discards navigation and boilerplate; `beautifulsoup4` for structured HTML where the full document matters.
 
 ### Markdown & structured text
 **Plugin type:** extractor
@@ -105,9 +229,15 @@ Parse the AST, chunk by heading level. A Markdown-based knowledge base (Obsidian
 **Plugin type:** extractor
 **Libraries:** `extruct`, `recipe-scrapers`
 
-Cookbooks and recipe sites embed structured data (`schema.org/Recipe`) with fields for ingredients, cook time, yield, suitable diet, and cuisine. Extract and index these fields as structured metadata alongside the recipe text. Enables queries like "warming soups under 30 minutes using pantry staples" that keyword search cannot answer. Works on local HTML archives, Gutenberg cookbooks, and USDA recipe databases.
+Cookbooks and recipe sites embed structured data (`schema.org/Recipe`) with fields for ingredients, cook time, yield, suitable diet, and cuisine. Extract and index these fields as structured metadata alongside the recipe text. Enables queries like "warming soups under 30 minutes using pantry staples" that keyword search cannot answer.
 
 Liturgical calendar integration is a natural extension: index feast-day recipes with the calendar date as metadata, query by upcoming observance.
+
+### Barcode & physical inventory scanning
+**Plugin type:** extractor
+**Libraries:** `zxing-cpp`, `pyzbar`, `Pillow`; vision model for unlabeled items
+
+Photograph an object, scan its barcode or QR code, look up product data, index the record. Serial numbers, model numbers, purchase dates, storage locations, insurance values. Estate management, insurance documentation, equipment room tracking, artifact cataloging — without a SaaS subscription.
 
 ---
 
@@ -117,9 +247,9 @@ Liturgical calendar integration is a natural extension: index feast-day recipes 
 **Plugin type:** embedder configuration
 **Libraries:** `sentence-transformers` (nomic-embed-text, multilingual-e5), `langdetect`
 
-The default sentence-transformers embedder is multilingual. Cross-lingual search (query in English, retrieve in French) works out of the box with the right model. Per-chunk language detection enables filtered retrieval ("only Spanish sources").
+The default embedder is multilingual. Cross-lingual search (query in English, retrieve in French) works out of the box. Per-chunk language detection enables filtered retrieval.
 
-Languages with documented use cases in Alcove deployments: English, Spanish, Latin, French, German, Russian, Mandarin, Arabic, Samoan, Ojibwe, Tongan. Constructed languages (D'ni from the Myst universe, Klingon, Tolkien's Quenya) require metadata-based retrieval; semantic embeddings do not generalize.
+Languages with documented use cases in Alcove deployments: English, Spanish, Latin, French, German, Russian, Mandarin, Arabic, Samoan, Ojibwe, Tongan. Constructed languages (D'ni, Klingon, Tolkien's Quenya) require metadata-based retrieval; semantic embeddings do not generalize.
 
 ### Endangered and indigenous language archives
 **Plugin type:** extractor + embedder
@@ -127,14 +257,14 @@ Languages with documented use cases in Alcove deployments: English, Spanish, Lat
 
 Elder recordings, transcripts, curriculum materials, and oral histories in endangered languages. The extraction path is audio transcription (if recordings exist) or document OCR (if materials are written). The embedding challenge is that most multilingual models have thin coverage of low-resource languages; fine-tuned or community-trained models matter here.
 
-Deployment model: the institution (tribal college, cultural center, university linguistics department) runs Alcove on their own hardware. Data does not leave the community. Access controls at the network level, not the plugin level.
+Deployment model: the institution (tribal college, cultural center, university linguistics department) runs Alcove on their own hardware. Data does not leave the community.
 
-Grant landscape: IMLS (Institute of Museum and Library Services), Administration for Native Americans (ANA Language Preservation), NEH Digital Humanities.
+Grant landscape: IMLS, Administration for Native Americans (ANA Language Preservation), NEH Digital Humanities.
 
 ### Constructed language corpora
 **Plugin type:** metadata-only indexing
 
-Constructed languages with rich community archives (D'ni, Klingon, Na'vi, Tolkien's languages) are not well-served by semantic embeddings — the training data is too sparse. The pattern that works: index documents as opaque chunks with rich metadata (language, canon status, source, date), retrieve by metadata filter and keyword, skip vector similarity. The Alcove query layer supports metadata-only retrieval today.
+Constructed languages with rich community archives (D'ni, Klingon, Na'vi, Tolkien's languages) are not well-served by semantic embeddings — the training data is too sparse. Index with rich metadata (language, canon status, source, date), retrieve by metadata filter and keyword, skip vector similarity.
 
 ---
 
@@ -145,21 +275,21 @@ Constructed languages with rich community archives (D'ni, Klingon, Na'vi, Tolkie
 **Libraries:** `pypdf`, `pymupdf`, `grobid-client`
 **Sources:** arXiv bulk exports, PubMed Open Access, institutional repositories
 
-Academic PDFs with consistent structure (abstract, methods, results, references) benefit from section-aware chunking. GROBID is an open-source tool that parses scientific PDFs into structured XML, enabling chunk-by-section rather than chunk-by-page. A research group indexes their literature corpus locally; queries return the specific methods section or result paragraph rather than a full paper.
+GROBID parses scientific PDFs into structured XML, enabling chunk-by-section rather than chunk-by-page. A research group indexes their literature corpus locally; queries return the specific methods section or result paragraph rather than a full paper.
 
 ### Field survey data & ecological monitoring
 **Plugin type:** extractor
-**Libraries:** `pandas`, `geopandas`, custom parsers
-**Formats:** CSV, GeoJSON, species occurrence TSV (GBIF format)
+**Libraries:** `pandas`, `geopandas`
+**Formats:** CSV, GeoJSON, GBIF occurrence TSV
 
-Biodiversity survey data, species occurrence records, transect counts, phenology observations. Convert tabular records to prose chunks with location, date, species, and observer metadata. Query: "all Great Gray Owl sightings above 2000m elevation in March," "survey sites with declining amphibian counts since 2010."
+Biodiversity survey data, species occurrence records, transect counts, phenology observations. Convert tabular records to prose chunks with location, date, species, and observer metadata. Query: "survey sites with declining amphibian counts since 2010," "all Great Gray Owl sightings above 2000m in March."
 
 ### Federal regulatory corpora
 **Plugin type:** extractor
 **Libraries:** `pypdf`, `beautifulsoup4`, `lxml`
 **Sources:** GovInfo bulk data (regulations.gov, Federal Register, Congressional bills)
 
-Federal documents — bill summaries, regulatory comments, Federal Register notices — have consistent XML structure (GovInfo BILLSUM, BILLSTATUS formats). The extractor parses agency XML, emits one chunk per document section with Congress, agency, and docket metadata. Enables retrieval across the full regulatory record without a SaaS subscription to LexisNexis or Westlaw.
+Federal documents have consistent XML structure (GovInfo BILLSUM, BILLSTATUS formats). The extractor parses agency XML, emits one chunk per section with Congress, agency, and docket metadata. Retrieval across the full regulatory record without a SaaS subscription to LexisNexis or Westlaw.
 
 ---
 
@@ -169,19 +299,19 @@ Federal documents — bill summaries, regulatory comments, Federal Register noti
 **Plugin type:** embedder
 **Library:** `sentence-transformers` with `legal-bert` or `law-ai/legal-led`
 
-General-purpose embedders underperform on legal text because legal language has domain-specific semantics ("consideration," "estoppel," "in rem"). A legal-domain fine-tuned model improves retrieval quality for contract corpora, case law archives, and regulatory documents.
+Legal language has domain-specific semantics ("consideration," "estoppel," "in rem") that general-purpose embedders underserve. A legal-domain fine-tuned model improves retrieval quality for contract corpora, case law archives, and regulatory documents.
 
 ### Scientific/biomedical embedder
 **Plugin type:** embedder
 **Library:** `sentence-transformers` with `allenai/specter2`, `microsoft/BiomedNLP-BiomedBERT`
 
-Biomedical and scientific text has the same domain-specificity problem. SPECTER2 is trained on scientific paper citations; BiomedBERT on PubMed. Use these instead of general-purpose embedders when the corpus is scientific literature.
+SPECTER2 is trained on scientific paper citations; BiomedBERT on PubMed. Use these instead of general-purpose embedders when the corpus is scientific literature.
 
 ### On-device Apple Silicon embedder
 **Plugin type:** embedder
 **Library:** `mlx-lm`
 
-Run embedding inference on the M-series GPU via MLX. Fastest local option on Apple hardware; no GPU separate from the CPU, so memory bandwidth is the bottleneck rather than PCIe transfer. Suitable for large corpora where embedding throughput matters.
+Embedding inference on the M-series GPU via MLX. No GPU separate from the CPU, so memory bandwidth is the bottleneck rather than PCIe transfer. Suitable for large corpora where embedding throughput matters.
 
 ---
 
