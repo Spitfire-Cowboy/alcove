@@ -8,22 +8,22 @@ Swap the default embedder for better in-domain retrieval. Configure in `alcove.t
 
 | Embedder | Best for |
 |----------|----------|
-| `legal-bert` | Legal documents, case law, contracts |
-| `allenai/specter2` | Scientific papers, citations, abstracts |
-| `BiomedNLP-BiomedBERT` | Biomedical literature, clinical notes |
-| `mlx-lm` (Apple Silicon) | On-device throughput on M-series Macs |
+| [`legal-bert`](https://huggingface.co/nlpaueb/legal-bert-base-uncased) | Legal documents, case law, contracts |
+| [`specter2`](https://huggingface.co/allenai/specter2) ([AllenAI](https://allenai.org)) | Scientific papers, citations, abstracts |
+| [`BiomedNLP-BiomedBERT`](https://huggingface.co/microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext) | Biomedical literature, clinical notes |
+| [`mlx-lm`](https://github.com/ml-explore/mlx-lm) (Apple Silicon) | On-device throughput on M-series Macs |
 
 Domain embedders matter when your corpus vocabulary is specialized. General-purpose models handle everyday language well, but they may not have seen enough domain text to produce useful embeddings for legal terms, scientific nomenclature, or medical language. If retrieval quality seems low on a specialized corpus, the embedder is the first thing to check.
 
 ## Vector Backends
 
-ChromaDB is the default. It works well for single-machine deployments up to a few million chunks. If you need different trade-offs, these are the tested alternatives.
+[ChromaDB](https://trychroma.com) is the default. It works well for single-machine deployments up to a few million chunks. If you need different trade-offs, these are the tested alternatives.
 
 | Backend | Library | When to use it |
 |---------|---------|----------------|
-| SQLite-vec | `sqlite-vec` | Single-file index. Copy the `.db`, move the index. Zero external process. Good for small corpora and air-gapped deployments. |
-| Qdrant | `qdrant-client` | Lighter memory footprint at scale. Built-in sparse vector support for hybrid BM25+vector retrieval. |
-| Weaviate | `weaviate-client` | Native BM25+vector hybrid. Strong metadata filter API. Good when your queries rely heavily on structured filters alongside semantic search. |
+| SQLite-vec | [`sqlite-vec`](https://github.com/asg017/sqlite-vec) | Single-file index. Copy the `.db`, move the index. Zero external process. Good for small corpora and air-gapped deployments. |
+| Qdrant | [`qdrant-client`](https://github.com/qdrant/qdrant-client) | Lighter memory footprint at scale. Built-in sparse vector support for hybrid BM25+vector retrieval. |
+| Weaviate | [`weaviate-client`](https://github.com/weaviate/weaviate-python-client) | Native BM25+vector hybrid. Strong metadata filter API. Good when your queries rely heavily on structured filters alongside semantic search. |
 
 ### Choosing a Backend
 
