@@ -6,6 +6,11 @@ Potential Alcove plugins and the use cases that motivate them. Not all are imple
 
 Alcove is domain expert in one thing: its own source code. Everything else is a plugin. Two principles apply: wrap existing domain tooling rather than rebuilding it, and prefer a **view layer over a copy layer** — store manifests with provenance metadata, not duplicated data.
 
+Two system boundaries that apply to every plugin:
+
+- **Retrieval only.** Plugins index and return documents. They do not perform generative transformations on content.
+- **Offline by default.** Alcove makes no outbound network calls unless a plugin explicitly requires one (e.g., an API fetch at ingest time). Plugins must not send corpus data to external services.
+
 See [ARCHITECTURE.md](ARCHITECTURE.md#plugin-system) for the plugin interface contract.
 
 ---
@@ -139,4 +144,4 @@ wav  = "my_audio_plugin:extract_audio"
 flac = "my_audio_plugin:extract_audio"
 ```
 
-Plugins are discovered at startup, override builtins for shared extension names, and appear in `alcove plugins`. Authentication is out of scope — access control belongs at the deployment boundary.
+Plugins are discovered at startup, override built-ins for shared extension names, and appear in `alcove plugins`. Authentication is not built into Alcove. Place it behind a reverse proxy that enforces authn/authz at the deployment boundary — OAuth, mTLS, or an API gateway all work.
