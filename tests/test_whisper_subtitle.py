@@ -192,6 +192,15 @@ class TestCuesToVtt:
         assert "," not in output.split("\n", 2)[2]  # no comma in timestamps
 
 
+class TestConvertOutputFormat:
+    def test_unknown_format_raises(self, sub, tmp_path):
+        data = {"segments": [{"start": 0.0, "end": 1.0, "text": "hi"}]}
+        path = tmp_path / "t.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        with pytest.raises(ValueError, match="Unsupported output_format"):
+            sub.convert(path, output_format="xml")
+
+
 # ---------------------------------------------------------------------------
 # load_whisper_json
 # ---------------------------------------------------------------------------
@@ -234,7 +243,17 @@ class TestLoadWhisperJson:
         data = {"segments": [{"start": 0.0}]}
         path = tmp_path / "bad.json"
         path.write_text(json.dumps(data), encoding="utf-8")
-        with pytest.raises(ValueError, match="start.*end.*text|end.*text.*start"):
+        with pytest.raises(ValueError, match="missing"):
+            sub.load_whisper_json(path)
+
+    def test_second_segment_missing_fields_raises(self, sub, tmp_path):
+        data = {"segments": [
+            {"start": 0.0, "end": 2.0, "text": "ok"},
+            {"start": 2.0},
+        ]}
+        path = tmp_path / "bad.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        with pytest.raises(ValueError, match="Segment 1"):
             sub.load_whisper_json(path)
 
 

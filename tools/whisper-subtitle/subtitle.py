@@ -74,13 +74,19 @@ def load_whisper_json(path: Path) -> list[dict]:
     if not segments:
         return []
 
-    # Validate first segment has required fields
-    first = segments[0]
-    if "start" not in first or "end" not in first or "text" not in first:
-        raise ValueError(
-            "Segments must have 'start', 'end', and 'text' fields. "
-            f"Got keys: {list(first.keys())}"
-        )
+    if not isinstance(segments, list):
+        raise ValueError(f"'segments' must be a list, got {type(segments).__name__}")
+
+    # Validate every segment has required fields
+    for i, seg in enumerate(segments):
+        if not isinstance(seg, dict):
+            raise ValueError(f"Segment {i} must be a dict, got {type(seg).__name__}")
+        missing = [k for k in ("start", "end", "text") if k not in seg]
+        if missing:
+            raise ValueError(
+                f"Segment {i} missing required fields {missing}. "
+                f"Got keys: {list(seg.keys())}"
+            )
     return segments
 
 
@@ -218,9 +224,11 @@ def convert(
     segments = load_whisper_json(input_path)
     cues = segments_to_cues(segments, max_words=max_words, strip_filler=strip_filler)
 
+    if output_format == "srt":
+        return cues_to_srt(cues)
     if output_format == "vtt":
         return cues_to_vtt(cues)
-    return cues_to_srt(cues)
+    raise ValueError(f"Unsupported output_format {output_format!r}. Use 'srt' or 'vtt'.")
 
 
 # ---------------------------------------------------------------------------

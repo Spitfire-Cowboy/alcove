@@ -26,6 +26,7 @@ python tools/whisper-subtitle/subtitle.py transcript.json
 Accepts any Whisper JSON output. Both formats are supported:
 
 **Dict format** (standard `whisper` CLI output):
+
 ```json
 {
   "text": "...",
@@ -37,6 +38,7 @@ Accepts any Whisper JSON output. Both formats are supported:
 ```
 
 **List format** (some Whisper variants):
+
 ```json
 [
   {"start": 0.0, "end": 3.2, "text": "Hello world."},
@@ -47,7 +49,8 @@ Accepts any Whisper JSON output. Both formats are supported:
 ## Output formats
 
 ### SRT
-```
+
+```text
 1
 00:00:00,000 --> 00:00:03,200
 Hello world.
@@ -58,7 +61,8 @@ This is a subtitle.
 ```
 
 ### WebVTT
-```
+
+```text
 WEBVTT
 
 00:00:00.000 --> 00:00:03.200
