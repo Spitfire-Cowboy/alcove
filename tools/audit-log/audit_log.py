@@ -25,7 +25,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -161,7 +161,7 @@ class AuditLogger:
             The serialised record dict (useful for testing).
         """
         record: dict[str, Any] = {
-            "ts": datetime.now(UTC).isoformat(timespec="milliseconds"),
+            "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
             "event": event_type,
             "actor": actor,
             "outcome": outcome,
@@ -173,7 +173,14 @@ class AuditLogger:
 
         if self.log_path is not None:
             self.log_path.parent.mkdir(parents=True, exist_ok=True)
-            with self.log_path.open("a", encoding="utf-8") as fh:
+            # Open with O_CREAT | O_APPEND; chmod 0o600 on first create so the
+            # log is owner-readable only (compliance-oriented deployments).
+            fd = os.open(
+                self.log_path,
+                os.O_WRONLY | os.O_CREAT | os.O_APPEND,
+                0o600,
+            )
+            with os.fdopen(fd, "a", encoding="utf-8") as fh:
                 fh.write(line)
 
         if self._stream is not None:

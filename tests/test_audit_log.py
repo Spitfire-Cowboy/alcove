@@ -14,6 +14,8 @@ _MODULE_PATH = Path(__file__).resolve().parents[1] / "tools" / "audit-log" / "au
 
 def _load_module():
     spec = importlib.util.spec_from_file_location("audit_log", _MODULE_PATH)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load module from {_MODULE_PATH}")
     mod = importlib.util.module_from_spec(spec)
     sys.modules.setdefault("audit_log", mod)
     spec.loader.exec_module(mod)
@@ -21,7 +23,7 @@ def _load_module():
 
 
 @pytest.fixture(scope="module")
-def al():
+def al() -> object:
     return _load_module()
 
 
