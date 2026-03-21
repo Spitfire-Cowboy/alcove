@@ -325,20 +325,35 @@ def refresh_arxiv(
     # Capture the run boundary BEFORE fetching so that records added during the
     # run are included in the next window and never silently dropped.
     run_ts = _iso_now()
+    _MAX_RESULTS = 500
     print(f"Fetching arXiv papers since {since.isoformat()} (query: {query!r})", file=out)
-    papers = fetch_arxiv_since(query, since, timeout=timeout)
+    papers = fetch_arxiv_since(query, since, max_results=_MAX_RESULTS, timeout=timeout)
     print(f"Found {len(papers)} papers", file=out)
+
+    # When the fetch is capped at max_results there may be older papers in the
+    # window we didn't retrieve.  Advancing to run_ts would silently skip them.
+    # Instead, checkpoint to the oldest returned paper so the next run re-fetches
+    # from that boundary and eventually captures the remainder.
+    capped = len(papers) >= _MAX_RESULTS
+    if capped:
+        print(
+            f"WARNING: fetch hit the {_MAX_RESULTS}-result cap — some records may be deferred "
+            f"to the next run. Checkpointing to oldest fetched record.",
+            file=out,
+        )
+        next_ts = papers[-1].updated if papers else run_ts
+    else:
+        next_ts = run_ts
 
     written = 0
     if not dry_run:
         if papers:
             writer = ChromaWriter(chroma_path, collection)
             written = writer.upsert_arxiv(papers)
-        # Always advance the checkpoint (even on empty fetch) so the next run
-        # starts from the current boundary rather than re-scanning the window.
-        checkpoint.set(ck_key, run_ts)
+        # Always advance the checkpoint (even on empty fetch).
+        checkpoint.set(ck_key, next_ts)
 
-    return {"fetched": len(papers), "written": written}
+    return {"fetched": len(papers), "written": written, "capped": capped}
 
 
 def refresh_psyarxiv(
@@ -362,18 +377,30 @@ def refresh_psyarxiv(
         since = datetime.now(UTC) - timedelta(days=days)
 
     run_ts = _iso_now()
+    _MAX_RESULTS = 500
     print(f"Fetching PsyArXiv preprints since {since.isoformat()}", file=out)
-    records = list(fetch_psyarxiv_since(since, timeout=timeout))
+    records = list(fetch_psyarxiv_since(since, max_results=_MAX_RESULTS, timeout=timeout))
     print(f"Found {len(records)} preprints", file=out)
+
+    capped = len(records) >= _MAX_RESULTS
+    if capped:
+        print(
+            f"WARNING: fetch hit the {_MAX_RESULTS}-result cap — some records may be deferred "
+            f"to the next run. Checkpointing to oldest fetched record.",
+            file=out,
+        )
+        next_ts = records[-1].get("date_modified") or run_ts if records else run_ts
+    else:
+        next_ts = run_ts
 
     written = 0
     if not dry_run:
         if records:
             writer = ChromaWriter(chroma_path, collection)
             written = writer.upsert_psyarxiv(records)
-        checkpoint.set(ck_key, run_ts)
+        checkpoint.set(ck_key, next_ts)
 
-    return {"fetched": len(records), "written": written}
+    return {"fetched": len(records), "written": written, "capped": capped}
 
 
 # ---------------------------------------------------------------------------
