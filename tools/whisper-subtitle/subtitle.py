@@ -132,6 +132,8 @@ def _strip_filler_words(text: str) -> str:
 
 def _split_segment(start: float, end: float, text: str, max_words: int) -> list[Cue]:
     """Split a single segment into cues of at most *max_words* words."""
+    if max_words <= 0:
+        raise ValueError(f"max_words must be a positive integer, got {max_words!r}")
     words = text.split()
     if len(words) <= max_words:
         return [Cue(start=start, end=end, text=text)]

@@ -103,6 +103,14 @@ class TestSplitSegment:
         assert cues[0].text == "one two three"
         assert cues[1].text == "four five"
 
+    def test_zero_max_words_raises(self, sub):
+        with pytest.raises(ValueError, match="positive integer"):
+            sub._split_segment(0.0, 4.0, "hello world", max_words=0)
+
+    def test_negative_max_words_raises(self, sub):
+        with pytest.raises(ValueError, match="positive integer"):
+            sub._split_segment(0.0, 4.0, "hello world", max_words=-1)
+
 
 # ---------------------------------------------------------------------------
 # segments_to_cues
