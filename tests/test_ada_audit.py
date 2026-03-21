@@ -186,6 +186,18 @@ class TestLinkText:
         vs = [v for v in ada.audit_html(html) if v.rule.startswith("link-text")]
         assert vs == []
 
+    def test_title_attr_passes(self, ada):
+        """Link with title attribute must not trigger link-text-empty."""
+        html = "<html lang='en'><body><a href='/page' title='Home'></a></body></html>"
+        vs = [v for v in ada.audit_html(html) if v.rule.startswith("link-text")]
+        assert vs == []
+
+    def test_img_alt_inside_link_passes(self, ada):
+        """Icon-only link <a><img alt='Home'></a> must not trigger link-text-empty."""
+        html = "<html lang='en'><body><a href='/'><img src='home.svg' alt='Home'></a></body></html>"
+        vs = [v for v in ada.audit_html(html) if v.rule.startswith("link-text")]
+        assert vs == []
+
 
 # ---------------------------------------------------------------------------
 # button-text rule
@@ -211,6 +223,18 @@ class TestButtonText:
     def test_button_with_nested_span_passes(self, ada):
         """<button><span>Text</span></button> must not trigger button-text."""
         html = "<html lang='en'><body><button><span>Submit form</span></button></body></html>"
+        vs = _violations_by_rule(ada.audit_html(html), "button-text")
+        assert vs == []
+
+    def test_button_title_passes(self, ada):
+        """Button with title attribute must not trigger button-text."""
+        html = "<html lang='en'><body><button title='Close'></button></body></html>"
+        vs = _violations_by_rule(ada.audit_html(html), "button-text")
+        assert vs == []
+
+    def test_img_alt_inside_button_passes(self, ada):
+        """Icon-only button <button><img alt='Close'></button> must not trigger button-text."""
+        html = "<html lang='en'><body><button><img src='x.svg' alt='Close'></button></body></html>"
         vs = _violations_by_rule(ada.audit_html(html), "button-text")
         assert vs == []
 
@@ -262,6 +286,14 @@ class TestAuditFile:
         assert len(violations) == 1
         assert violations[0].rule == "file-read-error"
         assert violations[0].severity == "error"
+
+    def test_non_utf8_file_returns_violation_not_exception(self, ada, tmp_path):
+        """A Latin-1/corrupt file must produce file-read-error, not raise UnicodeDecodeError."""
+        path = tmp_path / "latin1.html"
+        path.write_bytes(b"\xff\xfe<html><body>Caf\xe9</body></html>")
+        violations = ada.audit_file(path)
+        assert len(violations) == 1
+        assert violations[0].rule == "file-read-error"
 
 
 # ---------------------------------------------------------------------------

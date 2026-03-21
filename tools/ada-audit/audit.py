@@ -101,6 +101,12 @@ class _HTMLCollector(HTMLParser):
         # Void elements are self-closing — never push onto the stack.
         if lower_tag not in _VOID_TAGS:
             self._stack.append(elem)
+        elif lower_tag == "img":
+            # Propagate non-empty alt text upward so ancestor links/buttons
+            # count icon-only markup like <a><img alt="Home"></a> as labelled.
+            alt = attr_dict.get("alt", "").strip()
+            if alt:
+                self._propagate_alt_to_ancestors(alt)
 
     def handle_endtag(self, tag: str) -> None:
         lower_tag = tag.lower()
@@ -116,6 +122,11 @@ class _HTMLCollector(HTMLParser):
         # like <a><span>Text</span></a> correctly attributes text to the <a>.
         for elem in self._stack:
             elem.text += data
+
+    def _propagate_alt_to_ancestors(self, alt: str) -> None:
+        """Propagate an img's alt text to all open ancestor elements."""
+        for elem in self._stack:
+            elem.text += alt
 
 
 def _parse_html(html: str) -> _HTMLCollector:
@@ -240,7 +251,8 @@ def _rule_link_text(collector: _HTMLCollector) -> Iterator[Violation]:
             continue
         has_aria = bool(elem.attrs.get("aria-label", "").strip())
         has_aria_lb = bool(elem.attrs.get("aria-labelledby", "").strip())
-        if has_aria or has_aria_lb:
+        has_title = bool(elem.attrs.get("title", "").strip())
+        if has_aria or has_aria_lb or has_title:
             continue
         text = elem.text.strip().lower()
         href = elem.attrs.get("href", "#")
@@ -295,8 +307,9 @@ def _rule_button_text(collector: _HTMLCollector) -> Iterator[Violation]:
             continue
         has_aria = bool(elem.attrs.get("aria-label", "").strip())
         has_aria_lb = bool(elem.attrs.get("aria-labelledby", "").strip())
+        has_title = bool(elem.attrs.get("title", "").strip())
         has_text = bool(elem.text.strip())
-        if not (has_aria or has_aria_lb or has_text):
+        if not (has_aria or has_aria_lb or has_title or has_text):
             yield Violation(
                 rule="button-text",
                 severity="error",
@@ -349,7 +362,7 @@ def audit_file(path: Path) -> list[Violation]:
     """
     try:
         html = path.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         return [Violation(
             rule="file-read-error",
             severity="error",
