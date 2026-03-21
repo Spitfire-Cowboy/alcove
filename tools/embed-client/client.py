@@ -72,11 +72,13 @@ class AlcoveClient:
         api_key: str | None = None,
     ) -> None:
         raw = (base_url or os.environ.get("ALCOVE_URL", "http://localhost:8000")).rstrip("/")
-        _scheme = raw.split("://", 1)[0].lower() if "://" in raw else ""
-        if _scheme not in ("http", "https"):
+        _parsed = parse.urlparse(raw)
+        if _parsed.scheme not in ("http", "https"):
             raise ValueError(
                 f"base_url must use http or https scheme, got: {raw!r}"
             )
+        if not _parsed.netloc:
+            raise ValueError(f"base_url must include a host, got: {raw!r}")
         self.base_url = raw
         self.timeout = timeout
         self._api_key = api_key or os.environ.get("ALCOVE_API_KEY")
