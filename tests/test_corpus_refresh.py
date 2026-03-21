@@ -180,9 +180,9 @@ class TestFetchPsyarxivSince:
         }
 
     def test_yields_records(self, refresh):
-        from datetime import UTC, datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
-        since = datetime.now(UTC) - timedelta(days=7)
+        since = datetime.now(timezone.utc) - timedelta(days=7)
         page = self._make_page([self._make_item("abc123", "Paper One")])
 
         with patch.object(refresh, "_fetch_json", return_value=page):
@@ -196,9 +196,9 @@ class TestFetchPsyarxivSince:
         return {"data": items, "links": {"next": next_url}}
 
     def test_respects_max_results(self, refresh):
-        from datetime import UTC, datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
-        since = datetime.now(UTC) - timedelta(days=7)
+        since = datetime.now(timezone.utc) - timedelta(days=7)
         items = [self._make_item(f"id{i}", f"Paper {i}") for i in range(20)]
         page = self._make_page(items)
 
@@ -208,9 +208,9 @@ class TestFetchPsyarxivSince:
         assert len(records) == 5
 
     def test_tags_joined(self, refresh):
-        from datetime import UTC, datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
-        since = datetime.now(UTC) - timedelta(days=7)
+        since = datetime.now(timezone.utc) - timedelta(days=7)
         item = self._make_item("xyz", "Tagged Paper")
         page = self._make_page([item])
 
@@ -268,7 +268,7 @@ class TestCLIArgParsing:
 
 class TestRefreshArxivDryRun:
     def test_dry_run_returns_fetched_count(self, refresh, tmp_path):
-        from datetime import UTC, datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
         papers = [
             refresh.ArxivPaper(
@@ -300,7 +300,7 @@ class TestRefreshArxivDryRun:
         assert stats["written"] == 0
 
     def test_dry_run_does_not_update_checkpoint(self, refresh, tmp_path):
-        from datetime import UTC, datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
         ck = refresh.CheckpointStore(tmp_path / "ck.json")
 
