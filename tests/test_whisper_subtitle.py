@@ -15,6 +15,8 @@ SUBTITLE_PY = REPO_ROOT / "tools" / "whisper-subtitle" / "subtitle.py"
 @pytest.fixture(scope="module")
 def sub():
     spec = importlib.util.spec_from_file_location("subtitle", SUBTITLE_PY)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load module from {SUBTITLE_PY}")
     mod = importlib.util.module_from_spec(spec)
     sys.modules["subtitle"] = mod
     spec.loader.exec_module(mod)
@@ -199,6 +201,21 @@ class TestConvertOutputFormat:
         path.write_text(json.dumps(data), encoding="utf-8")
         with pytest.raises(ValueError, match="Unsupported output_format"):
             sub.convert(path, output_format="xml")
+
+    def test_convert_srt_output(self, sub, tmp_path):
+        data = {"segments": [{"start": 0.0, "end": 1.0, "text": "Hello world"}]}
+        path = tmp_path / "t.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        result = sub.convert(path, output_format="srt")
+        assert "00:00:00,000 --> 00:00:01,000" in result
+        assert "Hello world" in result
+
+    def test_convert_vtt_output(self, sub, tmp_path):
+        data = {"segments": [{"start": 0.0, "end": 1.0, "text": "Hello world"}]}
+        path = tmp_path / "t.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        result = sub.convert(path, output_format="vtt")
+        assert result.startswith("WEBVTT")
 
 
 # ---------------------------------------------------------------------------

@@ -251,8 +251,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output subtitle format (default: srt)",
     )
     parser.add_argument(
-        "--max-words", type=int, default=None,
-        help="Split long segments into cues of at most N words",
+        "--max-words", type=int, default=None, metavar="N",
+        help="Split long segments into cues of at most N words (must be >= 1)",
     )
     parser.add_argument(
         "--strip-filler", action="store_true",
@@ -264,6 +264,9 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    if args.max_words is not None and args.max_words <= 0:
+        parser.error(f"--max-words must be a positive integer, got {args.max_words}")
 
     result = convert(
         args.input,
