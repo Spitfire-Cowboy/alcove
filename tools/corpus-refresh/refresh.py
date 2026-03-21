@@ -16,8 +16,8 @@ Usage::
     python tools/corpus-refresh/refresh.py psyarxiv \\
         --days 14 --chroma-path ./data/chroma
 
-    # Dry run — show counts without writing
-    python tools/corpus-refresh/refresh.py arxiv --query "cat:cs.AI" --dry-run
+    # Dry run — show counts without writing (--dry-run is a global flag, before subcommand)
+    python tools/corpus-refresh/refresh.py --dry-run arxiv --query "cat:cs.AI"
 """
 from __future__ import annotations
 
