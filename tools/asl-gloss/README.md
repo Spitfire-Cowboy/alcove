@@ -49,7 +49,14 @@ ASL: SHE LIKE NOT IT
 ## Plugin interface
 
 ```python
-from tools.asl_gloss.gloss import GlossConverter, SignLanguagePlugin
+# The directory name uses a hyphen, so load with importlib:
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("gloss", "tools/asl-gloss/gloss.py")
+mod = importlib.util.module_from_spec(spec)
+sys.modules["gloss"] = mod
+spec.loader.exec_module(mod)
+GlossConverter = mod.GlossConverter
+SignLanguagePlugin = mod.SignLanguagePlugin
 
 converter = GlossConverter()
 result = converter.convert("She doesn't want coffee.")
