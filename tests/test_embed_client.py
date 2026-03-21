@@ -17,18 +17,26 @@ _MODULE_PATH = Path(__file__).resolve().parents[1] / "tools" / "embed-client" / 
 
 
 def _load_module():
-    spec = importlib.util.spec_from_file_location("embed_client", _MODULE_PATH)
+    _mod_key = "embed_client_test_module"
+    spec = importlib.util.spec_from_file_location(_mod_key, _MODULE_PATH)
     if spec is None or spec.loader is None:
         raise ImportError(f"Cannot load module from {_MODULE_PATH}")
     mod = importlib.util.module_from_spec(spec)
-    sys.modules.setdefault("embed_client", mod)
+    sys.modules[_mod_key] = mod
     spec.loader.exec_module(mod)
     return mod
 
 
 @pytest.fixture(scope="module")
 def ec():
-    return _load_module()
+    _mod_key = "embed_client_test_module"
+    prev = sys.modules.get(_mod_key)
+    mod = _load_module()
+    yield mod
+    if prev is None:
+        sys.modules.pop(_mod_key, None)
+    else:
+        sys.modules[_mod_key] = prev
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
