@@ -6,6 +6,7 @@ import io
 import json
 import sys
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -23,7 +24,7 @@ def _load_module():
 
 
 @pytest.fixture(scope="module")
-def al() -> object:
+def al() -> ModuleType:
     return _load_module()
 
 
@@ -194,3 +195,12 @@ def test_cli_admin(al, tmp_path):
     record = json.loads(log_path.read_text().strip())
     assert record["event"] == "admin"
     assert record["detail"]["action"] == "reset"
+
+
+def test_cli_access(al, tmp_path):
+    log_path = tmp_path / "audit.ndjson"
+    al.main(["--log-path", str(log_path), "access",
+              "--resource", "/api/test", "--status", "404"])
+    record = json.loads(log_path.read_text().strip())
+    assert record["event"] == "access"
+    assert record["outcome"] == "error"

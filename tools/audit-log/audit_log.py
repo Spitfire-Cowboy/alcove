@@ -27,7 +27,7 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, TextIO
 
 
 # ---------------------------------------------------------------------------
@@ -48,7 +48,7 @@ class AuditLogger:
         self,
         log_path: str | Path | None = None,
         *,
-        stream=None,
+        stream: Optional[TextIO] = None,
     ) -> None:
         """
         Args:
@@ -59,7 +59,7 @@ class AuditLogger:
                 defaults to ``sys.stdout``.
         """
         self.log_path: Path | None = Path(log_path) if log_path else None
-        self._stream = stream if stream is not None else (sys.stdout if log_path is None else None)
+        self._stream: Optional[TextIO] = stream if stream is not None else (sys.stdout if log_path is None else None)
 
     # ------------------------------------------------------------------
     # High-level event methods
@@ -243,29 +243,35 @@ def main(argv: list[str] | None = None) -> int:
     stream = sys.stdout if args.stdout else None
     logger = AuditLogger(args.log_path, stream=stream)
 
-    if args.command == "query":
-        logger.query(
-            args.actor,
-            query=args.query,
-            collection=args.collection,
-            results=args.results,
-        )
-    elif args.command == "ingest":
-        logger.ingest(
-            args.actor,
-            collection=args.collection,
-            chunk_count=args.chunk_count,
-            source=args.source,
-        )
-    elif args.command == "access":
-        logger.access(
-            args.actor,
-            resource=args.resource,
-            method=args.method,
-            status=args.status,
-        )
-    elif args.command == "admin":
-        logger.admin(args.actor, action=args.action, target=args.target)
+    try:
+        if args.command == "query":
+            logger.query(
+                args.actor,
+                query=args.query,
+                collection=args.collection,
+                results=args.results,
+            )
+        elif args.command == "ingest":
+            logger.ingest(
+                args.actor,
+                collection=args.collection,
+                chunk_count=args.chunk_count,
+                source=args.source,
+            )
+        elif args.command == "access":
+            logger.access(
+                args.actor,
+                resource=args.resource,
+                method=args.method,
+                status=args.status,
+            )
+        elif args.command == "admin":
+            logger.admin(args.actor, action=args.action, target=args.target)
+    except KeyboardInterrupt:
+        raise
+    except Exception as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
 
     return 0
 
