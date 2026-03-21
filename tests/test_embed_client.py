@@ -23,7 +23,11 @@ def _load_module():
         raise ImportError(f"Cannot load module from {_MODULE_PATH}")
     mod = importlib.util.module_from_spec(spec)
     sys.modules[_mod_key] = mod
-    spec.loader.exec_module(mod)
+    try:
+        spec.loader.exec_module(mod)
+    except BaseException:
+        sys.modules.pop(_mod_key, None)
+        raise
     return mod
 
 

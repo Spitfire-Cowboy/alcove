@@ -7,7 +7,13 @@ so it works with a plain Python install.
 
 Usage::
 
-    from tools.embed_client.client import AlcoveClient
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "alcove_embed_client", "tools/embed-client/client.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    AlcoveClient = mod.AlcoveClient
 
     alcove = AlcoveClient("http://localhost:8000")
 
@@ -121,6 +127,13 @@ class AlcoveClient:
         documents = raw.get("documents", [[]])[0]
         metadatas = raw.get("metadatas", [[]])[0]
         distances = raw.get("distances", [[]])[0]
+        if not (len(documents) == len(metadatas) == len(distances)):
+            raise AlcoveError(
+                200,
+                f"Malformed /query response: array lengths differ "
+                f"(documents={len(documents)}, metadatas={len(metadatas)}, "
+                f"distances={len(distances)})",
+            )
         results = []
         for doc, meta, dist in zip(documents, metadatas, distances):
             results.append({
