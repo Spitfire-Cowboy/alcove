@@ -110,7 +110,9 @@ class AlcoveClient:
             List of result dicts with keys ``text``, ``source``, ``collection``,
             and ``score``.
         """
-        payload: dict[str, Any] = {"query": query, "k": k, "mode": mode}
+        payload: dict[str, Any] = {"query": query, "k": k}
+        if mode != "semantic":
+            payload["mode"] = mode
         if collections:
             payload["collections"] = collections
         raw = self._post_json("/query", payload)
