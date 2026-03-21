@@ -14,11 +14,19 @@ GLOSS_PY = REPO_ROOT / "tools" / "asl-gloss" / "gloss.py"
 
 @pytest.fixture(scope="module")
 def gloss():
-    spec = importlib.util.spec_from_file_location("gloss", GLOSS_PY)
+    _mod_key = "asl_gloss_test_module"
+    spec = importlib.util.spec_from_file_location(_mod_key, GLOSS_PY)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load module from {GLOSS_PY}")
     mod = importlib.util.module_from_spec(spec)
-    sys.modules["gloss"] = mod
+    prev = sys.modules.get(_mod_key)
+    sys.modules[_mod_key] = mod
     spec.loader.exec_module(mod)
-    return mod
+    yield mod
+    if prev is None:
+        sys.modules.pop(_mod_key, None)
+    else:
+        sys.modules[_mod_key] = prev
 
 
 @pytest.fixture(scope="module")
