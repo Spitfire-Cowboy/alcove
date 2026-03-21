@@ -406,3 +406,21 @@ class TestCLI:
         parser = ada._build_parser()
         args = parser.parse_args(["page.html", "--fail-on", "violations"])
         assert args.fail_on == "violations"
+
+    def test_main_clean_file_exits_zero(self, ada, tmp_path):
+        html = '<html lang="en"><body><p>Hello</p></body></html>'
+        path = tmp_path / "clean.html"
+        path.write_text(html, encoding="utf-8")
+        assert ada.main([str(path)]) == 0
+
+    def test_main_error_violation_exits_nonzero(self, ada, tmp_path):
+        html = "<html lang='en'><body><img src='x.png'></body></html>"
+        path = tmp_path / "bad.html"
+        path.write_text(html, encoding="utf-8")
+        assert ada.main([str(path)]) == 1
+
+    def test_main_fail_on_violations_exits_nonzero_on_warning(self, ada, tmp_path):
+        html = "<html lang='en'><body><img src='x.png' alt=''></body></html>"
+        path = tmp_path / "warn.html"
+        path.write_text(html, encoding="utf-8")
+        assert ada.main([str(path), "--fail-on", "violations"]) == 1

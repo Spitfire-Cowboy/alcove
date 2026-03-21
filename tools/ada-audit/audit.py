@@ -30,7 +30,7 @@ import sys
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Iterator
+from collections.abc import Iterator
 
 
 # ---------------------------------------------------------------------------

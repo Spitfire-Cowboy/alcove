@@ -37,7 +37,7 @@ python tools/ada-audit/audit.py page.html --format json
 | `link-text-vague` | warning | 2.4.4 | Link text is vague ("click here", "read more", etc.) |
 | `button-text` | error | 4.1.2 | Button has no accessible text |
 
-`aria-label` and `aria-labelledby` are accepted as valid labels for all rules.
+`aria-label`, `aria-labelledby`, and `title` are accepted as valid label sources for all applicable rules.
 
 ## Exit codes
 
