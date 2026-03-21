@@ -28,6 +28,7 @@ python tools/corpus-refresh/refresh.py --dry-run arxiv --query "cat:cs.AI"
 - `chromadb` — for writing to the collection
 
 Install:
+
 ```bash
 pip install defusedxml chromadb
 ```
