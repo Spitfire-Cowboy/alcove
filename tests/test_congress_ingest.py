@@ -15,18 +15,26 @@ _MODULE_PATH = Path(__file__).resolve().parents[1] / "tools" / "congress-ingest"
 
 
 def _load_module():
-    spec = importlib.util.spec_from_file_location("ingest_bills", _MODULE_PATH)
+    _mod_key = "ingest_bills_test_module"
+    spec = importlib.util.spec_from_file_location(_mod_key, _MODULE_PATH)
     if spec is None or spec.loader is None:
         raise ImportError(f"Cannot load module from {_MODULE_PATH}")
     mod = importlib.util.module_from_spec(spec)
-    sys.modules["ingest_bills"] = mod
+    sys.modules[_mod_key] = mod
     spec.loader.exec_module(mod)
     return mod
 
 
 @pytest.fixture(scope="module")
 def ib():
-    return _load_module()
+    _mod_key = "ingest_bills_test_module"
+    prev = sys.modules.get(_mod_key)
+    mod = _load_module()
+    yield mod
+    if prev is None:
+        sys.modules.pop(_mod_key, None)
+    else:
+        sys.modules[_mod_key] = prev
 
 
 # ── strip_html ──────────────────────────────────────────────────────────────
