@@ -67,15 +67,17 @@ def load_whisper_json(path: Path) -> list[dict]:
         # Some Whisper variants output a bare list of segments
         segments = data
     elif isinstance(data, dict):
-        segments = data.get("segments", [])
+        segments = data.get("segments")
+        if not isinstance(segments, list):
+            raise ValueError(
+                f"Expected top-level 'segments' list, got "
+                f"{type(segments).__name__ if segments is not None else 'null'}"
+            )
     else:
         raise ValueError(f"Unexpected Whisper JSON shape: {type(data)}")
 
     if not segments:
         return []
-
-    if not isinstance(segments, list):
-        raise ValueError(f"'segments' must be a list, got {type(segments).__name__}")
 
     # Validate every segment has required fields
     for i, seg in enumerate(segments):

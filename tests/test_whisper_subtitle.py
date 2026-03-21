@@ -279,6 +279,20 @@ class TestLoadWhisperJson:
         with pytest.raises(ValueError, match="Segment 1"):
             sub.load_whisper_json(path)
 
+    def test_null_segments_raises(self, sub, tmp_path):
+        """{'segments': null} must raise ValueError, not silently return []."""
+        path = tmp_path / "bad.json"
+        path.write_text(json.dumps({"segments": None}), encoding="utf-8")
+        with pytest.raises(ValueError, match="null"):
+            sub.load_whisper_json(path)
+
+    def test_missing_segments_key_raises(self, sub, tmp_path):
+        """A dict with no 'segments' key must raise ValueError."""
+        path = tmp_path / "bad.json"
+        path.write_text(json.dumps({}), encoding="utf-8")
+        with pytest.raises(ValueError):
+            sub.load_whisper_json(path)
+
 
 # ---------------------------------------------------------------------------
 # CLI argument parsing
