@@ -89,6 +89,12 @@ class TestInputLabel:
         vs = _violations_by_rule(ada.audit_html(html), "input-label")
         assert len(vs) == 1
 
+    def test_implicit_label_wrapping_passes(self, ada):
+        """<label><input></label> — implicit label association must be accepted."""
+        html = "<html lang='en'><body><label>Name <input type='text'></label></body></html>"
+        vs = _violations_by_rule(ada.audit_html(html), "input-label")
+        assert vs == []
+
 
 # ---------------------------------------------------------------------------
 # heading-empty rule
@@ -109,6 +115,12 @@ class TestHeadingEmpty:
 
     def test_heading_with_text_passes(self, ada):
         html = "<html lang='en'><body><h1>Page Title</h1></body></html>"
+        vs = _violations_by_rule(ada.audit_html(html), "heading-empty")
+        assert vs == []
+
+    def test_heading_with_nested_span_passes(self, ada):
+        """<h1><span>Title</span></h1> must not trigger heading-empty."""
+        html = "<html lang='en'><body><h1><span>Section Title</span></h1></body></html>"
         vs = _violations_by_rule(ada.audit_html(html), "heading-empty")
         assert vs == []
 
@@ -168,6 +180,12 @@ class TestLinkText:
         vs = [v for v in ada.audit_html(html) if v.rule.startswith("link-text")]
         assert vs == []
 
+    def test_nested_span_provides_text(self, ada):
+        """<a><span>Text</span></a> should not trigger link-text-empty."""
+        html = "<html lang='en'><body><a href='/page'><span>View bill</span></a></body></html>"
+        vs = [v for v in ada.audit_html(html) if v.rule.startswith("link-text")]
+        assert vs == []
+
 
 # ---------------------------------------------------------------------------
 # button-text rule
@@ -187,6 +205,12 @@ class TestButtonText:
 
     def test_button_with_aria_label_passes(self, ada):
         html = "<html lang='en'><body><button aria-label='Close dialog'></button></body></html>"
+        vs = _violations_by_rule(ada.audit_html(html), "button-text")
+        assert vs == []
+
+    def test_button_with_nested_span_passes(self, ada):
+        """<button><span>Text</span></button> must not trigger button-text."""
+        html = "<html lang='en'><body><button><span>Submit form</span></button></body></html>"
         vs = _violations_by_rule(ada.audit_html(html), "button-text")
         assert vs == []
 
@@ -231,6 +255,13 @@ class TestAuditFile:
         path.write_text("<html><body><img src='x.jpg'></body></html>", encoding="utf-8")
         violations = ada.audit_file(path)
         assert any(v.rule == "img-alt" for v in violations)
+
+    def test_unreadable_file_returns_violation_not_exception(self, ada, tmp_path):
+        path = tmp_path / "nonexistent.html"
+        violations = ada.audit_file(path)
+        assert len(violations) == 1
+        assert violations[0].rule == "file-read-error"
+        assert violations[0].severity == "error"
 
 
 # ---------------------------------------------------------------------------

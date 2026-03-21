@@ -62,6 +62,14 @@ class _Element:
     attrs: dict[str, str]
     line: int | None
     text: str = ""
+    in_label: bool = False  # True when this element is a descendant of a <label>
+
+
+# Void elements never have a closing tag and must not be pushed onto the stack.
+_VOID_TAGS = {
+    "area", "base", "br", "col", "embed", "hr", "img", "input",
+    "link", "meta", "param", "source", "track", "wbr",
+}
 
 
 class _HTMLCollector(HTMLParser):
@@ -72,26 +80,42 @@ class _HTMLCollector(HTMLParser):
         self.elements: list[_Element] = []
         self._stack: list[_Element] = []
         self.lang: str | None = None
-        self._lineno: int = 1
+
+    def _in_label(self) -> bool:
+        return any(e.tag == "label" for e in self._stack)
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attr_dict = {k: (v or "") for k, v in attrs}
-        elem = _Element(tag=tag.lower(), attrs=attr_dict, line=self.getpos()[0])
+        lower_tag = tag.lower()
+        elem = _Element(
+            tag=lower_tag,
+            attrs=attr_dict,
+            line=self.getpos()[0],
+            in_label=self._in_label(),
+        )
         self.elements.append(elem)
-        self._stack.append(elem)
 
-        if tag.lower() == "html" and "lang" in attr_dict:
+        if lower_tag == "html" and "lang" in attr_dict:
             self.lang = attr_dict["lang"].strip()
 
+        # Void elements are self-closing — never push onto the stack.
+        if lower_tag not in _VOID_TAGS:
+            self._stack.append(elem)
+
     def handle_endtag(self, tag: str) -> None:
+        lower_tag = tag.lower()
+        if lower_tag in _VOID_TAGS:
+            return
         for i in range(len(self._stack) - 1, -1, -1):
-            if self._stack[i].tag == tag.lower():
+            if self._stack[i].tag == lower_tag:
                 self._stack.pop(i)
                 break
 
     def handle_data(self, data: str) -> None:
-        if self._stack:
-            self._stack[-1].text += data
+        # Propagate text upward to all open ancestors so that nested markup
+        # like <a><span>Text</span></a> correctly attributes text to the <a>.
+        for elem in self._stack:
+            elem.text += data
 
 
 def _parse_html(html: str) -> _HTMLCollector:
@@ -155,11 +179,12 @@ def _rule_input_label(collector: _HTMLCollector) -> Iterator[Violation]:
 
         elem_id = elem.attrs.get("id", "")
         has_label = elem_id in label_fors
+        has_implicit_label = elem.in_label  # wrapped inside <label>...</label>
         has_aria_label = bool(elem.attrs.get("aria-label", "").strip())
         has_aria_labelledby = bool(elem.attrs.get("aria-labelledby", "").strip())
         has_title = bool(elem.attrs.get("title", "").strip())
 
-        if not (has_label or has_aria_label or has_aria_labelledby or has_title):
+        if not (has_label or has_implicit_label or has_aria_label or has_aria_labelledby or has_title):
             snippet = f"<{elem.tag} type={elem.attrs.get('type', 'text')!r}>"
             yield Violation(
                 rule="input-label",
@@ -319,9 +344,19 @@ def audit_file(path: Path) -> list[Violation]:
         path: Path to the HTML file.
 
     Returns:
-        List of :class:`Violation` objects.
+        List of :class:`Violation` objects. If the file cannot be read, returns
+        a single ``"file-read-error"`` violation rather than raising.
     """
-    html = path.read_text(encoding="utf-8")
+    try:
+        html = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return [Violation(
+            rule="file-read-error",
+            severity="error",
+            message=f"Cannot read file: {exc}",
+            element=str(path),
+            line=None,
+        )]
     return audit_html(html)
 
 
