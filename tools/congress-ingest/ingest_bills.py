@@ -13,7 +13,7 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from collections.abc import Sequence
-from urllib import error, request
+from urllib import error, parse, request
 
 from defusedxml import ElementTree as ET
 
@@ -225,6 +225,9 @@ def parse_billsum_xml(
 
 
 def fetch_url_bytes(url: str, *, timeout: int = 60, retries: int = 4, backoff: float = 1.0) -> bytes:
+    parsed_scheme = parse.urlparse(url).scheme
+    if parsed_scheme != "https":
+        raise ValueError(f"fetch_url_bytes requires an https URL, got scheme {parsed_scheme!r}")
     last_error: Exception | None = None
     for attempt in range(1, retries + 1):
         req = request.Request(url, headers={"User-Agent": "alcove-billsum-ingest/0.1"})
