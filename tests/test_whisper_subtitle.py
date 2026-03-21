@@ -14,13 +14,19 @@ SUBTITLE_PY = REPO_ROOT / "tools" / "whisper-subtitle" / "subtitle.py"
 
 @pytest.fixture(scope="module")
 def sub():
-    spec = importlib.util.spec_from_file_location("subtitle", SUBTITLE_PY)
+    _mod_key = "whisper_subtitle_test_module"
+    spec = importlib.util.spec_from_file_location(_mod_key, SUBTITLE_PY)
     if spec is None or spec.loader is None:
         raise ImportError(f"Cannot load module from {SUBTITLE_PY}")
     mod = importlib.util.module_from_spec(spec)
-    sys.modules["subtitle"] = mod
+    prev = sys.modules.get(_mod_key)
+    sys.modules[_mod_key] = mod
     spec.loader.exec_module(mod)
-    return mod
+    yield mod
+    if prev is None:
+        sys.modules.pop(_mod_key, None)
+    else:
+        sys.modules[_mod_key] = prev
 
 
 # ---------------------------------------------------------------------------
