@@ -54,6 +54,9 @@ def _parse_iso_ts(ts: str) -> datetime:
 
 
 def _fetch_json(url: str, *, timeout: int = 30, retries: int = 3) -> dict:
+    parsed = parse.urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise ValueError(f"Unsafe or invalid URL rejected: {url!r}")
     last_exc: Exception | None = None
     for attempt in range(1, retries + 1):
         req = request.Request(url, headers={"User-Agent": "alcove-corpus-refresh/0.1"})
@@ -365,7 +368,14 @@ def refresh_arxiv(
     ck_key = f"arxiv:{query}:{collection}"
     since_str = checkpoint.get(ck_key)
     if since_str:
-        since = _parse_iso_ts(since_str)
+        try:
+            since = _parse_iso_ts(since_str)
+        except ValueError:
+            print(
+                f"WARNING: malformed checkpoint timestamp {since_str!r} — falling back to {days}-day window",
+                file=out,
+            )
+            since = datetime.now(timezone.utc) - timedelta(days=days)
     else:
         since = datetime.now(timezone.utc) - timedelta(days=days)
 
@@ -419,7 +429,14 @@ def refresh_psyarxiv(
     ck_key = f"psyarxiv:{collection}"
     since_str = checkpoint.get(ck_key)
     if since_str:
-        since = _parse_iso_ts(since_str)
+        try:
+            since = _parse_iso_ts(since_str)
+        except ValueError:
+            print(
+                f"WARNING: malformed checkpoint timestamp {since_str!r} — falling back to {days}-day window",
+                file=out,
+            )
+            since = datetime.now(timezone.utc) - timedelta(days=days)
     else:
         since = datetime.now(timezone.utc) - timedelta(days=days)
 
