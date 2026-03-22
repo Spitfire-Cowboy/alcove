@@ -213,8 +213,28 @@ class TestAbbrevDict:
         assert len(ABBREVS) >= 100
 
     def test_no_duplicate_keys(self):
-        # dict keys are unique by definition — belt-and-suspenders
-        assert len(ABBREVS) == len(set(ABBREVS.keys()))
+        # Python silently resolves duplicate dict keys at import time, so we
+        # must parse the source AST to catch raw duplicates in the literal.
+        import ast
+
+        source = _TOOL_PATH.read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        keys: list[str] = []
+        for node in ast.walk(tree):
+            # Find the ABBREVS assignment: `ABBREVS: dict[...] = {...}`
+            if (
+                isinstance(node, ast.AnnAssign)
+                and isinstance(node.target, ast.Name)
+                and node.target.id == "ABBREVS"
+                and isinstance(node.value, ast.Dict)
+            ):
+                for key_node in node.value.keys:
+                    if isinstance(key_node, ast.Constant):
+                        keys.append(key_node.value)
+                break
+        assert keys, "Could not locate ABBREVS dict in source AST"
+        duplicates = [k for k in keys if keys.count(k) > 1]
+        assert not duplicates, f"Duplicate keys in ABBREVS literal: {sorted(set(duplicates))}"
 
 
 # ---------------------------------------------------------------------------

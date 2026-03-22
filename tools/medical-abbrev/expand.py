@@ -168,9 +168,7 @@ ABBREVS: dict[str, str] = {
     "SH": "social history",
     "SHX": "social history",
     "ROS": "review of systems",
-    "PE": "physical examination",
     "HX": "history",
-    "H/O": "history of",
     "H/O": "history of",
     "C/O": "complains of",
     "S/P": "status post",
@@ -305,16 +303,6 @@ def _build_pattern(abbrevs: dict[str, str]) -> re.Pattern:
     return re.compile(r"\b(" + "|".join(escaped) + r")\b", re.IGNORECASE)
 
 
-_DEFAULT_PATTERN: re.Pattern | None = None
-
-
-def _get_pattern() -> re.Pattern:
-    global _DEFAULT_PATTERN
-    if _DEFAULT_PATTERN is None:
-        _DEFAULT_PATTERN = _build_pattern(ABBREVS)
-    return _DEFAULT_PATTERN
-
-
 def expand_text(
     text: str,
     *,
@@ -335,10 +323,7 @@ def expand_text(
         is returned in lowercase.
     """
     d = abbrevs if abbrevs is not None else ABBREVS
-    if abbrevs is not None:
-        pattern = _build_pattern(d)
-    else:
-        pattern = _get_pattern()
+    pattern = _build_pattern(d)
 
     def replace(m: re.Match) -> str:
         token = m.group(1)
@@ -379,35 +364,42 @@ def expand_query(
         Expanded query string with duplicates removed.
     """
     d = abbrevs if abbrevs is not None else ABBREVS
-    if abbrevs is not None:
-        pattern = _build_pattern(d)
-    else:
-        pattern = _get_pattern()
+    pattern = _build_pattern(d)
 
     seen: set[str] = set()
     parts: list[str] = []
+    last_end = 0
 
-    for token in re.split(r"(\s+)", query):
-        stripped = token.strip()
-        if not stripped:
+    for m in pattern.finditer(query):
+        # Emit any non-matching text between the last match and this one
+        gap = query[last_end:m.start()]
+        if gap:
+            for word in gap.split():
+                if word.lower() not in seen:
+                    parts.append(word)
+                    seen.add(word.lower())
+        last_end = m.end()
+
+        token = m.group(1)
+        upper = token.upper()
+        expansion = d.get(upper, token)
+        if include_original and upper not in seen:
             parts.append(token)
-            continue
-        upper = stripped.upper()
-        expansion = d.get(upper)
-        if expansion:
-            if include_original and upper not in seen:
-                parts.append(stripped)
-                seen.add(upper)
-            for term in expansion.split():
-                if term.lower() not in seen:
-                    parts.append(term)
-                    seen.add(term.lower())
-        else:
-            if stripped.lower() not in seen:
-                parts.append(stripped)
-                seen.add(stripped.lower())
+            seen.add(upper)
+        for term in expansion.split():
+            if term.lower() not in seen:
+                parts.append(term)
+                seen.add(term.lower())
 
-    return " ".join(p for p in parts if p.strip())
+    # Emit any remaining non-matching text after the last match
+    tail = query[last_end:]
+    if tail:
+        for word in tail.split():
+            if word.lower() not in seen:
+                parts.append(word)
+                seen.add(word.lower())
+
+    return " ".join(parts)
 
 
 def list_abbrevs(
