@@ -42,6 +42,17 @@ def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _parse_iso_ts(ts: str) -> datetime:
+    """Parse an ISO-8601 timestamp, normalising RFC3339 'Z' suffix to '+00:00'.
+
+    Returns a timezone-aware datetime (UTC if no tzinfo was present).
+    """
+    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 def _fetch_json(url: str, *, timeout: int = 30, retries: int = 3) -> dict:
     last_exc: Exception | None = None
     for attempt in range(1, retries + 1):
@@ -354,7 +365,7 @@ def refresh_arxiv(
     ck_key = f"arxiv:{query}:{collection}"
     since_str = checkpoint.get(ck_key)
     if since_str:
-        since = datetime.fromisoformat(since_str)
+        since = _parse_iso_ts(since_str)
     else:
         since = datetime.now(timezone.utc) - timedelta(days=days)
 
@@ -408,7 +419,7 @@ def refresh_psyarxiv(
     ck_key = f"psyarxiv:{collection}"
     since_str = checkpoint.get(ck_key)
     if since_str:
-        since = datetime.fromisoformat(since_str)
+        since = _parse_iso_ts(since_str)
     else:
         since = datetime.now(timezone.utc) - timedelta(days=days)
 
