@@ -103,7 +103,7 @@ if str(_REPO_ROOT) not in sys.path:
 # ---------------------------------------------------------------------------
 
 DEFAULT_MANIFEST_PATH = Path.home() / ".alcove" / "batch" / "jobs.json"
-DEFAULT_LOG_PATH = Path.home() / "Library" / "Logs" / "alcove" / "batch.log"
+DEFAULT_LOG_PATH = Path.home() / ".alcove" / "logs" / "batch.log"
 BATCH_VERSION = 1
 
 # Map tool names to script paths relative to repo root.
@@ -123,7 +123,6 @@ TOOL_SCRIPTS: dict[str, str] = {
 # Job result codes.
 RESULT_OK = "ok"
 RESULT_FAILED = "failed"
-RESULT_SKIPPED = "skipped"
 RESULT_DISABLED = "disabled"
 
 
@@ -149,7 +148,7 @@ def load_manifest(manifest_path: Path) -> dict:
     """
     if not manifest_path.is_file():
         raise FileNotFoundError(f"Manifest not found: {manifest_path}")
-    data = json.loads(manifest_path.read_text())
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
     version = data.get("batch_version")
     if version != BATCH_VERSION:
         raise ValueError(
@@ -310,7 +309,7 @@ def run_job(
             record["error"] = (proc.stderr or "").strip()[:500]
     except Exception as exc:
         record["result"] = RESULT_FAILED
-        record["error"] = str(exc)
+        record["error"] = f"{type(exc).__name__}: {exc}"
 
     record["finished_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     return record
@@ -399,9 +398,19 @@ def _cmd_run(args: argparse.Namespace, run_fn=None) -> int:
             print(f"             {r['error'][:80]}")
 
     if args.report_out:
+        import tempfile
         out_path = Path(args.report_out)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(results, indent=2))
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=out_path.parent,
+            delete=False,
+            suffix=".tmp",
+        ) as tmp:
+            tmp.write(json.dumps(results, indent=2))
+            tmp_path = Path(tmp.name)
+        tmp_path.replace(out_path)
         print(f"\nReport written to {out_path}")
 
     return 0 if failed == 0 else 1
