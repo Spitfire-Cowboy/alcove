@@ -98,7 +98,7 @@ The full roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md). Alcove will not becom
 
 ## Commit metadata policy
 
-Anthropic co-author trailers are blocked in this repository. Any commit message line containing `noreply@anthropic.com` will fail CI.
+`Co-authored-by:` trailers are blocked in this repository. Any commit message containing a `Co-authored-by:` trailer line will fail CI.
 
 Install local hooks to strip those lines before commit:
 

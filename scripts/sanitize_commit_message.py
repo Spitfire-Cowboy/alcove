@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Remove banned co-author trailers from a commit message file."""
+"""Remove blocked co-author trailers from a commit message file."""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ import re
 from pathlib import Path
 
 
-BANNED_LINE = re.compile(r"noreply@anthropic\.com", re.IGNORECASE)
+BLOCKED_TRAILER = re.compile(r"^\s*co-authored-by\s*:\s*.+$", re.IGNORECASE)
 
 
 def sanitize(text: str) -> tuple[str, bool]:
-    kept_lines = [line for line in text.splitlines() if not BANNED_LINE.search(line)]
+    kept_lines = [line for line in text.splitlines() if not BLOCKED_TRAILER.match(line)]
     cleaned = "\n".join(kept_lines).rstrip() + "\n"
     changed = cleaned != text
     return cleaned, changed

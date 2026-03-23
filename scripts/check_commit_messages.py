@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail CI when banned co-author metadata appears in commit messages."""
+"""Fail CI when blocked co-author trailers appear in commit messages."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ import subprocess
 import sys
 
 
-BANNED_PATTERNS = [
-    re.compile(r"noreply@anthropic\.com", re.IGNORECASE),
+BLOCKED_TRAILER_PATTERNS = [
+    re.compile(r"^\s*co-authored-by\s*:\s*.+$", re.IGNORECASE),
 ]
 
 
@@ -36,7 +36,7 @@ def _git_log(rev_range: str) -> list[tuple[str, str]]:
 def _find_matches(message: str) -> list[str]:
     matches: list[str] = []
     for line in message.splitlines():
-        if any(pattern.search(line) for pattern in BANNED_PATTERNS):
+        if any(pattern.match(line) for pattern in BLOCKED_TRAILER_PATTERNS):
             matches.append(line.strip())
     return matches
 
@@ -56,14 +56,13 @@ def main() -> int:
         print("Commit message policy check passed.")
         return 0
 
-    print("Blocked: found banned Anthropic co-author metadata in commit messages:")
+    print("Blocked: found disallowed co-author trailers in commit messages:")
     for sha, lines in violations:
         print(f"- {sha}")
         for line in lines:
             print(f"  {line}")
     print(
-        "\nRemove these lines from commit messages before merging. "
-        "Expected blocker: noreply@anthropic.com"
+        "\nRemove Co-authored-by trailers from commit messages before merging."
     )
     return 1
 
