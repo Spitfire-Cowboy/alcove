@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+msg_file="${1:-}"
+if [[ -z "$msg_file" || ! -f "$msg_file" ]]; then
+  exit 0
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+python3 "$repo_root/scripts/sanitize_commit_message.py" "$msg_file"

@@ -7,7 +7,37 @@ on:
     branches: [main]
 
 jobs:
+  commit-metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Block Anthropic co-author trailers in commit messages
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            RANGE="${BASE_SHA}..${HEAD_SHA}"
+          else
+            if [[ "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+              RANGE="$CURRENT_SHA"
+            else
+              RANGE="${BEFORE_SHA}..${CURRENT_SHA}"
+            fi
+          fi
+
+          python3 scripts/check_commit_messages.py "$RANGE"
+
   test:
+    needs: commit-metadata
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -51,4 +81,3 @@ jobs:
         uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-

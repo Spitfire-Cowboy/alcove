@@ -96,6 +96,16 @@ The full roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md). Alcove will not becom
 
 [Why Alcove?](WHY.md) · [Architecture](docs/ARCHITECTURE.md) · [Operations](docs/OPERATIONS.md) · [Security](docs/SECURITY.md) · [Seed Corpus](docs/SEED_CORPUS.md) · [Roadmap](docs/ROADMAP.md) · [Plugin Ideas](docs/PLUGINS.md) · [Accessibility](ACCESSIBILITY.md)
 
+## Commit metadata policy
+
+Anthropic co-author trailers are blocked in this repository. Any commit message line containing `noreply@anthropic.com` will fail CI.
+
+Install local hooks to strip those lines before commit:
+
+```bash
+make hooks
+```
+
 ## License
 
 [Apache 2.0](LICENSE)
