@@ -65,7 +65,11 @@ def root(request: Request):
         doc_count = backend.count()
     except Exception:
         doc_count = 0
-    return templates.TemplateResponse("search.html", _tpl({"request": request, "doc_count": doc_count}))
+    return templates.TemplateResponse(
+        request,
+        "search.html",
+        _tpl({"doc_count": doc_count}),
+    )
 
 
 @app.get("/demos", response_class=HTMLResponse)
@@ -112,9 +116,9 @@ def demos_index(request: Request):
         })
 
     return templates.TemplateResponse(
+        request,
         "demos.html",
         _tpl({
-            "request": request,
             "demos": demos,
         }),
     )
@@ -151,8 +155,9 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = "", mod
             })
 
     return templates.TemplateResponse(
+        request,
         "results.html",
-        _tpl({"request": request, "query": q, "results": results}),
+        _tpl({"query": q, "results": results}),
     )
 
 
