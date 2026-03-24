@@ -32,6 +32,3 @@ smoke:
 
 test:
 	python3 -m pytest -q
-
-hooks:
-	./scripts/install_git_hooks.sh
