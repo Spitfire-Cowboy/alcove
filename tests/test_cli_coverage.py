@@ -336,6 +336,16 @@ class TestCmdServe:
             cmd_serve(args)
         assert os.environ.get("ALCOVE_ROOT_PATH") == "/demos"
 
+    def test_cmd_serve_sets_theme_env(self, monkeypatch):
+        import argparse
+        from unittest.mock import patch
+        from alcove.cli import cmd_serve
+        monkeypatch.delenv("ALCOVE_THEME", raising=False)
+        args = argparse.Namespace(host="127.0.0.1", port=8000, root_path="", theme="congress")
+        with patch("uvicorn.run"):
+            cmd_serve(args)
+        assert os.environ.get("ALCOVE_THEME") == "congress"
+
 
 class TestCmdCollections:
     """Tests for cmd_collections."""

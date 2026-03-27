@@ -10,6 +10,7 @@ from alcove.plugins import (
     discover_extractors,
     discover_backends,
     discover_embedders,
+    discover_themes,
     list_plugins,
 )
 
@@ -71,6 +72,20 @@ class TestDiscoverEmbedders:
             assert result["cohere"] is fake_cls
 
 
+class TestDiscoverThemes:
+    def test_returns_empty_when_no_plugins(self):
+        with patch("alcove.plugins.entry_points", return_value=[]):
+            assert discover_themes() == {}
+
+    def test_discovers_theme_plugin(self):
+        provider = MagicMock()
+        ep = _make_entry_point("congress", "alcove_theme_congress:theme", provider)
+        with patch("alcove.plugins.entry_points", return_value=[ep]):
+            result = discover_themes()
+            assert "congress" in result
+            assert result["congress"] is provider
+
+
 class TestListPlugins:
     def test_empty_when_no_plugins(self):
         with patch("alcove.plugins.entry_points", return_value=[]):
@@ -80,19 +95,21 @@ class TestListPlugins:
         ext_ep = _make_entry_point("docx", "alcove_docx:extract_docx")
         backend_ep = _make_entry_point("milvus", "alcove_milvus:Milvus")
         embedder_ep = _make_entry_point("cohere", "alcove_cohere:Cohere")
+        theme_ep = _make_entry_point("congress", "alcove_theme_congress:theme")
 
         def fake_entry_points(*, group):
             return {
                 "alcove.extractors": [ext_ep],
                 "alcove.backends": [backend_ep],
                 "alcove.embedders": [embedder_ep],
+                "alcove.themes": [theme_ep],
             }.get(group, [])
 
         with patch("alcove.plugins.entry_points", side_effect=fake_entry_points):
             plugins = list_plugins()
-            assert len(plugins) == 3
+            assert len(plugins) == 4
             types = {p["type"] for p in plugins}
-            assert types == {"extractor", "backend", "embedder"}
+            assert types == {"extractor", "backend", "embedder", "theme"}
 
 
 class TestPipelineUsesPlugins:

@@ -32,7 +32,7 @@ data/raw/*  →  chunks.jsonl  →  vector store  →  search results
 
 **Query** retrieves results through the CLI or a built-in web interface with file upload. Three search modes: semantic (vector similarity), keyword (BM25), and hybrid. Results can be scoped to named collections.
 
-Fixed pipeline, variable corpus. Custom extractors, embedders, and vector backends plug in via Python entry points. See [Architecture](docs/ARCHITECTURE.md) for the full plugin API and [Plugin Ideas](docs/PLUGINS.md) for domain-specific use cases.
+Fixed pipeline, variable corpus. Custom extractors, embedders, vector backends, and web themes plug in via Python entry points. See [Architecture](docs/ARCHITECTURE.md) for the full plugin API and [Plugin Ideas](docs/PLUGINS.md) for domain-specific use cases.
 
 ## Quick start
 

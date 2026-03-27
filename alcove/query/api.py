@@ -14,13 +14,17 @@ from pydantic import BaseModel
 from starlette.templating import Jinja2Templates
 import uvicorn
 
-from alcove.web import TEMPLATES_DIR, STATIC_DIR
+from alcove.web import STATIC_DIR
+from alcove.web.theme_loader import resolve_theme
 from .retriever import query_hybrid, query_keyword, query_text
 
 app = FastAPI(title="Alcove")
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+ACTIVE_THEME = resolve_theme()
+if ACTIVE_THEME.static_dir:
+    app.mount("/theme-static", StaticFiles(directory=ACTIVE_THEME.static_dir), name="theme-static")
+templates = Jinja2Templates(directory=ACTIVE_THEME.template_dirs)
 
 
 def _root_path() -> str:
@@ -32,6 +36,11 @@ def _root_path() -> str:
 def _tpl(ctx: dict) -> dict:
     """Merge template context with the base_url global."""
     ctx.setdefault("base_url", _root_path())
+    ctx.setdefault("active_theme", ACTIVE_THEME.name)
+    ctx.setdefault(
+        "theme_static_url",
+        f"{_root_path()}/theme-static" if ACTIVE_THEME.static_dir else None,
+    )
     return ctx
 
 

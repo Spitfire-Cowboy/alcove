@@ -54,22 +54,28 @@ Set the backend with the `VECTOR_BACKEND` environment variable. See [OPERATIONS.
 
 ## Plugin system
 
-Custom extractors, embedders, and vector backends plug in via [Python entry points](https://packaging.python.org/en/latest/specifications/entry-points/). Three extension groups:
+Custom extractors, embedders, vector backends, and web themes plug in via [Python entry points](https://packaging.python.org/en/latest/specifications/entry-points/). Four extension groups:
 
 | Group | Purpose | Example entry point |
 |-------|---------|---------------------|
 | `alcove.extractors` | Add file format support | `rtf = my_plugin:extract_rtf` |
 | `alcove.backends` | Add vector store backends | `pinecone = my_plugin:PineconeBackend` |
 | `alcove.embedders` | Add embedding models | `openai = my_plugin:OpenAIEmbedder` |
+| `alcove.themes` | Add web UI themes | `congress = alcove_theme_congress:theme` |
 
 To create a plugin, add an `[project.entry-points]` section in your package's `pyproject.toml`:
 
 ```toml
 [project.entry-points."alcove.extractors"]
 rtf = "my_plugin:extract_rtf"
+
+[project.entry-points."alcove.themes"]
+congress = "alcove_theme_congress:theme"
 ```
 
 Plugins are merged with built-ins at startup. When a plugin and a built-in share the same name, the plugin wins. See [ROADMAP.md](ROADMAP.md#mid-term) for planned plugin API expansion and [PLUGINS.md](PLUGINS.md) for domain-specific plugin ideas and recipes.
+
+Web themes are selected with `ALCOVE_THEME`. The default is `default` (built-in templates). A theme plugin can provide a template directory and optional static directory. Template lookup is layered (`plugin -> built-in`) so missing templates safely fall back to core pages.
 
 ## Boundary
 

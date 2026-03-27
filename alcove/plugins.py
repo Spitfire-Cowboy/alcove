@@ -25,6 +25,7 @@ else:
 EXTRACTORS_GROUP = "alcove.extractors"
 BACKENDS_GROUP = "alcove.backends"
 EMBEDDERS_GROUP = "alcove.embedders"
+THEMES_GROUP = "alcove.themes"
 
 
 def discover_extractors() -> Dict[str, callable]:
@@ -46,6 +47,11 @@ def discover_embedders() -> Dict[str, type]:
     return {ep.name: ep.load() for ep in entry_points(group=EMBEDDERS_GROUP)}
 
 
+def discover_themes() -> Dict[str, object]:
+    """Return {"name": theme spec provider} from installed plugins."""
+    return {ep.name: ep.load() for ep in entry_points(group=THEMES_GROUP)}
+
+
 def list_plugins() -> List[dict]:
     """List all discovered Alcove plugins across all groups."""
     plugins = []
@@ -53,6 +59,7 @@ def list_plugins() -> List[dict]:
         (EXTRACTORS_GROUP, "extractor"),
         (BACKENDS_GROUP, "backend"),
         (EMBEDDERS_GROUP, "embedder"),
+        (THEMES_GROUP, "theme"),
     ]:
         for ep in entry_points(group=group):
             plugins.append({

@@ -52,6 +52,7 @@ Bind to a non-localhost address only after reviewing [Security: Operator Respons
 |----------|---------|-------------|
 | `EMBEDDER` | `hash` | Embedder to use (`hash` or `sentence-transformers`) |
 | `VECTOR_BACKEND` | `chromadb` | Vector store (`chromadb` or `zvec`) |
+| `ALCOVE_THEME` | `default` | Web UI theme name (`default` or an installed `alcove.themes` plugin) |
 | `CHROMA_PATH` | `./data/chroma` | ChromaDB persistence directory |
 | `CHROMA_COLLECTION` | `alcove_docs` | Collection name |
 | `CHUNK_SIZE` | `1000` | Characters per chunk |

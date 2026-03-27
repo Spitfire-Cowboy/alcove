@@ -14,6 +14,8 @@ def cmd_serve(args):
     import uvicorn
     if args.root_path:
         os.environ["ALCOVE_ROOT_PATH"] = args.root_path.rstrip("/")
+    if getattr(args, "theme", ""):
+        os.environ["ALCOVE_THEME"] = args.theme.strip()
     from alcove.query.api import app
     uvicorn.run(app, host=args.host, port=args.port)
 
@@ -161,6 +163,11 @@ def main():
         "--root-path", default="",
         help="URL prefix when served behind a reverse proxy (e.g. /demos). "
              "Sets ALCOVE_ROOT_PATH env var.",
+    )
+    p_serve.add_argument(
+        "--theme", default="",
+        help="Web theme name (built-in 'default' or an installed alcove.themes plugin). "
+             "Sets ALCOVE_THEME env var.",
     )
     p_serve.set_defaults(func=cmd_serve)
 
