@@ -37,7 +37,7 @@
 {% block content %}
 
 <!-- ── Search form ──────────────────────────────────────────────────── -->
-<form class="mb-8" method="GET" action="/search" role="search">
+<form class="mb-8" method="GET" action="{{ congress_base_url }}/search" role="search">
   <label for="q" class="block font-ui text-sm font-medium text-primary-700 mb-2">Search the corpus</label>
   <div class="flex gap-2">
     <div class="relative flex-1">
@@ -131,7 +131,7 @@
     for (var i = 0; i < files.length; i++) fd.append("files", files[i]);
     status.textContent = "Uploading\u2026";
     status.setAttribute("aria-busy", "true");
-    fetch("/ingest", { method: "POST", body: fd })
+    fetch("{{ base_url }}/ingest", { method: "POST", body: fd })
       .then(function (r) { return r.ok ? r.json() : r.json().then(function (e) { throw new Error(e.error || "Upload failed"); }); })
       .then(function (data) {
         status.setAttribute("aria-busy", "false");

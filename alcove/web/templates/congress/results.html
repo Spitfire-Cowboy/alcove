@@ -5,7 +5,7 @@
 {% block page_header %}
 <div class="bg-white border-b border-primary-100 px-6 py-4">
   <div class="max-w-5xl mx-auto flex items-center gap-4">
-    <a href="/" class="font-ui text-sm text-primary-500 hover:text-accent transition-colors flex items-center gap-1">
+    <a href="{{ congress_base_url }}/" class="font-ui text-sm text-primary-500 hover:text-accent transition-colors flex items-center gap-1">
       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
       </svg>
@@ -54,7 +54,7 @@
 {% block content %}
 
 <!-- ── Search bar (persistent on results page) ─────────────────────── -->
-<form class="mb-6" method="GET" action="/search" role="search">
+<form class="mb-6" method="GET" action="{{ congress_base_url }}/search" role="search">
   <div class="flex gap-2">
     <div class="relative flex-1">
       <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-primary-400" aria-hidden="true">
@@ -105,13 +105,13 @@
           <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-600 font-ui border border-primary-100">
             {{ ext }}
           </span>
-          <span class="truncate">{{ r.source_display | default(r.source) | safe }}</span>
+          <span class="truncate">{{ r.source_display | default(r.source) | e }}</span>
         </div>
         <!-- Filename -->
         <a href="{{ r.href }}" target="_blank" rel="noopener noreferrer"
            class="font-ui font-medium text-accent hover:text-accent-hover hover:underline text-sm leading-snug block truncate"
            aria-describedby="{{ card_id }}-snippet">
-          {{ r.filename | safe }}
+          {{ r.filename | e }}
         </a>
       </div>
 
@@ -190,7 +190,7 @@
     <li>&bull; Remove source-type filters in the sidebar</li>
   </ul>
   <div class="mt-5">
-    <a href="/" class="font-ui text-sm text-accent hover:text-accent-hover hover:underline">&larr; Back to search</a>
+    <a href="{{ congress_base_url }}/" class="font-ui text-sm text-accent hover:text-accent-hover hover:underline">&larr; Back to search</a>
   </div>
 </div>
 {% endif %}

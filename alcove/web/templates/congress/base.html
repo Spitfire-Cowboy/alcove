@@ -62,7 +62,7 @@
 
       <!-- Logo / wordmark -->
       <div class="px-6 py-5 border-b border-primary-700">
-        <a href="/" class="flex items-center gap-2 group">
+        <a href="{{ congress_base_url }}/" class="flex items-center gap-2 group">
           <span class="inline-flex items-center justify-center w-7 h-7 rounded bg-accent text-white font-ui font-semibold text-sm">A</span>
           <span class="font-ui font-semibold text-white text-base tracking-tight group-hover:text-primary-100">Alcove</span>
           <span class="font-ui text-xs text-primary-400 ml-0.5 mt-0.5">.congress</span>
@@ -71,15 +71,15 @@
 
       <!-- Nav -->
       <nav class="px-3 py-4 flex-1 space-y-1" aria-label="Primary navigation">
-        <a href="/"
+        <a href="{{ congress_base_url }}/"
            class="flex items-center gap-2.5 px-3 py-2 rounded-md font-ui text-sm text-primary-200 hover:text-white hover:bg-primary-700 transition-colors
-                  {% if request.path == '/' %}bg-primary-700 text-white{% endif %}">
+                  {% if request.path in ['/', congress_base_url, congress_base_url + '/'] %}bg-primary-700 text-white{% endif %}">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
           </svg>
           Search
         </a>
-        <a href="/collections"
+        <a href="{{ base_url }}/collections"
            class="flex items-center gap-2.5 px-3 py-2 rounded-md font-ui text-sm text-primary-200 hover:text-white hover:bg-primary-700 transition-colors">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
