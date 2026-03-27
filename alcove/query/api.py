@@ -34,6 +34,120 @@ def _tpl(ctx: dict) -> dict:
     ctx.setdefault("base_url", _root_path())
     return ctx
 
+
+def _is_congress_request(request: Request) -> bool:
+    """True when current request should render congress-specific templates."""
+    base = _root_path().rstrip("/")
+    if base == "/congress":
+        return True
+    path = request.url.path.rstrip("/")
+    return path == "/congress" or path.startswith("/congress/")
+
+
+def _congress_base_url(request: Request) -> str:
+    """Resolve the outward congress URL prefix for links/forms in templates."""
+    base = _root_path().rstrip("/")
+    if base == "/congress":
+        return "/congress"
+    if _is_congress_request(request):
+        return (base + "/congress") if base else "/congress"
+    return base
+
+
+def _source_href(source: str) -> str:
+    """Return a safe hyperlink for a source path, when representable."""
+    if source.startswith(("http://", "https://", "file://")):
+        return source
+    try:
+        path = Path(source).expanduser()
+        if path.is_absolute():
+            return path.as_uri()
+    except Exception:
+        pass
+    return "#"
+
+
+def _parse_collections(collections: str) -> tuple[Optional[List[str]], Optional[JSONResponse]]:
+    """Parse and validate comma-separated collections query param."""
+    coll_re = re.compile(r"^[a-zA-Z0-9_\-\.]{1,128}$")
+    if not collections.strip():
+        return None, None
+    tokens = [c.strip() for c in collections.split(",") if c.strip()]
+    invalid = [t for t in tokens if not coll_re.match(t)]
+    if invalid:
+        return None, JSONResponse(
+            status_code=422,
+            content={"detail": f"Invalid collection name(s): {invalid}"},
+        )
+    return tokens, None
+
+
+def _build_results(q: str, k: int, mode: str, coll_list: Optional[List[str]]) -> list[dict]:
+    """Fetch, normalize, and decorate retriever output for web templates."""
+    if not q.strip():
+        return []
+    raw = _dispatch_query(q, k, mode=mode, collections=coll_list)
+    documents = raw.get("documents", [[]])[0]
+    metadatas = raw.get("metadatas", [[]])[0]
+    distances = raw.get("distances", [[]])[0]
+
+    results: list[dict] = []
+    for doc, meta, dist in zip(documents, metadatas, distances):
+        meta_dict = meta if isinstance(meta, dict) else {}
+        source = str(meta_dict.get("source", "unknown"))
+        source_name = Path(source).name or source
+        escaped = html.escape(doc)
+        highlighted = _highlight(escaped, q)
+        results.append({
+            "text": highlighted,
+            "source": source,
+            "source_display": source,
+            "filename": source_name,
+            "href": _source_href(source),
+            "collection": meta_dict.get("collection", "default"),
+            "score": round(1.0 - dist, 3) if dist <= 1.0 else round(dist, 3),
+        })
+    return results
+
+
+def _render_root_search(request: Request, *, force_congress: bool = False):
+    from alcove.index.backend import get_backend
+    from alcove.index.embedder import get_embedder
+    try:
+        backend = get_backend(get_embedder())
+        doc_count = backend.count()
+    except Exception:
+        doc_count = 0
+
+    congress = force_congress or _is_congress_request(request)
+    template = "congress/search.html" if congress else "search.html"
+    ctx = {"doc_count": doc_count, "query": ""}
+    if congress:
+        ctx["congress_base_url"] = _congress_base_url(request)
+    return templates.TemplateResponse(request, template, _tpl(ctx))
+
+
+def _render_search_results(
+    request: Request,
+    *,
+    q: str,
+    k: int,
+    collections: str,
+    mode: str,
+    force_congress: bool = False,
+):
+    coll_list, err = _parse_collections(collections)
+    if err is not None:
+        return err
+    results = _build_results(q, k, mode, coll_list)
+    congress = force_congress or _is_congress_request(request)
+    template = "congress/results.html" if congress else "results.html"
+    ctx = {"query": q, "results": results}
+    if congress:
+        ctx["congress_base_url"] = _congress_base_url(request)
+    return templates.TemplateResponse(request, template, _tpl(ctx))
+
+
 SUPPORTED_EXTENSIONS = {
     ".txt", ".pdf", ".epub",
     ".html", ".htm",
@@ -58,18 +172,13 @@ def health():
 
 @app.get("/", response_class=HTMLResponse)
 def root(request: Request):
-    from alcove.index.backend import get_backend
-    from alcove.index.embedder import get_embedder
-    try:
-        backend = get_backend(get_embedder())
-        doc_count = backend.count()
-    except Exception:
-        doc_count = 0
-    return templates.TemplateResponse(
-        request,
-        "search.html",
-        _tpl({"doc_count": doc_count}),
-    )
+    return _render_root_search(request)
+
+
+@app.get("/congress", response_class=HTMLResponse)
+@app.get("/congress/", response_class=HTMLResponse, include_in_schema=False)
+def congress_root(request: Request):
+    return _render_root_search(request, force_congress=True)
 
 
 @app.get("/demos", response_class=HTMLResponse)
@@ -126,38 +235,25 @@ def demos_index(request: Request):
 
 @app.get("/search", response_class=HTMLResponse)
 def search(request: Request, q: str = "", k: int = 5, collections: str = "", mode: str = "semantic"):
-    _COLL_RE = re.compile(r"^[a-zA-Z0-9_\-\.]{1,128}$")
-    coll_list: Optional[List[str]] = None
-    if collections.strip():
-        tokens = [c.strip() for c in collections.split(",") if c.strip()]
-        invalid = [t for t in tokens if not _COLL_RE.match(t)]
-        if invalid:
-            return JSONResponse(
-                status_code=422,
-                content={"detail": f"Invalid collection name(s): {invalid}"},
-            )
-        coll_list = tokens
-    results: list = []
-    if q.strip():
-        raw = _dispatch_query(q, k, mode=mode, collections=coll_list)
-        documents = raw.get("documents", [[]])[0]
-        metadatas = raw.get("metadatas", [[]])[0]
-        distances = raw.get("distances", [[]])[0]
-
-        for doc, meta, dist in zip(documents, metadatas, distances):
-            escaped = html.escape(doc)
-            highlighted = _highlight(escaped, q)
-            results.append({
-                "text": highlighted,
-                "source": meta.get("source", "unknown") if isinstance(meta, dict) else "unknown",
-                "collection": meta.get("collection", "default") if isinstance(meta, dict) else "default",
-                "score": round(1.0 - dist, 3) if dist <= 1.0 else round(dist, 3),
-            })
-
-    return templates.TemplateResponse(
+    return _render_search_results(
         request,
-        "results.html",
-        _tpl({"query": q, "results": results}),
+        q=q,
+        k=k,
+        collections=collections,
+        mode=mode,
+    )
+
+
+@app.get("/congress/search", response_class=HTMLResponse)
+@app.get("/congress/search/", response_class=HTMLResponse, include_in_schema=False)
+def congress_search(request: Request, q: str = "", k: int = 5, collections: str = "", mode: str = "semantic"):
+    return _render_search_results(
+        request,
+        q=q,
+        k=k,
+        collections=collections,
+        mode=mode,
+        force_congress=True,
     )
 
 

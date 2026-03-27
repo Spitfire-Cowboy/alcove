@@ -24,6 +24,31 @@ def test_root_returns_html():
     assert "alcove seed-demo" in r.text
 
 
+def test_congress_root_returns_html():
+    r = client.get("/congress")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+    assert "Legislative Search" in r.text
+    assert 'action="/congress/search"' in r.text
+
+
+def test_congress_search_renders_congress_template():
+    from unittest.mock import patch
+
+    with patch(
+        "alcove.query.api._dispatch_query",
+        return_value={
+            "documents": [["A test passage about appropriations."]],
+            "metadatas": [[{"source": "/tmp/appropriations.txt", "collection": "congress_summaries"}]],
+            "distances": [[0.2]],
+        },
+    ):
+        r = client.get("/congress/search", params={"q": "appropriations"})
+    assert r.status_code == 200
+    assert "Open document" in r.text
+    assert 'href="/congress/"' in r.text
+
+
 def test_query_post_returns_json():
     """Query endpoint works even with empty index (returns empty results)."""
     r = client.post("/query", json={"query": "test", "k": 1})
@@ -95,6 +120,18 @@ class TestRootPathTemplate:
         finally:
             del os.environ["ALCOVE_ROOT_PATH"]
 
+    def test_congress_root_path_renders_congress_home(self):
+        """With ALCOVE_ROOT_PATH=/congress, '/' should render congress home template."""
+        os.environ["ALCOVE_ROOT_PATH"] = "/congress"
+        try:
+            r = client.get("/")
+            assert r.status_code == 200
+            assert "Legislative Search" in r.text
+            assert 'action="/congress/search"' in r.text
+            assert "Lead with the use cases" not in r.text
+        finally:
+            del os.environ["ALCOVE_ROOT_PATH"]
+
     def test_results_back_link_uses_root_path(self):
         """Results page 'Back to search' link respects ALCOVE_ROOT_PATH."""
         os.environ["ALCOVE_ROOT_PATH"] = "/demos"
@@ -102,6 +139,27 @@ class TestRootPathTemplate:
             r = client.get("/search?q=test")
             assert r.status_code == 200
             assert 'href="/demos/"' in r.text
+        finally:
+            del os.environ["ALCOVE_ROOT_PATH"]
+
+    def test_congress_root_path_renders_congress_results(self):
+        """With ALCOVE_ROOT_PATH=/congress, '/search' should render congress results template."""
+        from unittest.mock import patch
+
+        os.environ["ALCOVE_ROOT_PATH"] = "/congress"
+        try:
+            with patch(
+                "alcove.query.api._dispatch_query",
+                return_value={
+                    "documents": [["A test passage about transport."]],
+                    "metadatas": [[{"source": "/tmp/transport.txt", "collection": "congress_summaries"}]],
+                    "distances": [[0.1]],
+                },
+            ):
+                r = client.get("/search", params={"q": "transport"})
+            assert r.status_code == 200
+            assert "Open document" in r.text
+            assert 'href="/congress/"' in r.text
         finally:
             del os.environ["ALCOVE_ROOT_PATH"]
 
