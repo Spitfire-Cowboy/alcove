@@ -1,3 +1,9 @@
+> [!WARNING]
+> **DEPRECATED REPOSITORY**
+> `Pro777/alcove` is superseded by **`Spitfire-Cowboy/alcove`**.
+>
+> Canonical repo: https://github.com/Spitfire-Cowboy/alcove
+
 <img src="docs/assets/logo.svg" alt="Alcove" height="56">
 
 <p>
@@ -103,3 +109,4 @@ The full roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md). Alcove will not becom
 ---
 
 *The word [alcove](https://en.wikipedia.org/wiki/Alcove_(architecture)) comes from Arabic* القبة *(al-qubbah) — "the vault." An enclosed, protected space for things that matter.*
+
