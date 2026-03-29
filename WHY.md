@@ -8,7 +8,7 @@ You have thousands of files. You can never find anything in them.
 
 Alcove fixes that. Point it at a folder. It reads everything: PDFs, Word docs, ebooks, spreadsheets, HTML, Markdown, plain text ([full format list](docs/ARCHITECTURE.md#supported-formats)). It builds a searchable index and lets you search by meaning, not just by filename.
 
-Everything stays on your machine. No upload. No account. No tracking. This is not a privacy feature. It is [the architecture](docs/ARCHITECTURE.md). The [security model](docs/SECURITY.md#security-model) is simple: there is no outbound path for your data because none was ever built.
+By default, everything stays on your machine. No upload. No account. No tracking. This is not a privacy feature. It is [the architecture](docs/ARCHITECTURE.md). The [security model](docs/SECURITY.md#security-model) is local-first by design, and any non-local integration is an explicit operator choice.
 
 Want to see it work before reading further? The [seed corpus](docs/SEED_CORPUS.md) ships with public-domain texts (Alice in Wonderland, the Federalist Papers, the U.S. Constitution) so you can search something real in under a minute. [Setup takes three commands.](docs/OPERATIONS.md#first-run)
 
@@ -22,7 +22,7 @@ You pick which collections are visible. You pick which tools can ask. Your door,
 
 ## What is coming.
 
-**Soon:** Auto-indexing when files change ([streaming ingest](docs/ROADMAP.md#near-term)). A [browse mode](docs/ROADMAP.md#near-term) to explore your collection, not just search it. More formats: PowerPoint, Excel, RTF. And the [MCP endpoint](docs/ROADMAP.md#near-term): an AI retrieval interface so Claude, ChatGPT, and other tools can query your index directly.
+**Soon:** Auto-indexing when files change ([streaming ingest](docs/ROADMAP.md#near-term)). A [browse mode](docs/ROADMAP.md#near-term) to explore your collection, not just search it. More formats: PowerPoint, Excel, RTF. And the [MCP endpoint](docs/ROADMAP.md#near-term): an AI retrieval interface so AI assistants and other tools can query your index directly.
 
 **Next:** Indexing beyond text: audio, images, video ([cross-modal indexing](docs/ROADMAP.md#mid-term)). A [relevance layer](docs/ROADMAP.md#mid-term) that works like memory: things you use often surface faster, things you have not touched fade.
 
