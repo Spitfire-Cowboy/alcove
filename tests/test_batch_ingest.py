@@ -58,7 +58,7 @@ _MINIMAL_MANIFEST = {
             "id": "github-issues",
             "enabled": True,
             "tool": "github-ingest",
-            "args": {"--repo": "Pro777/alcove"},
+            "args": {"--repo": "Spitfire-Cowboy/alcove"},
         },
         {
             "id": "chroma-sync-disabled",

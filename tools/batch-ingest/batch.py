@@ -30,7 +30,7 @@ Manifest format
                 "enabled": true,
                 "tool": "github-ingest",
                 "args": {
-                    "--repo": "Pro777/alcove",
+                    "--repo": "Spitfire-Cowboy/alcove",
                     "--types": ["issues", "prs"]
                 }
             },

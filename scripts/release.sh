@@ -56,5 +56,5 @@ git push origin "v$VERSION"
 
 echo ""
 echo "Released v$VERSION."
-echo "PyPI publish: https://github.com/Pro777/alcove/actions"
-echo "Release: https://github.com/Pro777/alcove/releases/tag/v$VERSION"
+echo "PyPI publish: https://github.com/Spitfire-Cowboy/alcove/actions"
+echo "Release: https://github.com/Spitfire-Cowboy/alcove/releases/tag/v$VERSION"
