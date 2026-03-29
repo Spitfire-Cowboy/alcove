@@ -5,8 +5,7 @@ These tests do not require a running browser or pytest-axe. They load the
 Jinja2 templates and assert that required ARIA attributes, landmark roles,
 and structural elements are present in the rendered HTML.
 
-For full axe/WCAG coverage see the tracking issue:
-https://github.com/Pro777/alcove-starter-private/issues/80
+For full axe/WCAG coverage, track work in the public alcove issue queue.
 """
 
 import re

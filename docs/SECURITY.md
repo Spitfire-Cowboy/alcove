@@ -12,7 +12,7 @@ Do not open a public issue for security vulnerabilities.
 
 Use GitHub's private vulnerability reporting:
 
-1. Go to the [Security tab](https://github.com/Pro777/alcove/security)
+1. Go to the [Security tab](https://github.com/Spitfire-Cowboy/alcove/security)
 2. Click "Report a vulnerability"
 3. Describe the issue, steps to reproduce, and impact
 
