@@ -34,5 +34,5 @@ jobs:
         # One-time setup required on pypi.org:
         #   1. Create account at https://pypi.org
         #   2. Go to Account -> Publishing -> Add a new pending publisher
-        #   3. Fill in: owner=Pro777, repo=alcove,
+        #   3. Fill in: owner=Spitfire-Cowboy, repo=alcove,
         #      workflow=publish.yml, environment=(leave blank)
