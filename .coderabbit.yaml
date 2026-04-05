@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+reviews:
+  profile: assertive
+  path_instructions:
+    - path: "alcove/**"
+      instructions: >
+        Core library code. Check for: security issues (path traversal, XSS,
+        injection), proper error handling, no leaked secrets or telemetry.
+        Alcove is local-first — data must never leave the user's disk.
+    - path: "tests/**"
+      instructions: >
+        Test suite. Verify assertions are meaningful (not just "no exception"),
+        edge cases covered, and fixtures cleaned up.
+    - path: "scripts/**"
+      instructions: >
+        Shell scripts for bootstrap, smoke tests, seed data. Check for
+        portability (macOS + Linux), proper error handling (set -euo pipefail),
+        and no hardcoded paths.
+    - path: "docs/**"
+      instructions: >
+        Documentation. Check accuracy against current code, no stale
+        references to old paths (src/ was renamed to alcove/).
+  auto_review:
+    enabled: true
+    drafts: false
+chat:
+  auto_reply: true
