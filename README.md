@@ -82,7 +82,7 @@ This is not a feature. It is a structural constraint. The architecture assumes y
 
 Alcove stores everything on your disk because that is where your data already lives. Moving it somewhere else to search it was always the strange decision.
 
-## Where it is going
+## Where it's going
 
 v0.3.0 is a working search platform. That is the "index your world" part.
 
