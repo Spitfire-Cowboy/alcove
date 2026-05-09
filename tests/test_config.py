@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+import alcove.config as config_module
 from alcove.config import Deployment, Features, RuntimeConfig, load_config, set_private_mode
 
 
@@ -143,10 +144,29 @@ def test_toml_feature_flags(tmp_path, monkeypatch):
     assert cfg.private_mode is False
 
 
+def test_toml_invalid_deployment_mode_falls_back(tmp_path, monkeypatch):
+    toml = tmp_path / "alcove.toml"
+    toml.write_text("[deployment]\nmode = \"cloud\"\n", encoding="utf-8")
+    monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
+    monkeypatch.delenv("ALCOVE_DEPLOYMENT_MODE", raising=False)
+
+    assert load_config().deployment.mode == "local"
+
+
 def test_invalid_toml_config_is_ignored(tmp_path, monkeypatch):
     toml = tmp_path / "alcove.toml"
     toml.write_text("[features\nuploads = false\n", encoding="utf-8")
     monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
+
+    cfg = load_config()
+    assert cfg.features.uploads is True
+    assert cfg.private_mode is True
+
+
+def test_invalid_json_config_is_ignored(tmp_path, monkeypatch):
+    config_file = tmp_path / "alcove.json"
+    config_file.write_text("{", encoding="utf-8")
+    monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(config_file))
 
     cfg = load_config()
     assert cfg.features.uploads is True
@@ -175,6 +195,19 @@ def test_json_feature_flags(tmp_path, monkeypatch):
     assert cfg.deployment.instance_name == "Demo Archive"
     assert cfg.excerpt_chars == 120
     assert cfg.private_mode is False
+
+
+def test_json_numeric_values_can_be_booleans(tmp_path, monkeypatch):
+    config_file = tmp_path / "alcove.json"
+    config_file.write_text(
+        json.dumps({"features": {"recent_activity": 1, "recent_activity_limit": True}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(config_file))
+
+    cfg = load_config()
+    assert cfg.features.recent_activity is True
+    assert cfg.recent_activity_limit == 1
 
 
 def test_env_wins_over_config_file(tmp_path, monkeypatch):
@@ -226,10 +259,78 @@ def test_set_private_mode_preserves_other_keys(tmp_path, monkeypatch):
     assert "private_mode = true" in content
 
 
+def test_set_private_mode_appends_after_file_without_newline(tmp_path, monkeypatch):
+    toml = tmp_path / "alcove.toml"
+    toml.write_text("[features]\nuploads = true", encoding="utf-8")
+    monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
+
+    set_private_mode(enabled=False)
+
+    assert toml.read_text(encoding="utf-8").endswith("uploads = true\nprivate_mode = false\n")
+
+
 def test_set_private_mode_rejects_json_config(tmp_path, monkeypatch):
     config_file = tmp_path / "alcove.json"
     config_file.write_text("{}", encoding="utf-8")
     monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(config_file))
 
     with pytest.raises(ValueError, match="JSON"):
+        set_private_mode(enabled=False)
+
+
+def test_set_private_mode_wraps_inspect_errors(tmp_path, monkeypatch):
+    toml = tmp_path / "alcove.toml"
+    monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
+
+    def raise_os_error(self):
+        raise OSError("boom")
+
+    monkeypatch.setattr(config_module.Path, "is_file", raise_os_error)
+
+    with pytest.raises(OSError, match="failed to inspect alcove config"):
+        set_private_mode(enabled=False)
+
+
+def test_set_private_mode_wraps_read_errors(tmp_path, monkeypatch):
+    toml = tmp_path / "alcove.toml"
+    toml.write_text("private_mode = true\n", encoding="utf-8")
+    monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
+
+    original_read_text = config_module.Path.read_text
+
+    def raise_on_config(self, *args, **kwargs):
+        if self == toml:
+            raise OSError("boom")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(config_module.Path, "read_text", raise_on_config)
+
+    with pytest.raises(OSError, match="failed to read alcove config"):
+        set_private_mode(enabled=False)
+
+
+def test_set_private_mode_wraps_existing_file_write_errors(tmp_path, monkeypatch):
+    toml = tmp_path / "alcove.toml"
+    toml.write_text("private_mode = true\n", encoding="utf-8")
+    monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
+
+    def raise_os_error(self, *args, **kwargs):
+        raise OSError("boom")
+
+    monkeypatch.setattr(config_module.Path, "write_text", raise_os_error)
+
+    with pytest.raises(OSError, match="failed to write alcove config"):
+        set_private_mode(enabled=False)
+
+
+def test_set_private_mode_wraps_new_file_write_errors(tmp_path, monkeypatch):
+    toml = tmp_path / "alcove.toml"
+    monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
+
+    def raise_os_error(self, *args, **kwargs):
+        raise OSError("boom")
+
+    monkeypatch.setattr(config_module.Path, "write_text", raise_os_error)
+
+    with pytest.raises(OSError, match="failed to write alcove config"):
         set_private_mode(enabled=False)
