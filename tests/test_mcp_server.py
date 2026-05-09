@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import io
 import json
 from unittest.mock import patch
 
 import pytest
 
+import alcove.mcp_server as mcp_server
 from alcove.mcp_server import SEARCH_ALIAS_TOOL_NAME, _do_search, handle_request
 
 
@@ -202,6 +204,42 @@ def test_do_search_applies_metadata_filters():
     assert filtered[0]["score"] == 0.8
 
 
+def test_do_search_applies_group_filter():
+    mock_result = {
+        "documents": [["Doc A", "Doc B"]],
+        "metadatas": [[
+            {"source": "raw/a.txt", "source_id": "source-a", "source_group_id": "group-1"},
+            {"source": "raw/b.txt", "source_id": "source-b", "source_group_id": "group-2"},
+        ]],
+        "distances": [[0.1, 0.2]],
+    }
+    with patch("alcove.query.retriever.query_text", return_value=mock_result):
+        filtered = _do_search(
+            query="test",
+            n_results=5,
+            source_group_ids_include=["group-1"],
+        )
+
+    assert len(filtered) == 1
+    assert filtered[0]["source_group_id"] == "group-1"
+
+
+def test_do_list_collections_normalizes_backend_entries():
+    class FakeBackend:
+        def list_collections(self):
+            return [
+                {"name": "archive", "doc_count": 2},
+                {"doc_count": 0},
+                "plain",
+            ]
+
+    with (
+        patch("alcove.index.embedder.get_embedder", return_value=object()),
+        patch("alcove.index.backend.get_backend", return_value=FakeBackend()),
+    ):
+        assert mcp_server._do_list_collections() == ["archive", "plain"]
+
+
 def test_list_collections_returns_names():
     with patch("alcove.mcp_server._do_list_collections", return_value=["archive", "docs"]):
         req = {
@@ -217,6 +255,36 @@ def test_list_collections_returns_names():
     assert names == ["archive", "docs"]
 
 
+def test_list_collections_backend_error_returns_internal_error():
+    with patch("alcove.mcp_server._do_list_collections", side_effect=RuntimeError("boom")):
+        req = {
+            "jsonrpc": "2.0",
+            "id": 13,
+            "method": "tools/call",
+            "params": {"name": "list_collections", "arguments": {}},
+        }
+        resp = handle_request(req)
+
+    assert resp is not None
+    assert resp["error"]["code"] == -32603
+    assert "boom" in resp["error"]["message"]
+
+
+def test_search_backend_error_returns_internal_error():
+    with patch("alcove.mcp_server._do_search", side_effect=RuntimeError("offline")):
+        req = {
+            "jsonrpc": "2.0",
+            "id": 14,
+            "method": "tools/call",
+            "params": {"name": "search", "arguments": {"query": "anything"}},
+        }
+        resp = handle_request(req)
+
+    assert resp is not None
+    assert resp["error"]["code"] == -32603
+    assert "offline" in resp["error"]["message"]
+
+
 def test_unknown_method_returns_error():
     req = {"jsonrpc": "2.0", "id": 8, "method": "nonexistent/method"}
 
@@ -224,6 +292,28 @@ def test_unknown_method_returns_error():
 
     assert resp is not None
     assert resp["error"]["code"] == -32601
+
+
+def test_main_reads_json_lines_and_writes_responses(monkeypatch, capsys):
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+    monkeypatch.setattr(mcp_server.sys, "stdin", io.StringIO("\n" + json.dumps(payload) + "\n"))
+
+    mcp_server.main()
+
+    lines = [line for line in capsys.readouterr().out.splitlines() if line]
+    assert len(lines) == 1
+    response = json.loads(lines[0])
+    assert response["id"] == 1
+    assert "tools" in response["result"]
+
+
+def test_main_reports_parse_errors(monkeypatch, capsys):
+    monkeypatch.setattr(mcp_server.sys, "stdin", io.StringIO("{bad json}\n"))
+
+    mcp_server.main()
+
+    response = json.loads(capsys.readouterr().out)
+    assert response["error"]["code"] == -32700
 
 
 def test_unknown_tool_returns_error():
