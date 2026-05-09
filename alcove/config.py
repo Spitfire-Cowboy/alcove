@@ -5,6 +5,11 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - exercised on Python 3.10
+    import tomli as tomllib
+
 
 @dataclass(frozen=True, slots=True)
 class Features:
@@ -125,15 +130,24 @@ def load_config() -> RuntimeConfig:
     )
 
 
-def set_private_mode(enabled: bool) -> None:
+def set_private_mode(*, enabled: bool) -> None:
     """Persist ``private_mode`` to an Alcove TOML config file."""
     path = Path(os.getenv("ALCOVE_CONFIG_PATH", "alcove.toml"))
     if path.suffix.lower() == ".json":
         raise ValueError("set_private_mode does not support JSON config files; use alcove.toml")
 
     value_str = "true" if enabled else "false"
-    if path.is_file():
-        lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    try:
+        exists = path.is_file()
+    except OSError as exc:
+        raise OSError(f"failed to inspect alcove config at {path}") from exc
+
+    if exists:
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+        except OSError as exc:
+            raise OSError(f"failed to read alcove config at {path}") from exc
+
         new_lines: list[str] = []
         replaced = False
         for line in lines:
@@ -147,9 +161,15 @@ def set_private_mode(enabled: bool) -> None:
             if new_lines and not new_lines[-1].endswith("\n"):
                 new_lines.append("\n")
             new_lines.append(f"private_mode = {value_str}\n")
-        path.write_text("".join(new_lines), encoding="utf-8")
+        try:
+            path.write_text("".join(new_lines), encoding="utf-8")
+        except OSError as exc:
+            raise OSError(f"failed to write alcove config at {path}") from exc
     else:
-        path.write_text(f"private_mode = {value_str}\n", encoding="utf-8")
+        try:
+            path.write_text(f"private_mode = {value_str}\n", encoding="utf-8")
+        except OSError as exc:
+            raise OSError(f"failed to write alcove config at {path}") from exc
 
 
 def _load_config_values() -> dict[str, object]:
@@ -188,40 +208,25 @@ def _load_json_values(path: Path) -> dict[str, object]:
 
 def _load_toml_values(path: Path) -> dict[str, object]:
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError:
+        with path.open("rb") as fp:
+            data = tomllib.load(fp)
+    except (OSError, tomllib.TOMLDecodeError):
         return {}
 
     values: dict[str, object] = {}
-    current_section: tuple[str, ...] = ()
-    for raw_line in lines:
-        line = raw_line.split("#", 1)[0].strip()
-        if not line:
-            continue
-        if line.startswith("[") and line.endswith("]"):
-            current_section = tuple(part.strip() for part in line[1:-1].split(".") if part.strip())
-            continue
-        if "=" not in line:
-            continue
-
-        key, raw_value = (part.strip() for part in line.split("=", 1))
-        full_key = ".".join((*current_section, key)) if current_section else key
-        values[full_key] = _parse_scalar(raw_value)
+    _flatten_mapping(data, values=values)
     return values
 
 
-def _parse_scalar(raw_value: str) -> object:
-    if raw_value.startswith(("'", '"')) and raw_value.endswith(("'", '"')):
-        return raw_value[1:-1]
-
-    lowered = raw_value.lower()
-    if lowered in {"true", "false"}:
-        return lowered == "true"
-
-    try:
-        return int(raw_value)
-    except ValueError:
-        return raw_value
+def _flatten_mapping(
+    data: dict[str, object], *, values: dict[str, object], prefix: tuple[str, ...] = ()
+) -> None:
+    for key, value in data.items():
+        path = (*prefix, key)
+        if isinstance(value, dict):
+            _flatten_mapping(value, values=values, prefix=path)
+        else:
+            values[".".join(path)] = value
 
 
 def _resolve_bool(*, env_name: str, config_value: object, default: bool) -> bool:

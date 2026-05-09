@@ -9,6 +9,7 @@ from alcove.config import Deployment, Features, RuntimeConfig, load_config, set_
 
 def test_default_features_are_conservative():
     features = Features()
+    assert features.recent_activity is False
     assert features.uploads is True
     assert features.auth is False
     assert features.turnstile is False
@@ -93,6 +94,16 @@ def test_invalid_numeric_env_uses_defaults(monkeypatch):
     assert cfg.excerpt_chars is None
 
 
+def test_numeric_env_clamps_to_minimum(monkeypatch):
+    monkeypatch.delenv("ALCOVE_CONFIG_PATH", raising=False)
+    monkeypatch.setenv("ALCOVE_RECENT_ACTIVITY_LIMIT", "0")
+    monkeypatch.setenv("ALCOVE_EXCERPT_CHARS", "-100")
+
+    cfg = load_config()
+    assert cfg.recent_activity_limit == 1
+    assert cfg.excerpt_chars == 1
+
+
 def test_toml_feature_flags(tmp_path, monkeypatch):
     toml = tmp_path / "alcove.toml"
     toml.write_text(
@@ -130,6 +141,16 @@ def test_toml_feature_flags(tmp_path, monkeypatch):
     assert cfg.deployment.instance_name == "My Archive"
     assert cfg.excerpt_chars == 250
     assert cfg.private_mode is False
+
+
+def test_invalid_toml_config_is_ignored(tmp_path, monkeypatch):
+    toml = tmp_path / "alcove.toml"
+    toml.write_text("[features\nuploads = false\n", encoding="utf-8")
+    monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
+
+    cfg = load_config()
+    assert cfg.features.uploads is True
+    assert cfg.private_mode is True
 
 
 def test_json_feature_flags(tmp_path, monkeypatch):
@@ -178,7 +199,7 @@ def test_set_private_mode_creates_toml_when_file_missing(tmp_path, monkeypatch):
     toml = tmp_path / "alcove.toml"
     monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
 
-    set_private_mode(False)
+    set_private_mode(enabled=False)
 
     assert toml.read_text(encoding="utf-8") == "private_mode = false\n"
 
@@ -188,7 +209,7 @@ def test_set_private_mode_updates_existing_key(tmp_path, monkeypatch):
     toml.write_text("private_mode = true\n", encoding="utf-8")
     monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
 
-    set_private_mode(False)
+    set_private_mode(enabled=False)
 
     assert toml.read_text(encoding="utf-8") == "private_mode = false\n"
 
@@ -198,7 +219,7 @@ def test_set_private_mode_preserves_other_keys(tmp_path, monkeypatch):
     toml.write_text("[features]\nuploads = true\n", encoding="utf-8")
     monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
 
-    set_private_mode(True)
+    set_private_mode(enabled=True)
 
     content = toml.read_text(encoding="utf-8")
     assert "uploads = true" in content
@@ -211,4 +232,4 @@ def test_set_private_mode_rejects_json_config(tmp_path, monkeypatch):
     monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(config_file))
 
     with pytest.raises(ValueError, match="JSON"):
-        set_private_mode(False)
+        set_private_mode(enabled=False)
