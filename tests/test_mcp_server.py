@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import io
 import json
+import sys
 from unittest.mock import patch
 
 import pytest
 
-import alcove.mcp_server as mcp_server
-from alcove.mcp_server import SEARCH_ALIAS_TOOL_NAME, _do_search, handle_request
+from alcove.mcp_server import SEARCH_ALIAS_TOOL_NAME, _do_list_collections, _do_search, handle_request, main
 
 
 def test_initialize_returns_server_info():
@@ -237,7 +237,7 @@ def test_do_list_collections_normalizes_backend_entries():
         patch("alcove.index.embedder.get_embedder", return_value=object()),
         patch("alcove.index.backend.get_backend", return_value=FakeBackend()),
     ):
-        assert mcp_server._do_list_collections() == ["archive", "plain"]
+        assert _do_list_collections() == ["archive", "plain"]
 
 
 def test_list_collections_returns_names():
@@ -296,9 +296,9 @@ def test_unknown_method_returns_error():
 
 def test_main_reads_json_lines_and_writes_responses(monkeypatch, capsys):
     payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
-    monkeypatch.setattr(mcp_server.sys, "stdin", io.StringIO("\n" + json.dumps(payload) + "\n"))
+    monkeypatch.setattr(sys, "stdin", io.StringIO("\n" + json.dumps(payload) + "\n"))
 
-    mcp_server.main()
+    main()
 
     lines = [line for line in capsys.readouterr().out.splitlines() if line]
     assert len(lines) == 1
@@ -308,9 +308,9 @@ def test_main_reads_json_lines_and_writes_responses(monkeypatch, capsys):
 
 
 def test_main_reports_parse_errors(monkeypatch, capsys):
-    monkeypatch.setattr(mcp_server.sys, "stdin", io.StringIO("{bad json}\n"))
+    monkeypatch.setattr(sys, "stdin", io.StringIO("{bad json}\n"))
 
-    mcp_server.main()
+    main()
 
     response = json.loads(capsys.readouterr().out)
     assert response["error"]["code"] == -32700
