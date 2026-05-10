@@ -91,8 +91,16 @@ def test_public_docs_avoid_private_operational_markers() -> None:
         "docs/SECURITY.md",
         "docs/index.html",
         "docs/demo-cli.html",
+        "docs/DESKTOP.md",
+        "pyproject.toml",
     ]
-    banned = ["alcove-private", "rowan-den", "/Users/", "Pro777"]
+    banned = [
+        "alcove-private",
+        "rowan-den",
+        "/Users/",
+        "Pro777",
+        "localhost.localdomain",
+    ]
     for rel in files:
         text = _read(rel)
         for marker in banned:

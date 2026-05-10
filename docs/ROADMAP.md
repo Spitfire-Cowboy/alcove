@@ -10,7 +10,7 @@ This is the foundation. Everything below builds on it.
 
 ## Merged on main for next release
 
-Current `main` includes additional unreleased work intended for the next package release: Ollama embeddings, PPTX extraction, browse mode, MCP STDIO retrieval, local signing helpers, runtime deployment controls, and release packaging checks. These should be treated as unreleased until 0.4.0 is cut, tagged, and published.
+Current `main` includes additional unreleased work intended for the next package release: Ollama embeddings, PPTX extraction, browse mode, MCP STDIO retrieval, local signing helpers, runtime deployment controls, release packaging checks, and desktop packaging preparation. These should be treated as unreleased until 0.4.0 is cut, tagged, and published.
 
 ## Next release planning (0.4.0)
 
@@ -19,6 +19,8 @@ Current `main` includes additional unreleased work intended for the next package
 Use [the 0.4.0 release plan](RELEASE_0_4_0_PLAN.md) to sequence pending PR review: dependency and maintenance work first, then pipeline contracts, then ingest/index changes, then query/API/UI changes, with documentation and changelog updates last. Anything not merged and verified should stay on the roadmap or become follow-up work rather than appearing as shipped 0.4.0 behavior.
 
 ## Near-term
+
+**Desktop packaging preparation.** Keep Briefcase metadata public and minimal, document that no desktop app bundle ships yet, and add checks that prevent accidental private paths, hostnames, or release claims from entering packaging files. The first milestone is packaging readiness, not an app-shaped wrapper around an unfinished experience.
 
 **More formats.** RTF, ODT, XLSX. PPTX is now supported by the built-in ingest pipeline. The [extractor plugin API](ARCHITECTURE.md#plugin-system) already supports additional formats; the work is writing and testing each one.
 
@@ -50,7 +52,7 @@ Use [the 0.4.0 release plan](RELEASE_0_4_0_PLAN.md) to sequence pending PR revie
 
 **Federation.** Multiple Alcove instances sharing a query surface without sharing raw data. A research group, a neighborhood archive, a distributed records system: each node owns its corpus, but queries can span the constellation. [Sovereignty is preserved; reach is expanded.](../WHY.md#the-tension-is-the-product)
 
-**Desktop application.** A native app for people who should not need a terminal to search their own files. This is packaging and distribution work, not architecture work; the core stays the same.
+**Desktop application.** A native app for people who should not need a terminal to search their own files. This is packaging and distribution work, not architecture work; the core stays the same. Current status is documented in [Desktop Packaging](DESKTOP.md): Alcove has preparation docs and checks, but no supported desktop bundle yet.
 
 ## Plugin candidates
 

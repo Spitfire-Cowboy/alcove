@@ -4,6 +4,8 @@ All notable changes to alcove-search.
 
 ## [Unreleased]
 
+- Document desktop packaging status and guardrails without claiming a supported app bundle.
+- Add focused checks for public-safe Briefcase metadata and local-first desktop packaging docs.
 - Add read-only browse document detail pages with stable IDs and chunk previews.
 - Add a read-only browse mode for recent indexed documents, collections, file types, authors, and years.
 - Add release packaging checks for public metadata, release workflows, and Homebrew formula safety.
