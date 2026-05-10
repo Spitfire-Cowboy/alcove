@@ -2,6 +2,10 @@
 
 All notable changes to alcove-search.
 
+## [Unreleased]
+
+- Add local language detection metadata during indexing and language-aware query filters.
+
 ## [0.3.0] - 2026-03-07
 
 - Add theme toggle, fix WCAG AA contrast, update accessibility docs

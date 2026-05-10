@@ -48,6 +48,7 @@ class QueryIn(BaseModel):
     query: str
     k: int = 3
     collections: Optional[List[str]] = None
+    language_filter: Optional[str] = None
     mode: str = "semantic"
 
 
@@ -125,7 +126,14 @@ def demos_index(request: Request):
 
 
 @app.get("/search", response_class=HTMLResponse)
-def search(request: Request, q: str = "", k: int = 5, collections: str = "", mode: str = "semantic"):
+def search(
+    request: Request,
+    q: str = "",
+    k: int = 5,
+    collections: str = "",
+    mode: str = "semantic",
+    language_filter: str = "",
+):
     _COLL_RE = re.compile(r"^[a-zA-Z0-9_\-\.]{1,128}$")
     coll_list: Optional[List[str]] = None
     if collections.strip():
@@ -139,7 +147,13 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = "", mod
         coll_list = tokens
     results: list = []
     if q.strip():
-        raw = _dispatch_query(q, k, mode=mode, collections=coll_list)
+        raw = _dispatch_query(
+            q,
+            k,
+            mode=mode,
+            collections=coll_list,
+            language_filter=language_filter or None,
+        )
         documents = raw.get("documents", [[]])[0]
         metadatas = raw.get("metadatas", [[]])[0]
         distances = raw.get("distances", [[]])[0]
@@ -151,6 +165,7 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = "", mod
                 "text": highlighted,
                 "source": meta.get("source", "unknown") if isinstance(meta, dict) else "unknown",
                 "collection": meta.get("collection", "default") if isinstance(meta, dict) else "default",
+                "language": meta.get("language", "unknown") if isinstance(meta, dict) else "unknown",
                 "score": round(1.0 - dist, 3) if dist <= 1.0 else round(dist, 3),
             })
 
@@ -163,7 +178,13 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = "", mod
 
 @app.post("/query")
 def query(inp: QueryIn):
-    return _dispatch_query(inp.query, inp.k, mode=inp.mode, collections=inp.collections)
+    return _dispatch_query(
+        inp.query,
+        inp.k,
+        mode=inp.mode,
+        collections=inp.collections,
+        language_filter=inp.language_filter,
+    )
 
 
 @app.post("/ingest")
@@ -265,14 +286,26 @@ def _dispatch_query(
     k: int,
     mode: str = "semantic",
     collections: Optional[List[str]] = None,
+    language_filter: Optional[str] = None,
 ) -> dict:
     """Route to the correct retriever based on search mode."""
     if mode == "keyword":
-        return query_keyword(q, n_results=k)
+        kwargs = {"n_results": k}
+        if collections is not None:
+            kwargs["collections"] = collections
+        if language_filter is not None:
+            kwargs["language_filter"] = language_filter
+        return query_keyword(q, **kwargs)
     elif mode == "hybrid":
-        return query_hybrid(q, n_results=k, collections=collections)
+        kwargs = {"n_results": k, "collections": collections}
+        if language_filter is not None:
+            kwargs["language_filter"] = language_filter
+        return query_hybrid(q, **kwargs)
     else:
-        return query_text(q, n_results=k, collections=collections)
+        kwargs = {"n_results": k, "collections": collections}
+        if language_filter is not None:
+            kwargs["language_filter"] = language_filter
+        return query_text(q, **kwargs)
 
 
 def _highlight(escaped_text: str, query: str) -> str:

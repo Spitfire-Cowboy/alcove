@@ -6,32 +6,60 @@ from alcove.index.backend import get_backend
 from alcove.index.embedder import get_embedder
 
 
-def query_text(q: str, n_results: int = 3, collections: Optional[List[str]] = None):
+def query_text(
+    q: str,
+    n_results: int = 3,
+    collections: Optional[List[str]] = None,
+    language_filter: Optional[str] = None,
+):
     embedder = get_embedder()
     backend = get_backend(embedder)
     emb = embedder.embed([q])[0]
-    return backend.query(emb, k=n_results, collections=collections)
+    return backend.query(
+        emb,
+        k=n_results,
+        collections=collections,
+        language_filter=language_filter,
+    )
 
 
-def query_keyword(q: str, n_results: int = 3) -> dict:
+def query_keyword(
+    q: str,
+    n_results: int = 3,
+    collections: Optional[List[str]] = None,
+    language_filter: Optional[str] = None,
+) -> dict:
     """Run a keyword (BM25) search over the chunks index."""
     from alcove.index.keyword import KeywordIndex
     idx = KeywordIndex()
-    return idx.search(q, k=n_results)
+    return idx.search(
+        q,
+        k=n_results,
+        collections=collections,
+        language_filter=language_filter,
+    )
 
 
 def query_hybrid(
     q: str,
     n_results: int = 3,
     collections: Optional[List[str]] = None,
+    language_filter: Optional[str] = None,
 ) -> dict:
     """Run both semantic and keyword search, merge by averaging scores.
 
     Deduplicates by document id. Returns top-k results sorted by
     combined score (lower distance = better match).
     """
-    semantic = query_text(q, n_results=n_results, collections=collections)
-    keyword = query_keyword(q, n_results=n_results)
+    semantic_kwargs = {"n_results": n_results, "collections": collections}
+    keyword_kwargs = {"n_results": n_results}
+    if collections is not None:
+        keyword_kwargs["collections"] = collections
+    if language_filter is not None:
+        semantic_kwargs["language_filter"] = language_filter
+        keyword_kwargs["language_filter"] = language_filter
+    semantic = query_text(q, **semantic_kwargs)
+    keyword = query_keyword(q, **keyword_kwargs)
 
     # Collect per-id scores from both result sets.
     merged: Dict[str, dict] = {}

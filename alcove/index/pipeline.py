@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .backend import get_backend
 from .embedder import get_embedder
+from .language import detect_language
 
 
 def run(chunks_file: str | None = None, collection: str = "default") -> int:
@@ -18,9 +19,14 @@ def run(chunks_file: str | None = None, collection: str = "default") -> int:
     with Path(chunks_file).open("r", encoding="utf-8") as f:
         for line in f:
             rec = json.loads(line)
+            chunk = rec["chunk"]
             ids.append(rec["id"])
-            docs.append(rec["chunk"])
-            metas.append({"source": rec["source"], "collection": collection})
+            docs.append(chunk)
+            metas.append({
+                "source": rec["source"],
+                "collection": collection,
+                "language": (rec.get("language") or detect_language(chunk)).lower(),
+            })
 
     if not ids:
         return 0

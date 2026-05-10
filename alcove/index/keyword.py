@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from .language import detect_language
+
 
 class KeywordIndex:
     """BM25-based keyword search over a chunks.jsonl file.
@@ -42,6 +44,8 @@ class KeywordIndex:
                         "id": rec.get("id", ""),
                         "text": text,
                         "source": rec.get("source", ""),
+                        "collection": rec.get("collection", "default"),
+                        "language": (rec.get("language") or detect_language(text)).lower(),
                     })
                     tokenized.append(text.lower().split())
 
@@ -50,7 +54,13 @@ class KeywordIndex:
         else:
             self._bm25 = None
 
-    def search(self, query: str, k: int = 3) -> dict:
+    def search(
+        self,
+        query: str,
+        k: int = 3,
+        language_filter: Optional[str] = None,
+        collections: Optional[List[str]] = None,
+    ) -> dict:
         """Search the keyword index for the given query.
 
         Returns results in ChromaDB-compatible format:
@@ -83,18 +93,31 @@ class KeywordIndex:
                 norm = 0.0
             scored.append((idx, norm))
 
-        # Sort by normalized score descending, take top-k
+        # Sort by normalized score descending. Apply metadata filters while
+        # collecting so matching documents beyond the first k can still surface.
         scored.sort(key=lambda x: x[1], reverse=True)
-        top = scored[:k]
 
         ids: List[str] = []
         documents: List[str] = []
         distances: List[float] = []
+        metadatas: List[dict] = []
+        language_filter = language_filter.lower() if language_filter else None
 
-        for idx, norm in top:
+        for idx, norm in scored:
             chunk = self._chunks[idx]
+            if language_filter and chunk["language"] != language_filter:
+                continue
+            if collections and chunk["collection"] not in collections:
+                continue
             ids.append(chunk["id"])
             documents.append(chunk["text"])
             distances.append(round(1.0 - norm, 6))
+            metadatas.append({
+                "source": chunk["source"],
+                "collection": chunk["collection"],
+                "language": chunk["language"],
+            })
+            if len(ids) >= k:
+                break
 
-        return {"ids": [ids], "documents": [documents], "distances": [distances]}
+        return {"ids": [ids], "documents": [documents], "distances": [distances], "metadatas": [metadatas]}

@@ -52,6 +52,28 @@ class TestChromaBackend:
         assert len(result["ids"]) == 1  # ChromaDB wraps in outer list
         assert len(result["ids"][0]) == 2
 
+    def test_query_filters_by_language(self, embedder, tmp_path, monkeypatch):
+        monkeypatch.setenv("CHROMA_PATH", str(tmp_path / "chroma"))
+        monkeypatch.setenv("CHROMA_COLLECTION", "test_col")
+        from alcove.index.backend import ChromaBackend
+
+        backend = ChromaBackend(embedder)
+        vecs = embedder.embed(["family history", "historia familiar"])
+        backend.add(
+            ids=["en-doc", "es-doc"],
+            embeddings=vecs,
+            documents=["family history", "historia familiar"],
+            metadatas=[
+                {"source": "a.txt", "language": "en"},
+                {"source": "b.txt", "language": "es"},
+            ],
+        )
+
+        q_vec = embedder.embed(["historia"])[0]
+        result = backend.query(q_vec, k=2, language_filter="es")
+
+        assert result["ids"] == [["es-doc"]]
+
     def test_upsert_overwrites(self, embedder, tmp_path, monkeypatch):
         monkeypatch.setenv("CHROMA_PATH", str(tmp_path / "chroma"))
         monkeypatch.setenv("CHROMA_COLLECTION", "test_col")

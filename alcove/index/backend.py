@@ -9,6 +9,22 @@ from chromadb.config import Settings
 from .embedder import get_collection_name
 
 
+def _query_where(
+    collections: Optional[List[str]] = None,
+    language_filter: Optional[str] = None,
+) -> Optional[dict]:
+    clauses = []
+    if collections:
+        clauses.append({"collection": {"$in": collections}})
+    if language_filter:
+        clauses.append({"language": language_filter.lower()})
+    if not clauses:
+        return None
+    if len(clauses) == 1:
+        return clauses[0]
+    return {"$and": clauses}
+
+
 class MultiChromaBackend:
     """Vector backend that fans out across ALL ChromaDB collections in CHROMA_PATH.
 
@@ -84,7 +100,13 @@ class MultiChromaBackend:
                 embeddings=group["embeddings"],
             )
 
-    def query(self, embedding, k=3, collections: Optional[List[str]] = None):
+    def query(
+        self,
+        embedding,
+        k=3,
+        collections: Optional[List[str]] = None,
+        language_filter: Optional[str] = None,
+    ):
         """Fan out query to all (or filtered) collections and merge by distance."""
         target_cols = self._get_filtered_collections(collections)
         if not target_cols:
@@ -101,11 +123,15 @@ class MultiChromaBackend:
                 if col_count == 0:
                     continue
                 n = min(k, col_count)
-                result = col.query(
-                    query_embeddings=[embedding],
-                    n_results=n,
-                    include=["documents", "distances", "metadatas"],
-                )
+                kwargs = {
+                    "query_embeddings": [embedding],
+                    "n_results": n,
+                    "include": ["documents", "distances", "metadatas"],
+                }
+                where = _query_where(language_filter=language_filter)
+                if where:
+                    kwargs["where"] = where
+                result = col.query(**kwargs)
                 ids = result.get("ids", [[]])[0]
                 docs = result.get("documents", [[]])[0]
                 dists = result.get("distances", [[]])[0]
@@ -204,7 +230,13 @@ class MultiRootBackend:
     def add(self, ids, embeddings, documents, metadatas):  # pragma: no cover
         raise NotImplementedError("MultiRootBackend is read-only; ingest each collection separately.")
 
-    def query(self, embedding, k=3, collections: Optional[List[str]] = None):
+    def query(
+        self,
+        embedding,
+        k=3,
+        collections: Optional[List[str]] = None,
+        language_filter: Optional[str] = None,
+    ):
         """Fan out query across all (or filtered) roots and merge by distance."""
         targets = self._cols
         if collections:
@@ -222,11 +254,15 @@ class MultiRootBackend:
                 if col_count == 0:
                     continue
                 n = min(k, col_count)
-                result = col.query(
-                    query_embeddings=[embedding],
-                    n_results=n,
-                    include=["documents", "distances", "metadatas"],
-                )
+                kwargs = {
+                    "query_embeddings": [embedding],
+                    "n_results": n,
+                    "include": ["documents", "distances", "metadatas"],
+                }
+                where = _query_where(language_filter=language_filter)
+                if where:
+                    kwargs["where"] = where
+                result = col.query(**kwargs)
                 ids = result.get("ids", [[]])[0]
                 docs = result.get("documents", [[]])[0]
                 dists = result.get("distances", [[]])[0]
@@ -285,10 +321,17 @@ class ChromaBackend:
             ids=ids, documents=documents, metadatas=metadatas, embeddings=embeddings,
         )
 
-    def query(self, embedding, k=3, collections: Optional[List[str]] = None):
+    def query(
+        self,
+        embedding,
+        k=3,
+        collections: Optional[List[str]] = None,
+        language_filter: Optional[str] = None,
+    ):
         kwargs: dict = {"query_embeddings": [embedding], "n_results": k}
-        if collections:
-            kwargs["where"] = {"collection": {"$in": collections}}
+        where = _query_where(collections=collections, language_filter=language_filter)
+        if where:
+            kwargs["where"] = where
         return self._collection.query(**kwargs)
 
     def count(self):
@@ -327,6 +370,7 @@ class ZvecBackend:
                     _zvec.FieldSchema("document", _zvec.DataType.STRING),
                     _zvec.FieldSchema("source", _zvec.DataType.STRING),
                     _zvec.FieldSchema("collection", _zvec.DataType.STRING),
+                    _zvec.FieldSchema("language", _zvec.DataType.STRING),
                 ],
                 vectors=_zvec.VectorSchema(
                     "embedding", _zvec.DataType.VECTOR_FP32, dimension=self._dim,
@@ -349,32 +393,66 @@ class ZvecBackend:
                         "document": documents[i],
                         "source": metadatas[i].get("source", ""),
                         "collection": coll,
+                        "language": (metadatas[i].get("language") or "unknown").lower(),
                     },
                 )
             )
         self._collection.upsert(docs)
         self._collection.flush()
 
-    def query(self, embedding, k=3, collections: Optional[List[str]] = None):
+    def query(
+        self,
+        embedding,
+        k=3,
+        collections: Optional[List[str]] = None,
+        language_filter: Optional[str] = None,
+    ):
         _zvec = self._zvec
-        results = self._collection.query(
-            vectors=_zvec.VectorQuery("embedding", vector=embedding),
-            topk=k,
-            output_fields=["document", "source", "collection"],
-        )
+        topk = max(k * 5, k) if collections or language_filter else k
+        try:
+            results = self._collection.query(
+                vectors=_zvec.VectorQuery("embedding", vector=embedding),
+                topk=topk,
+                output_fields=["document", "source", "collection", "language"],
+            )
+            has_language_field = True
+        except Exception:
+            results = self._collection.query(
+                vectors=_zvec.VectorQuery("embedding", vector=embedding),
+                topk=topk,
+                output_fields=["document", "source", "collection"],
+            )
+            has_language_field = False
         ids = []
         documents = []
         distances = []
+        metadatas = []
         for doc in results:
             # Filter by collection in Python if requested.
             if collections:
                 doc_coll = doc.field("collection") or "default"
                 if doc_coll not in collections:
                     continue
+            language = (doc.field("language") if has_language_field else "unknown") or "unknown"
+            language = language.lower()
+            if language_filter and language != language_filter.lower():
+                continue
             ids.append(doc.id)
             documents.append(doc.field("document"))
             distances.append(-doc.score)  # negate: ChromaDB uses lower=better
-        return {"ids": [ids], "documents": [documents], "distances": [distances]}
+            metadatas.append({
+                "source": doc.field("source"),
+                "collection": doc.field("collection") or "default",
+                "language": language,
+            })
+            if len(ids) >= k:
+                break
+        return {
+            "ids": [ids],
+            "documents": [documents],
+            "distances": [distances],
+            "metadatas": [metadatas],
+        }
 
     def count(self):
         return self._collection.stats.doc_count
