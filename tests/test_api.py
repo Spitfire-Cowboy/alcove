@@ -229,7 +229,7 @@ def test_backend_metadata_records_handles_collection_backend(monkeypatch):
     class DummyBackend:
         _collection = DummyCollection()
 
-    monkeypatch.setattr("alcove.index.embedder.get_embedder", lambda: object())
+    monkeypatch.setattr("alcove.index.embedder.get_embedder", object)
     monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: DummyBackend())
 
     assert api_mod._backend_metadata_records() == [{"source": "data/raw/a.md"}, {"source": "data/raw/b.md"}]
@@ -245,7 +245,7 @@ def test_backend_metadata_records_handles_collection_errors(monkeypatch):
     class DummyBackend:
         _collection = BrokenCollection()
 
-    monkeypatch.setattr("alcove.index.embedder.get_embedder", lambda: object())
+    monkeypatch.setattr("alcove.index.embedder.get_embedder", object)
     monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: DummyBackend())
 
     assert api_mod._backend_metadata_records() == []
@@ -254,7 +254,7 @@ def test_backend_metadata_records_handles_collection_errors(monkeypatch):
 def test_backend_metadata_records_handles_backend_factory_error(monkeypatch):
     from alcove.query import api as api_mod
 
-    monkeypatch.setattr("alcove.index.embedder.get_embedder", lambda: object())
+    monkeypatch.setattr("alcove.index.embedder.get_embedder", object)
     monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: (_ for _ in ()).throw(RuntimeError("no db")))
 
     assert api_mod._backend_metadata_records() == []
@@ -279,7 +279,7 @@ def test_backend_metadata_records_handles_multi_collection_backend(monkeypatch):
         def _get_all_collections(self):
             return [DummyCollection(), BrokenCollection()]
 
-    monkeypatch.setattr("alcove.index.embedder.get_embedder", lambda: object())
+    monkeypatch.setattr("alcove.index.embedder.get_embedder", object)
     monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: DummyBackend())
 
     assert api_mod._backend_metadata_records() == [{"source": "data/raw/paper.md", "collection": "science"}]
@@ -299,7 +299,7 @@ def test_backend_metadata_records_handles_zvec_collection_cache(monkeypatch):
     class DummyBackend:
         _cols = [("cache", object(), DummyCollection()), ("broken", object(), BrokenCollection())]
 
-    monkeypatch.setattr("alcove.index.embedder.get_embedder", lambda: object())
+    monkeypatch.setattr("alcove.index.embedder.get_embedder", object)
     monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: DummyBackend())
 
     assert api_mod._backend_metadata_records() == [{"source": "data/raw/cache.md", "collection": "cache"}]

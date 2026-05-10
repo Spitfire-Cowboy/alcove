@@ -348,7 +348,7 @@ def _collection_label(meta: dict[str, Any], source: str) -> str:
         if len(rel.parts) > 1:
             return rel.parts[0]
     except (OSError, ValueError):
-        pass
+        return "default"
 
     return "default"
 
