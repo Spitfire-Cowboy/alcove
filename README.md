@@ -94,7 +94,7 @@ The full roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md). Alcove will not becom
 
 ## Documentation
 
-[Why Alcove?](WHY.md) · [Architecture](docs/ARCHITECTURE.md) · [Operations](docs/OPERATIONS.md) · [Security](docs/SECURITY.md) · [Seed Corpus](docs/SEED_CORPUS.md) · [Roadmap](docs/ROADMAP.md) · [Plugin Ideas](docs/PLUGINS.md) · [Accessibility](ACCESSIBILITY.md)
+[Why Alcove?](WHY.md) · [Architecture](docs/ARCHITECTURE.md) · [Operations](docs/OPERATIONS.md) · [Security](docs/SECURITY.md) · [Seed Corpus](docs/SEED_CORPUS.md) · [Roadmap](docs/ROADMAP.md) · [Plugin Ideas](docs/PLUGINS.md) · [Homebrew Packaging](docs/HOMEBREW.md) · [Accessibility](ACCESSIBILITY.md)
 
 ## License
 

@@ -1,0 +1,19 @@
+class AlcoveSearch < Formula
+  include Language::Python::Virtualenv
+
+  desc "Local-first document retrieval"
+  homepage "https://spitfire-cowboy.github.io/alcove/"
+  url "https://files.pythonhosted.org/packages/source/a/alcove-search/alcove_search-{{VERSION}}.tar.gz"
+  sha256 "{{SHA256}}"
+  license "Apache-2.0"
+
+  depends_on "python@3.12"
+
+  def install
+    virtualenv_install_with_resources
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/alcove --version")
+  end
+end

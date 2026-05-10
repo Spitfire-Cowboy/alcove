@@ -2,6 +2,11 @@
 
 All notable changes to alcove-search.
 
+## [Unreleased]
+
+- Add a public-safe Homebrew formula template, generator, and validation tests.
+- Document that Homebrew packaging is preparatory and must not be advertised until a real formula installs successfully.
+
 ## [0.3.0] - 2026-03-07
 
 - Add theme toggle, fix WCAG AA contrast, update accessibility docs

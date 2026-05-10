@@ -20,6 +20,8 @@ This is the foundation. Everything below builds on it.
 
 **Streaming ingest.** Watch a directory and re-index on change. The current pipeline is batch-oriented: you run `alcove ingest`, it processes everything. Streaming mode keeps the index current without manual intervention.
 
+**Homebrew packaging.** The repository has a safe formula template and generator, but Homebrew is not a shipped install path yet. The next step is to generate a formula from a real public release artifact, validate the checksum, test `brew install`, and only then advertise Homebrew installation.
+
 ## Mid-term
 
 **Cross-modal indexing.** Audio transcription, image OCR, video keyframe extraction. The pipeline architecture already separates extraction from embedding; new modalities plug in as extractors that produce text chunks from non-text sources. Bioacoustics and field recordings are a motivating use case, not an afterthought.
