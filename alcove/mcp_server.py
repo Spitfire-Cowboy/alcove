@@ -109,7 +109,7 @@ def _do_search(
     language = (language_filter or "").strip()
 
     results = []
-    for doc, meta, dist in zip(documents, metadatas, distances):
+    for doc, meta, dist in zip(documents, metadatas, distances, strict=True):
         meta = meta if isinstance(meta, dict) else {}
         source = str(meta.get("source", ""))
         source_id = str(meta.get("source_id") or source)
