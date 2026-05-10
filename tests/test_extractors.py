@@ -87,6 +87,48 @@ def test_extract_docx_returns_paragraph_text(tmp_path):
     assert "Alcove document extraction test." in result
 
 
+def _write_sample_pptx(path: Path, lines: list[str]) -> None:
+    pptx = pytest.importorskip("pptx", reason="python-pptx not installed")
+    from pptx.util import Inches
+
+    presentation = pptx.Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[5])
+    textbox = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(8), Inches(2))
+    text_frame = textbox.text_frame
+    for index, line in enumerate(lines):
+        paragraph = text_frame.paragraphs[0] if index == 0 else text_frame.add_paragraph()
+        paragraph.text = line
+    presentation.save(str(path))
+
+
+def test_extract_pptx_returns_slide_text(tmp_path):
+    from alcove.ingest.extractors import extract_pptx
+
+    f = tmp_path / "sample.pptx"
+    _write_sample_pptx(f, ["Alcove slide title", "Semantic search for local docs"])
+    result = extract_pptx(f)
+    assert "Alcove slide title" in result
+    assert "Semantic search for local docs" in result
+
+
+def test_extract_pptx_raises_helpful_import_error(tmp_path, monkeypatch):
+    from alcove.ingest import extractors
+
+    f = tmp_path / "sample.pptx"
+    f.write_bytes(b"not-a-real-pptx")
+
+    real_import = __import__
+
+    def blocked_import(name, *args, **kwargs):
+        if name == "pptx":
+            raise ImportError("missing")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", blocked_import)
+    with pytest.raises(ImportError, match="python-pptx is required"):
+        extractors.extract_pptx(f)
+
+
 def test_pipeline_dispatch_includes_html(tmp_path):
     """Pipeline routes .html files through the extractor without error."""
     import json
@@ -111,6 +153,20 @@ def test_pipeline_dispatch_includes_md(tmp_path):
     assert n >= 1
     records = [json.loads(line) for line in out.read_text().splitlines()]
     assert any("Local retrieval is fast." in r["chunk"] for r in records)
+
+
+def test_pipeline_dispatch_includes_pptx(tmp_path):
+    """Pipeline routes .pptx files through the extractor without error."""
+    import json
+    from alcove.ingest.pipeline import run
+
+    f = tmp_path / "deck.pptx"
+    _write_sample_pptx(f, ["Deck heading", "Deck body text"])
+    out = tmp_path / "chunks.jsonl"
+    n = run(raw_dir=str(tmp_path), out_file=str(out))
+    assert n >= 1
+    records = [json.loads(line) for line in out.read_text().splitlines()]
+    assert any("Deck heading" in r["chunk"] for r in records)
 
 
 def test_extract_tsv_tab_separated(tmp_path):

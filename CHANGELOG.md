@@ -2,6 +2,10 @@
 
 All notable changes to alcove-search.
 
+## [Unreleased]
+
+- Add built-in PPTX text extraction and pipeline dispatch.
+
 ## [0.3.0] - 2026-03-07
 
 - Add theme toggle, fix WCAG AA contrast, update accessibility docs
