@@ -7,6 +7,7 @@ All notable changes to alcove-search.
 - Add read-only browse document detail pages with stable IDs and chunk previews.
 - Add a read-only browse mode for recent indexed documents, collections, file types, authors, and years.
 - Add release packaging checks for public metadata, release workflows, and Homebrew formula safety.
+- Add a public 0.4.0 release plan while keeping the package version at 0.3.0 until release.
 - Add `EMBEDDER=ollama` for local Ollama embedding models.
 - Add built-in PPTX text extraction and pipeline dispatch.
 - Add local Ed25519 signing helpers and a standalone index signing tool for provenance checks.

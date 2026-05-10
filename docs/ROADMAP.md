@@ -8,6 +8,12 @@ A web UI with upload and search. CI across Python 3.10, 3.11, 3.12. Docker deplo
 
 This is the foundation. Everything below builds on it.
 
+## Next release planning (0.4.0)
+
+0.4.0 is a planned feature-batch release, not a shipped release yet. The package version remains 0.3.0 until the release commit, and the final 0.4.0 scope should be decided from reviewed, merged, and verified PRs on `main`.
+
+Use [the 0.4.0 release plan](RELEASE_0_4_0_PLAN.md) to sequence pending PR review: dependency and maintenance work first, then pipeline contracts, then ingest/index changes, then query/API/UI changes, with documentation and changelog updates last. Anything not merged and verified should stay on the roadmap or become follow-up work rather than appearing as shipped 0.4.0 behavior.
+
 ## Near-term
 
 **More formats.** RTF, ODT, XLSX. PPTX is now supported by the built-in ingest pipeline. The [extractor plugin API](ARCHITECTURE.md#plugin-system) already supports additional formats; the work is writing and testing each one.
