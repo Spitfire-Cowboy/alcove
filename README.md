@@ -8,89 +8,102 @@
   <a href="https://github.com/Spitfire-Cowboy/alcove/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
 </p>
 
-**Index your world. Share it with the universe.**
+**Local-first document retrieval. Your data never leaves your disk.**
 
 ---
 
-Every AI tool needs your data to be useful. The default answer is: upload it, hand it over, hope for the best. Alcove is the other answer.
+Alcove is search infrastructure for documents you keep on your own machine. It ingests a local directory, extracts text, chunks it, writes a local index, and returns matching chunks through a CLI or local web/API server.
 
-Alcove is a search engine that runs on your machine, indexes your files, and never sends a byte anywhere. Your documents stay on your disk. The search index stays on your disk. When you search, or when an AI tool needs to look something up, Alcove answers from what you have locally. No cloud. No account. No trust required.
+It is retrieval, not generation. Alcove does not summarize, answer questions, host models, or invent text. Search results are excerpts from the indexed corpus.
 
 **[See it in 30 seconds](https://spitfire-cowboy.github.io/alcove/demo.html)** · [Why Alcove?](WHY.md)
 
+## What ships today
+
+Alcove v0.4.0 ships a working local pipeline:
+
+- Recursive ingest for PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, PPTX, RST, TSV, and plain text.
+- Local indexing with ChromaDB by default, with zvec available as an optional backend.
+- A deterministic hash embedder by default, plus opt-in sentence-transformers and Ollama embedders for real semantic similarity.
+- CLI search and a FastAPI web service with search, upload, health, collection-list, and browse endpoints.
+- Semantic, keyword (BM25), and hybrid search modes.
+- Named collection metadata and collection filtering.
+- STDIO MCP retrieval tools for local index search and collection listing.
+- Local signing helpers and index signing tooling for provenance checks.
+- Python entry-point plugins for extractors, embedders, and vector backends.
+
+The roadmap includes richer manifests, provenance workflows, streaming ingest, and more plugin categories. Those are not documented here as shipped behavior; see [Roadmap](docs/ROADMAP.md) for the pending-feature map.
+
 ## How it works
 
-Three stages. Each is independent, each reads from disk and writes to disk, each can be re-run without touching the others.
+Three stages. Each stage reads from local disk and writes to local disk, so it can be re-run independently.
 
+```text
+data/raw/* -> data/processed/chunks.jsonl -> vector store -> query responses
 ```
-data/raw/*  →  chunks.jsonl  →  vector store  →  search results
-```
 
-**Ingest** discovers files recursively and extracts text with format-specific extractors. PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, RST, TSV, and plain text all work out of the box.
+**Ingest** discovers files recursively and extracts text with format-specific extractors.
 
-**Index** embeds the chunks and writes them to a local vector store. ChromaDB is the default backend; zvec is available where a lighter footprint matters.
+**Index** embeds chunks and writes vectors plus metadata to a local vector store.
 
-**Query** retrieves results through the CLI or a built-in web interface with file upload. Three search modes: semantic (vector similarity), keyword (BM25), and hybrid. Results can be scoped to named collections.
+**Query** retrieves matching chunks through the CLI or local API/web UI.
 
-Fixed pipeline, variable corpus. Custom extractors, embedders, and vector backends plug in via Python entry points. See [Architecture](docs/ARCHITECTURE.md) for the full plugin API and [Plugin Ideas](docs/PLUGINS.md) for domain-specific use cases.
+See [Architecture](docs/ARCHITECTURE.md) for module boundaries and extension points.
 
 ## Quick start
 
 ```bash
 pip install alcove-search[semantic]
+alcove seed-demo
+alcove serve
 ```
 
-This pulls in sentence-transformers for real vector similarity (~80 MB model download on first use). The base package without `[semantic]` uses the hash embedder: useful for development and CI, but not for meaningful search.
+Open `http://localhost:8000`.
+
+The `[semantic]` extra installs sentence-transformers. The first semantic run downloads `all-MiniLM-L6-v2` once, then runs locally. For zero-download installs:
+
+```bash
+pip install alcove-search
+```
+
+The base package uses the hash embedder. It is deterministic, offline, and useful for smoke tests or operators who do not want ML in the pipeline. It is not a semantic search model.
 
 <details>
-<summary>All install extras</summary>
+<summary>Install extras</summary>
 
 | Extra | Install command | What it adds |
 |-------|----------------|--------------|
 | Semantic search | `pip install alcove-search[semantic]` | Real vector similarity via sentence-transformers |
-| EPUB support | `pip install alcove-search[epub]` | `.epub` file ingestion |
-| DOCX support | `pip install alcove-search[docx]` | `.docx` file ingestion |
-| Everything | `pip install alcove-search[semantic,epub,docx]` | All of the above |
+| EPUB support | `pip install alcove-search[epub]` | `.epub` ingestion |
+| DOCX support | `pip install alcove-search[docx]` | `.docx` ingestion |
+| zvec backend | `pip install alcove-search[zvec]` | Optional zvec vector store |
+| PPTX support | `pip install alcove-search[pptx]` | `.pptx` ingestion |
+| Everything | `pip install alcove-search[semantic,epub,docx,pptx,zvec]` | All optional runtime features |
 
 </details>
 
-```bash
-alcove seed-demo          # download sample corpus + build index
-alcove serve              # open http://localhost:8000
-```
-
 <table><tr>
-<td><a href="docs/assets/web-ui-dark.png"><img src="docs/assets/web-ui-dark.png" alt="Alcove UI — dark theme" width="420"></a></td>
-<td><a href="docs/assets/web-ui-light.png"><img src="docs/assets/web-ui-light.png" alt="Alcove UI — light theme" width="420"></a></td>
+<td><a href="docs/assets/web-ui-dark.png"><img src="docs/assets/web-ui-dark.png" alt="Alcove UI, dark theme" width="420"></a></td>
+<td><a href="docs/assets/web-ui-light.png"><img src="docs/assets/web-ui-light.png" alt="Alcove UI, light theme" width="420"></a></td>
 </tr></table>
-
-## The trust dial
-
-You choose your comfort level with ML. Both modes run the same pipeline, produce the same output format, and respect the same boundary: nothing leaves the machine.
-
-**Hash embedder (default):** Deterministic SHA-256. No ML model. No network activity. Every output is a pure function of the input. This is for operators who do not want machine learning anywhere near their corpus.
-
-**Sentence-transformers (opt-in):** Real vector similarity via a local neural model, downloaded once. Still fully local. Still no cloud. This is retrieval, not generation: it finds documents that are semantically close to your query. It does not write, invent, or editorialize.
 
 ## Trust model
 
-Local disk only. No outbound network calls. No telemetry. No account to create. We disabled ChromaDB's upstream telemetry too.
+Local disk only for normal ingest, index, query, and serve operations. No telemetry. No account creation. ChromaDB's upstream telemetry is disabled.
 
-**We do not want your data.**
+Network use is explicit: `alcove seed-demo` fetches the public sample corpus, and sentence-transformers downloads its model on first use. After that, embedding runs locally.
 
-This is not a feature. It is a structural constraint. The architecture assumes you own your hardware, you control your storage, and you decide what enters the index. There is no flag to turn this off because there is nothing to turn off. The boundary is the architecture.
+Alcove does not require authentication. The local API is open to anyone who can reach the port, so keep it bound to `127.0.0.1` unless you put authentication in front of it. See [Operations](docs/OPERATIONS.md) and [Security](docs/SECURITY.md).
 
-Alcove stores everything on your disk because that is where your data already lives. Moving it somewhere else to search it was always the strange decision.
+## Common commands
 
-## Where it is going
-
-v0.3.0 is a working search platform. That is the "index your world" part.
-
-The "share it with the universe" part comes next: a retrieval interface that lets external tools query your index, on your terms. Your files stay local. Your index stays yours. But if you choose to open a door, AI gets real answers from your actual documents. No hallucinations, because there is no generation. Just lookup.
-
-Beyond that: streaming ingest, browsable corpus navigation, cross-modal indexing, a relevance layer that treats memory more like memory and less like a distance calculation, and federated indexes that let separate Alcove instances share a query surface without sharing raw data.
-
-The full roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md). Alcove will not become a SaaS product. The architecture assumes the operator owns the hardware.
+```bash
+alcove ingest /path/to/files
+alcove search "phrase to find" --mode hybrid --k 5
+alcove collections
+alcove status
+alcove serve --host 127.0.0.1 --port 8000
+```
 
 ## Documentation
 
@@ -99,7 +112,3 @@ The full roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md). Alcove will not becom
 ## License
 
 [Apache 2.0](LICENSE)
-
----
-
-*The word [alcove](https://en.wikipedia.org/wiki/Alcove_(architecture)) comes from Arabic* القبة *(al-qubbah) — "the vault." An enclosed, protected space for things that matter.*

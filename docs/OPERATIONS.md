@@ -1,26 +1,28 @@
 # Operations
 
+This guide covers the shipped local runtime: install, ingest, index, search, serve, back up, and test. It does not cover planned MCP, registry, or hosted-index workflows.
+
 ## First run
 
 ```bash
-pip install alcove-search
-alcove seed-demo          # download sample corpus + build index
-alcove serve              # open http://localhost:8000
+pip install alcove-search[semantic]
+alcove seed-demo
+alcove serve
 ```
 
-For how the pipeline works, see [Architecture](ARCHITECTURE.md).
+Open `http://localhost:8000`.
 
-## Enabling semantic search
+`seed-demo` fetches the public sample corpus, ingests it, and builds a local index. See [Seed Corpus](SEED_CORPUS.md) for what it includes.
 
-By default, Alcove uses a deterministic hash embedder (offline, no external models). For semantic search:
+For the zero-download base install:
 
 ```bash
-pip install alcove-search[semantic]
-EMBEDDER=sentence-transformers alcove seed-demo
-EMBEDDER=sentence-transformers alcove serve
+pip install alcove-search
+alcove seed-demo
+alcove serve
 ```
 
-This downloads `all-MiniLM-L6-v2` (~80 MB) on first use. See [Seed Corpus](SEED_CORPUS.md) for what `seed-demo` includes. The model is cached locally; subsequent runs are offline.
+The base install uses the hash embedder. It is deterministic and offline, but it is not a semantic model.
 
 ## Local Ollama embeddings
 
@@ -38,25 +40,61 @@ By default Alcove connects to `http://127.0.0.1:11434`. Set `OLLAMA_BASE_URL` to
 
 ```bash
 alcove ingest /path/to/your/files
+alcove search "phrase to find" --mode hybrid --k 5
 alcove serve
 ```
 
-Files can also be uploaded via the web UI at `http://localhost:8000`.
+Files can also be uploaded through the local web UI.
+
+## Search modes
+
+```bash
+alcove search "local search" --mode semantic
+alcove search "exact phrase" --mode keyword
+alcove search "mix both" --mode hybrid
+```
+
+| Mode | Use when |
+|------|----------|
+| `semantic` | You installed `[semantic]` and want meaning-based retrieval. |
+| `keyword` | Exact terms, names, identifiers, or hash-only installs matter more. |
+| `hybrid` | You want semantic retrieval with keyword backup. |
+
+## Enabling semantic search
+
+```bash
+pip install alcove-search[semantic]
+EMBEDDER=sentence-transformers alcove ingest /path/to/files
+EMBEDDER=sentence-transformers alcove serve
+```
+
+The first run downloads `all-MiniLM-L6-v2`. The model is cached locally; later runs do not require network access.
 
 ## Web UI and API
 
 ```bash
-alcove serve
+alcove serve --host 127.0.0.1 --port 8000
 ```
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/` | GET | Web UI: search and file upload |
-| `/query` | POST | `{ "query": "...", "k": 3 }` |
+| `/query` | POST | Search JSON: `{ "query": "...", "k": 3, "mode": "hybrid" }` |
 | `/ingest` | POST | File upload (multipart) |
+| `/collections` | GET | Collection names and document counts |
 | `/health` | GET | Readiness check |
 
-Bind to a non-localhost address only after reviewing [Security: Operator Responsibilities](SECURITY.md#operator-responsibilities).
+Bind to a non-localhost address only after reviewing [Security: Operator Responsibilities](SECURITY.md#operator-responsibilities). Alcove has no built-in authentication.
+
+## Collections
+
+Collections are metadata labels used for filtering. Uploaded files and index runs default to `default` unless a caller supplies a collection.
+
+```bash
+alcove collections
+```
+
+For ChromaDB, `CHROMA_COLLECTION=*` or `ALCOVE_MULTI_COLLECTION=1` enables fan-out across named ChromaDB collections in the same local store. Demo multi-root mode is controlled by `ALCOVE_DEMO_ROOT` and is read-only.
 
 ## Environment variables
 
@@ -69,10 +107,14 @@ Bind to a non-localhost address only after reviewing [Security: Operator Respons
 | `OLLAMA_DIM` | `768` | Ollama embedding dimension for backends that need it at initialization |
 | `VECTOR_BACKEND` | `chromadb` | Vector store (`chromadb` or `zvec`) |
 | `CHROMA_PATH` | `./data/chroma` | ChromaDB persistence directory |
-| `CHROMA_COLLECTION` | `alcove_docs` | Collection name |
+| `CHROMA_COLLECTION` | `alcove_docs` | ChromaDB collection name; `*` enables multi-collection fan-out |
+| `ZVEC_PATH` | `./data/zvec` | zvec persistence directory |
 | `CHUNK_SIZE` | `1000` | Characters per chunk |
 | `CHUNK_OVERLAP` | `150` | Overlap between chunks |
-| `RAW_DIR` | `data/raw` | Input directory for ingestion |
+| `RAW_DIR` | `data/raw` | Default input directory for ingestion |
+| `ALCOVE_MULTI_COLLECTION` | unset | Set to `1`, `true`, or `yes` to query all ChromaDB collections |
+| `ALCOVE_ROOT_PATH` | unset | URL prefix when served behind a reverse proxy |
+| `ALCOVE_DEMO_READONLY` | unset | Disable web upload ingest in demo/read-only mode |
 
 ## Docker
 
@@ -80,15 +122,28 @@ Bind to a non-localhost address only after reviewing [Security: Operator Respons
 docker compose up -d --build
 ```
 
-Port 8000 is exposed; the `/health` endpoint signals readiness.
+Port 8000 is exposed. Use `/health` for readiness checks.
 
-## Backup
+## Backup and rebuild
 
-Back up `data/raw`, `data/processed`, and `data/chroma` (or `data/zvec` if using the zvec backend). These directories contain everything Alcove needs to reconstruct the index.
+Back up:
+
+- `data/raw`
+- `data/processed`
+- `data/chroma` for ChromaDB
+- `data/zvec` for zvec
+
+The raw files and processed chunks are enough to rebuild the vector store. Keeping the vector store avoids re-embedding.
 
 ## Running tests
 
 ```bash
-pip install alcove-search[dev]
+pip install -e ".[dev]"
 pytest
+```
+
+Docs hygiene checks live in `tests/test_public_docs_hygiene.py`:
+
+```bash
+pytest tests/test_public_docs_hygiene.py
 ```
