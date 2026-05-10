@@ -4,8 +4,7 @@ import json
 
 import pytest
 
-import alcove.config as config_module
-from alcove.config import Deployment, Features, RuntimeConfig, load_config, set_private_mode
+from alcove.config import Deployment, Features, Path as ConfigPath, RuntimeConfig, load_config, set_private_mode
 
 
 def test_default_features_are_conservative():
@@ -285,7 +284,7 @@ def test_set_private_mode_wraps_inspect_errors(tmp_path, monkeypatch):
     def raise_os_error(self):
         raise OSError("boom")
 
-    monkeypatch.setattr(config_module.Path, "is_file", raise_os_error)
+    monkeypatch.setattr(ConfigPath, "is_file", raise_os_error)
 
     with pytest.raises(OSError, match="failed to inspect alcove config"):
         set_private_mode(enabled=False)
@@ -296,14 +295,14 @@ def test_set_private_mode_wraps_read_errors(tmp_path, monkeypatch):
     toml.write_text("private_mode = true\n", encoding="utf-8")
     monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
 
-    original_read_text = config_module.Path.read_text
+    original_read_text = ConfigPath.read_text
 
     def raise_on_config(self, *args, **kwargs):
         if self == toml:
             raise OSError("boom")
         return original_read_text(self, *args, **kwargs)
 
-    monkeypatch.setattr(config_module.Path, "read_text", raise_on_config)
+    monkeypatch.setattr(ConfigPath, "read_text", raise_on_config)
 
     with pytest.raises(OSError, match="failed to read alcove config"):
         set_private_mode(enabled=False)
@@ -317,7 +316,7 @@ def test_set_private_mode_wraps_existing_file_write_errors(tmp_path, monkeypatch
     def raise_os_error(self, *args, **kwargs):
         raise OSError("boom")
 
-    monkeypatch.setattr(config_module.Path, "write_text", raise_os_error)
+    monkeypatch.setattr(ConfigPath, "write_text", raise_os_error)
 
     with pytest.raises(OSError, match="failed to write alcove config"):
         set_private_mode(enabled=False)
@@ -330,7 +329,7 @@ def test_set_private_mode_wraps_new_file_write_errors(tmp_path, monkeypatch):
     def raise_os_error(self, *args, **kwargs):
         raise OSError("boom")
 
-    monkeypatch.setattr(config_module.Path, "write_text", raise_os_error)
+    monkeypatch.setattr(ConfigPath, "write_text", raise_os_error)
 
     with pytest.raises(OSError, match="failed to write alcove config"):
         set_private_mode(enabled=False)
