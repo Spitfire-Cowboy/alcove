@@ -106,3 +106,69 @@ def test_ollama_embedder_reports_unreachable_server(monkeypatch):
 
     with pytest.raises(RuntimeError, match="Could not reach Ollama"):
         embedder.embed(["hello"])
+
+
+def test_ollama_embedder_rejects_batch_response_without_embeddings(monkeypatch):
+    def fake_urlopen(req, timeout):
+        return _FakeResponse({"ok": True})
+
+    monkeypatch.setattr("alcove.index.embedder.urllib.request.urlopen", fake_urlopen)
+
+    embedder = OllamaEmbedder(base_url="http://127.0.0.1:11434")
+
+    with pytest.raises(RuntimeError, match="/api/embed response did not include embeddings"):
+        embedder.embed(["hello"])
+
+
+def test_ollama_embedder_reports_batch_http_errors(monkeypatch):
+    def fake_urlopen(req, timeout):
+        raise HTTPError(req.full_url, 500, "server error", hdrs=None, fp=BytesIO(b""))
+
+    monkeypatch.setattr("alcove.index.embedder.urllib.request.urlopen", fake_urlopen)
+
+    embedder = OllamaEmbedder(base_url="http://127.0.0.1:11434")
+
+    with pytest.raises(RuntimeError, match="HTTP 500"):
+        embedder.embed(["hello"])
+
+
+def test_ollama_embedder_reports_legacy_http_errors(monkeypatch):
+    def fake_urlopen(req, timeout):
+        if req.full_url.endswith("/api/embed"):
+            raise HTTPError(req.full_url, 404, "not found", hdrs=None, fp=BytesIO(b""))
+        raise HTTPError(req.full_url, 500, "server error", hdrs=None, fp=BytesIO(b""))
+
+    monkeypatch.setattr("alcove.index.embedder.urllib.request.urlopen", fake_urlopen)
+
+    embedder = OllamaEmbedder(base_url="http://127.0.0.1:11434")
+
+    with pytest.raises(RuntimeError, match="HTTP 500"):
+        embedder.embed(["hello"])
+
+
+def test_ollama_embedder_reports_legacy_url_errors(monkeypatch):
+    def fake_urlopen(req, timeout):
+        if req.full_url.endswith("/api/embed"):
+            raise HTTPError(req.full_url, 404, "not found", hdrs=None, fp=BytesIO(b""))
+        raise URLError("connection refused")
+
+    monkeypatch.setattr("alcove.index.embedder.urllib.request.urlopen", fake_urlopen)
+
+    embedder = OllamaEmbedder(base_url="http://127.0.0.1:11434")
+
+    with pytest.raises(RuntimeError, match="Could not reach Ollama"):
+        embedder.embed(["hello"])
+
+
+def test_ollama_embedder_rejects_legacy_response_without_embedding(monkeypatch):
+    def fake_urlopen(req, timeout):
+        if req.full_url.endswith("/api/embed"):
+            raise HTTPError(req.full_url, 404, "not found", hdrs=None, fp=BytesIO(b""))
+        return _FakeResponse({"ok": True})
+
+    monkeypatch.setattr("alcove.index.embedder.urllib.request.urlopen", fake_urlopen)
+
+    embedder = OllamaEmbedder(base_url="http://127.0.0.1:11434")
+
+    with pytest.raises(RuntimeError, match="/api/embeddings response did not include an embedding"):
+        embedder.embed(["hello"])
