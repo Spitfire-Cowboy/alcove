@@ -146,6 +146,78 @@ def test_list_collections_backend_exception_returns_empty():
     assert r.json() == []
 
 
+def test_browse_empty_index_returns_html(monkeypatch):
+    """GET /browse renders an empty state when no backend metadata is available."""
+    from alcove.query import api as api_mod
+
+    monkeypatch.setattr(api_mod, "_backend_metadata_records", lambda: [])
+    r = client.get("/browse")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+    assert "No documents indexed yet" in r.text
+
+
+def test_browse_corpus_stats_groups_source_documents(monkeypatch):
+    """Browse stats count source documents, not chunks, and avoid absolute path display."""
+    from alcove.query import api as api_mod
+
+    monkeypatch.setattr(
+        api_mod,
+        "_backend_metadata_records",
+        lambda: [
+            {
+                "source": "/tmp/alcove-corpus/science/einstein.pdf",
+                "collection": "science",
+                "authors": "Einstein, A.",
+                "year": "1905",
+            },
+            {
+                "source": "/tmp/alcove-corpus/science/einstein.pdf",
+                "collection": "science",
+            },
+            {
+                "source": "data/raw/history/founding.txt",
+                "collection": "history",
+                "year": "1787",
+            },
+        ],
+    )
+
+    stats = api_mod._browse_corpus_stats()
+
+    assert {"name": "science", "doc_count": 1} in stats["collections"]
+    assert {"name": "history", "doc_count": 1} in stats["collections"]
+    assert {"ext": "PDF", "doc_count": 1} in stats["filetypes"]
+    assert {"ext": "TXT", "doc_count": 1} in stats["filetypes"]
+    assert stats["authors"] == [{"name": "Einstein, A.", "doc_count": 1}]
+    assert {"year": "1905", "doc_count": 1} in stats["years"]
+    assert all("/tmp/alcove-corpus" not in item["label"] for item in stats["recent"])
+
+
+def test_browse_page_renders_facets(monkeypatch):
+    """GET /browse renders recent documents, collections, and facet chips."""
+    from alcove.query import api as api_mod
+
+    monkeypatch.setattr(
+        api_mod,
+        "_backend_metadata_records",
+        lambda: [
+            {
+                "source": "data/raw/research/paper.md",
+                "collection": "research",
+                "authors": "Ada Lovelace",
+                "year": "1843",
+            }
+        ],
+    )
+    r = client.get("/browse")
+    assert r.status_code == 200
+    assert "Recent Documents" in r.text
+    assert "paper.md" in r.text
+    assert "research" in r.text
+    assert "Ada Lovelace" in r.text
+
+
 def test_root_backend_exception_still_renders_html():
     """GET / renders the search page even when the backend raises (doc_count falls back to 0)."""
     from unittest.mock import patch

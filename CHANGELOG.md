@@ -2,6 +2,10 @@
 
 All notable changes to alcove-search.
 
+## [Unreleased]
+
+- Add a read-only browse mode for recent indexed documents, collections, file types, authors, and years.
+
 ## [0.3.0] - 2026-03-07
 
 - Add theme toggle, fix WCAG AA contrast, update accessibility docs
