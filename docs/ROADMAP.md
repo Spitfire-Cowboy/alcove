@@ -20,6 +20,8 @@ This is the foundation. Everything below builds on it.
 
 **Streaming ingest.** Watch a directory and re-index on change. The current pipeline is batch-oriented: you run `alcove ingest`, it processes everything. Streaming mode keeps the index current without manual intervention.
 
+**Public data loaders.** Domain-specific loaders should stay separate from the core ingest pipeline unless their format is generally useful. GovInfo Congress bill summaries and bill status records are the first public-data loaders: they normalize public XML into Alcove retrieval records without adding hosted-service assumptions.
+
 ## Mid-term
 
 **Cross-modal indexing.** Audio transcription, image OCR, video keyframe extraction. The pipeline architecture already separates extraction from embedding; new modalities plug in as extractors that produce text chunks from non-text sources. Bioacoustics and field recordings are a motivating use case, not an afterthought.
