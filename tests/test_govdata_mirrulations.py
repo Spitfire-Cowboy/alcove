@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -112,6 +113,50 @@ def test_index_mirrulations_records_tags_requested_collection(monkeypatch):
 
 def test_index_mirrulations_records_empty_returns_zero():
     assert index_mirrulations_records([]) == 0
+
+
+def test_mirrulations_loader_handles_alternate_payload_shapes(tmp_path):
+    text_dir = tmp_path / "EPA" / "EPA-HQ-OAR-2023-0534" / "text-EPA-HQ-OAR-2023-0534"
+    (text_dir / "docket").mkdir(parents=True)
+    (text_dir / "documents").mkdir()
+    (text_dir / "comments").mkdir()
+    (text_dir / "documents_extracted_text" / "pikepdf").mkdir(parents=True)
+
+    _write_json(
+        text_dir / "docket" / "EPA-HQ-OAR-2023-0534.json",
+        {"attributes": {"description": "Fallback docket description.", "modifyDate": "2024-02-03"}},
+    )
+    _write_json(
+        text_dir / "documents" / "doc.json",
+        {"id": "EPA-HQ-OAR-2023-0534-0003", "attributes": {"abstract": "Fallback abstract body."}},
+    )
+    _write_json(
+        text_dir / "comments" / "comment.json",
+        {"attributes": {"commentText": "Fallback public comment body.", "title": "Fallback Comment"}},
+    )
+    (text_dir / "documents_extracted_text" / "pikepdf" / "EPA-HQ-OAR-2023-0534-0003_content.txt").write_text(
+        "Content suffix attachment text.",
+        encoding="utf-8",
+    )
+    (text_dir / "documents_extracted_text" / "pikepdf" / "empty.txt").write_text("", encoding="utf-8")
+
+    records = load_mirrulations_records(tmp_path)
+
+    assert {record["metadata"]["entry_type"] for record in records} == {"docket", "document", "comment", "attachment"}
+    assert any(record["metadata"]["posted_date"] == "2024-02-03" for record in records)
+    attachment = next(record for record in records if record["metadata"]["entry_type"] == "attachment")
+    assert attachment["metadata"]["parent_id"] == "EPA-HQ-OAR-2023-0534-0003"
+
+
+def test_mirrulations_helpers_cover_fallbacks():
+    from alcove.govdata import mirrulations
+
+    assert mirrulations._load_indexing_dependencies()[0].__name__ == "get_embedder"
+    assert mirrulations._extract_attributes({"data": []}) == {}
+    assert mirrulations._extract_entity_id({"data": {"id": ""}, "id": ""}, fallback="fallback-id") == "fallback-id"
+    assert mirrulations._agency_for_text_dir(Path("text-ORPHAN")) == "UNKNOWN"
+    assert mirrulations._parent_id_for_attachment("plain_content") == "plain"
+    assert mirrulations._compose_record_text("Same", "Same") == "Same"
 
 
 def test_ingest_mirrulations_writes_requested_collection_to_jsonl(tmp_path, monkeypatch):

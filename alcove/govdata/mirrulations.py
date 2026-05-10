@@ -317,7 +317,7 @@ def _extract_entity_id(payload: dict, *, fallback: str) -> str:
 
 def _agency_for_text_dir(text_dir: Path) -> str:
     try:
-        return text_dir.parent.parent.name
+        return text_dir.parent.parent.name or "UNKNOWN"
     except IndexError:
         return "UNKNOWN"
 
