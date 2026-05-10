@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from alcove.index.embedder import HashEmbedder
+from alcove.index.embedder import HashEmbedder, OllamaEmbedder
 
 
 def test_get_embedder_default_is_hash():
@@ -21,6 +21,16 @@ def test_get_embedder_explicit_hash():
         assert isinstance(emb, HashEmbedder)
     finally:
         os.environ.pop("EMBEDDER", None)
+
+
+def test_get_embedder_explicit_ollama(monkeypatch):
+    from alcove.index.embedder import get_embedder
+
+    monkeypatch.setenv("EMBEDDER", "ollama")
+
+    emb = get_embedder()
+
+    assert isinstance(emb, OllamaEmbedder)
 
 
 def test_get_embedder_unknown_raises():
@@ -62,3 +72,13 @@ def test_get_collection_name_st_appends_suffix():
         assert name == "alcove_docs_st"
     finally:
         os.environ.pop("EMBEDDER", None)
+
+
+def test_get_collection_name_ollama_appends_suffix(monkeypatch):
+    from alcove.index.embedder import get_collection_name
+
+    monkeypatch.setenv("EMBEDDER", "ollama")
+
+    name = get_collection_name("alcove_docs")
+
+    assert name == "alcove_docs_ollama"

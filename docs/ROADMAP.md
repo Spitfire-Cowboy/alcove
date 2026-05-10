@@ -2,7 +2,7 @@
 
 ## Current release (v0.3.0)
 
-Alcove ships a working three-stage pipeline: ingest, index, query. Eleven document formats. Two embedders (hash for offline determinism, sentence-transformers for real semantic search). Two vector backends (ChromaDB, zvec). A plugin system.
+Alcove ships a working three-stage pipeline: ingest, index, query. Eleven document formats. Three embedders (hash for offline determinism, sentence-transformers for local semantic search, Ollama for operator-managed local models). Two vector backends (ChromaDB, zvec). A plugin system.
 
 A web UI with upload and search. CI across Python 3.10, 3.11, 3.12. Docker deployment. Apache 2.0.
 
@@ -13,6 +13,8 @@ This is the foundation. Everything below builds on it.
 **More formats.** RTF, ODT, PPTX, XLSX. The [extractor plugin API](ARCHITECTURE.md#plugin-system) already supports this; the work is writing and testing each one.
 
 **Semantic search as default.** The hash embedder exists for zero-download offline bootstrapping and for operators who do not want ML in the pipeline. Once the onboarding experience is smooth enough, sentence-transformers (or a lighter alternative) becomes the default install. The hash embedder stays available: not a stepping stone, but a permanent option for people who want deterministic, inspectable results.
+
+**Local model hooks.** `EMBEDDER=ollama` now lets operators point Alcove at a local Ollama server for embeddings. Near-term work is documentation polish and model-specific guidance, not hosted inference or generated answers.
 
 **Browse mode.** Alcove should be navigable, not just searchable. Directory-aware corpus browsing in the web UI: see what you have, not just what matches a query. Search and browse are complementary interfaces to the same index.
 
@@ -62,7 +64,7 @@ Embedders receive a list of strings and return a list of float vectors. They reg
 | Candidate | Library | Wiring |
 |-----------|---------|--------|
 | OpenAI | `openai` | Calls `client.embeddings.create(model="text-embedding-3-small", input=texts)`; requires `OPENAI_API_KEY`. Breaks local-only boundary — document this clearly. |
-| Ollama | `ollama` | Calls local `ollama.embeddings(model=..., prompt=text)` per chunk; model configured via env var. Zero-download after first pull. |
+| Ollama | built-in | Calls a local Ollama server via `EMBEDDER=ollama`; model configured via env vars. Zero-download after first pull. |
 | MLX (Apple Silicon) | `mlx-lm` | Runs embedding model via MLX on M-series GPU; fastest local option for Apple hardware. |
 | Cohere | `cohere` | Calls `co.embed(texts=..., model=...)` via Cohere API; requires API key. Cloud boundary applies. |
 

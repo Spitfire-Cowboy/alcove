@@ -40,6 +40,7 @@ data/raw/*  →  data/processed/chunks.jsonl  →  vector store  →  query resp
 |------|-----------|-------------|
 | Hash (default) | `EMBEDDER=hash` | Deterministic SHA-256 hash. Offline, zero download. Useful for smoke tests and CI. |
 | Sentence Transformers | `EMBEDDER=sentence-transformers` | Real semantic search via `all-MiniLM-L6-v2` (~80 MB model, downloaded on first use) |
+| Ollama | `EMBEDDER=ollama` | Real semantic search via an operator-managed local Ollama server |
 
 Set the embedder with the `EMBEDDER` environment variable. See [OPERATIONS.md](OPERATIONS.md#environment-variables) for how to configure it. Custom embedders can be installed as plugins.
 
@@ -73,7 +74,7 @@ Plugins are merged with built-ins at startup. When a plugin and a built-in share
 
 ## Boundary
 
-The operator owns the host and the storage. Alcove makes no outbound network calls by default; the one exception is `sentence-transformers`, which downloads a model on first use and then runs locally. Telemetry is disabled, including ChromaDB's upstream telemetry. See [SECURITY.md](SECURITY.md#security-model) for the full security model.
+The operator owns the host and the storage. Alcove makes no outbound network calls by default; the one exception is `sentence-transformers`, which downloads a model on first use and then runs locally. `EMBEDDER=ollama` sends chunk text only to the Ollama base URL the operator configures, defaulting to the local loopback interface. Telemetry is disabled, including ChromaDB's upstream telemetry. See [SECURITY.md](SECURITY.md#security-model) for the full security model.
 
 This boundary is structural, not configurable. There is no flag to turn it off.
 
