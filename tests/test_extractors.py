@@ -131,8 +131,8 @@ def test_extract_pptx_raises_helpful_import_error(tmp_path, monkeypatch):
 
 def test_pipeline_dispatch_includes_html(tmp_path):
     """Pipeline routes .html files through the extractor without error."""
-    import json
     from alcove.ingest.pipeline import run
+
     f = tmp_path / "doc.html"
     f.write_text("<p>Semantic search content</p>")
     out = tmp_path / "chunks.jsonl"
@@ -144,8 +144,8 @@ def test_pipeline_dispatch_includes_html(tmp_path):
 
 def test_pipeline_dispatch_includes_md(tmp_path):
     """Pipeline routes .md files through the extractor without error."""
-    import json
     from alcove.ingest.pipeline import run
+
     f = tmp_path / "notes.md"
     f.write_text("# Notes\n\nLocal retrieval is fast.")
     out = tmp_path / "chunks.jsonl"
@@ -157,7 +157,6 @@ def test_pipeline_dispatch_includes_md(tmp_path):
 
 def test_pipeline_dispatch_includes_pptx(tmp_path):
     """Pipeline routes .pptx files through the extractor without error."""
-    import json
     from alcove.ingest.pipeline import run
 
     f = tmp_path / "deck.pptx"
