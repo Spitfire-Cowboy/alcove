@@ -9,6 +9,7 @@ band.
 from __future__ import annotations
 
 import base64
+import contextlib
 import datetime
 import hashlib
 import os
@@ -72,10 +73,8 @@ class InstanceSigner:
             with os.fdopen(fd, "wb") as f:
                 f.write(signer.private_key_pem())
         except Exception:
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 path.unlink()
-            except FileNotFoundError:
-                pass
             raise
         return signer
 
