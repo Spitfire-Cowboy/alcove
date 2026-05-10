@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import re
 import sys
-import tomllib
 from pathlib import Path
 
 
@@ -35,9 +34,14 @@ def _read(path: Path) -> str:
 
 
 def _project_version() -> str:
-    with PYPROJECT_PATH.open("rb") as handle:
-        metadata = tomllib.load(handle)
-    return metadata["project"]["version"]
+    match = re.search(
+        r'^\[project\][\s\S]*?^version = "([^"]+)"$',
+        _read(PYPROJECT_PATH),
+        re.MULTILINE,
+    )
+    if not match:
+        return ""
+    return match.group(1)
 
 
 def validate() -> list[str]:
