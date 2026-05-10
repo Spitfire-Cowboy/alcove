@@ -5,6 +5,13 @@ import hashlib
 import stat
 
 import pytest
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.serialization import (
+    Encoding,
+    NoEncryption,
+    PrivateFormat,
+    PublicFormat,
+)
 
 from alcove.signer import InstanceSigner, document_hash
 
@@ -17,6 +24,11 @@ def test_document_hash_is_canonical_sha256() -> None:
 
 def test_generated_signers_have_different_keys() -> None:
     assert InstanceSigner.generate().public_key_pem() != InstanceSigner.generate().public_key_pem()
+
+
+def test_signer_requires_private_or_public_key() -> None:
+    with pytest.raises(ValueError, match="private_key or public_key"):
+        InstanceSigner(None)
 
 
 def test_key_serialization_and_fingerprint() -> None:
@@ -38,6 +50,50 @@ def test_load_or_create_persists_generated_key_with_0600_mode(tmp_path) -> None:
     assert signer.public_key_pem() == loaded.public_key_pem()
 
 
+def test_load_or_create_rejects_non_ed25519_private_key(tmp_path) -> None:
+    key_path = tmp_path / "rsa.key"
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    key_path.write_bytes(
+        key.private_bytes(
+            encoding=Encoding.PEM,
+            format=PrivateFormat.PKCS8,
+            encryption_algorithm=NoEncryption(),
+        )
+    )
+
+    with pytest.raises(ValueError, match="expected Ed25519 private key"):
+        InstanceSigner.load_or_create(key_path)
+
+
+def test_load_or_create_removes_partial_key_on_write_failure(tmp_path, monkeypatch) -> None:
+    key_path = tmp_path / "alcove.key"
+
+    def fail_private_key_pem(self):
+        raise RuntimeError("write failed")
+
+    monkeypatch.setattr(InstanceSigner, "private_key_pem", fail_private_key_pem)
+
+    with pytest.raises(RuntimeError, match="write failed"):
+        InstanceSigner.load_or_create(key_path)
+    assert not key_path.exists()
+
+
+def test_load_or_create_ignores_missing_partial_key_on_cleanup(tmp_path, monkeypatch) -> None:
+    key_path = tmp_path / "alcove.key"
+
+    def fail_private_key_pem(self):
+        raise RuntimeError("write failed")
+
+    def missing_unlink(self):
+        raise FileNotFoundError
+
+    monkeypatch.setattr(InstanceSigner, "private_key_pem", fail_private_key_pem)
+    monkeypatch.setattr(type(key_path), "unlink", missing_unlink)
+
+    with pytest.raises(RuntimeError, match="write failed"):
+        InstanceSigner.load_or_create(key_path)
+
+
 def test_public_key_pem_creates_verify_only_signer() -> None:
     signer = InstanceSigner.generate()
     verifier = InstanceSigner.from_public_key_pem(signer.public_key_pem().decode("utf-8"))
@@ -51,6 +107,17 @@ def test_public_key_pem_creates_verify_only_signer() -> None:
 def test_rejects_invalid_public_key_pem() -> None:
     with pytest.raises(Exception):
         InstanceSigner.from_public_key_pem(b"not-valid-pem")
+
+
+def test_rejects_non_ed25519_public_key_pem() -> None:
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_pem = key.public_key().public_bytes(
+        encoding=Encoding.PEM,
+        format=PublicFormat.SubjectPublicKeyInfo,
+    )
+
+    with pytest.raises(ValueError, match="expected Ed25519 public key"):
+        InstanceSigner.from_public_key_pem(public_pem)
 
 
 def test_sign_and_verify_bytes() -> None:
