@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-import tomllib
 from pathlib import Path
 
 
@@ -28,9 +27,14 @@ class FormulaError(ValueError):
 
 
 def project_version(pyproject_path: Path = REPO_ROOT / "pyproject.toml") -> str:
-    with pyproject_path.open("rb") as handle:
-        data = tomllib.load(handle)
-    return str(data["project"]["version"])
+    match = re.search(
+        r'^\[project\][\s\S]*?^version = "([^"]+)"$',
+        pyproject_path.read_text(encoding="utf-8"),
+        re.MULTILINE,
+    )
+    if not match:
+        raise FormulaError("pyproject.toml is missing [project] version")
+    return match.group(1)
 
 
 def validate_version(version: str) -> None:
