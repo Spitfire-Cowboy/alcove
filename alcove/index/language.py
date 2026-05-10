@@ -28,7 +28,7 @@ def _detect_language_heuristic(sample: str) -> str:
     if any(ch in lowered for ch in "âêîôûœæç"):
         return "fr"
 
-    tokens = re.findall(r"[a-zA-Záéíóúñüàâçèêëîïôùûüœæ]+", lowered)
+    tokens = re.findall(r"[a-zA-Záéíóúñüàâçèêëîïôùûœæ]+", lowered)
     if not tokens:
         return "unknown"
 

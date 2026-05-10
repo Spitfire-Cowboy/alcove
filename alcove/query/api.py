@@ -142,7 +142,7 @@ def search(
         if invalid:
             return JSONResponse(
                 status_code=422,
-                content={"detail": f"Invalid collection name(s): {invalid}"},
+                content={"detail": "Invalid collection name."},
             )
         coll_list = tokens
     results: list = []

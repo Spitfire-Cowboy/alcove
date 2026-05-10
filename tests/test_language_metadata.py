@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import sys
+import types
 
 from fastapi.testclient import TestClient
 
@@ -51,6 +53,62 @@ def test_detect_language_spanish_returns_es():
     assert detect_language(text) == "es"
 
 
+def test_detect_language_script_shortcuts():
+    assert detect_language("История семьи и сообщества") == "ru"
+    assert detect_language("家族历史和社区记忆") == "zh"
+    assert detect_language("تاريخ العائلة والمجتمع") == "ar"
+
+
+def test_detect_language_french_heuristic():
+    text = "L'histoire de la famille décrit la mémoire, le travail et la communauté."
+    assert detect_language(text) == "fr"
+
+
+def test_detect_language_unknown_for_unscored_latin_text():
+    assert detect_language("qwerty zxcv asdf") == "unknown"
+
+
+def test_detect_language_uses_optional_langdetect(monkeypatch):
+    fake_module = types.ModuleType("langdetect")
+
+    class FakeDetectorFactory:
+        seed = None
+
+    class FakeLangDetectException(Exception):
+        pass
+
+    def detect_portuguese(sample):
+        return "pt"
+
+    fake_module.DetectorFactory = FakeDetectorFactory
+    fake_module.LangDetectException = FakeLangDetectException
+    fake_module.detect = detect_portuguese
+    monkeypatch.setitem(sys.modules, "langdetect", fake_module)
+
+    assert detect_language("texto em portugues") == "pt"
+    assert FakeDetectorFactory.seed == 0
+
+
+def test_detect_language_falls_back_on_langdetect_exception(monkeypatch):
+    fake_module = types.ModuleType("langdetect")
+
+    class FakeDetectorFactory:
+        seed = None
+
+    class FakeLangDetectException(Exception):
+        pass
+
+    def fail_detect(sample):
+        raise FakeLangDetectException("not enough text")
+
+    fake_module.DetectorFactory = FakeDetectorFactory
+    fake_module.LangDetectException = FakeLangDetectException
+    fake_module.detect = fail_detect
+    monkeypatch.setitem(sys.modules, "langdetect", fake_module)
+
+    assert detect_language("The family history interview") == "en"
+
+
 def test_index_pipeline_writes_language_metadata(tmp_path, monkeypatch):
     from alcove.index import pipeline
 
@@ -70,8 +128,12 @@ def test_index_pipeline_writes_language_metadata(tmp_path, monkeypatch):
     chunks_file.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
 
     backend = _CaptureBackend()
-    monkeypatch.setattr(pipeline, "get_embedder", lambda: _FakeEmbedder())
-    monkeypatch.setattr(pipeline, "get_backend", lambda _embedder: backend)
+    monkeypatch.setattr(pipeline, "get_embedder", _FakeEmbedder)
+
+    def get_backend(_embedder):
+        return backend
+
+    monkeypatch.setattr(pipeline, "get_backend", get_backend)
 
     total = pipeline.run(chunks_file=str(chunks_file))
 
@@ -85,8 +147,12 @@ def test_retriever_passes_language_filter(monkeypatch):
     from alcove.query import retriever
 
     backend = _CaptureBackend()
-    monkeypatch.setattr(retriever, "get_embedder", lambda: _FakeEmbedder())
-    monkeypatch.setattr(retriever, "get_backend", lambda _embedder: backend)
+    monkeypatch.setattr(retriever, "get_embedder", _FakeEmbedder)
+
+    def get_backend(_embedder):
+        return backend
+
+    monkeypatch.setattr(retriever, "get_backend", get_backend)
 
     result = query_text("hola mundo", n_results=4, language_filter="es")
 
@@ -136,3 +202,179 @@ def test_keyword_search_can_filter_by_language(tmp_path):
 
     assert result["ids"] == [["es:0"]]
     assert result["metadatas"][0][0]["language"] == "es"
+
+
+def test_chroma_query_where_combines_collection_and_language():
+    from alcove.index.backend import _query_where
+
+    assert _query_where() is None
+    assert _query_where(language_filter="ES") == {"language": "es"}
+    assert _query_where(collections=["docs"], language_filter="es") == {
+        "$and": [{"collection": {"$in": ["docs"]}}, {"language": "es"}]
+    }
+
+
+class _FakeChromaCollection:
+    name = "docs"
+
+    def __init__(self):
+        self.query_kwargs = None
+
+    def count(self):
+        return 1
+
+    def query(self, **kwargs):
+        self.query_kwargs = kwargs
+        return {
+            "ids": [["doc-1"]],
+            "documents": [["hola"]],
+            "distances": [[0.1]],
+            "metadatas": [[{"source": "a.txt", "language": "es"}]],
+        }
+
+
+def test_multi_chroma_query_passes_language_filter():
+    from alcove.index.backend import MultiChromaBackend
+
+    collection = _FakeChromaCollection()
+    backend = MultiChromaBackend.__new__(MultiChromaBackend)
+
+    def get_filtered_collections(collections=None):
+        return [collection]
+
+    backend._get_filtered_collections = get_filtered_collections
+
+    result = backend.query([0.1], k=1, language_filter="ES")
+
+    assert result["ids"] == [["doc-1"]]
+    assert collection.query_kwargs["where"] == {"language": "es"}
+
+
+def test_multi_root_query_passes_language_filter():
+    from alcove.index.backend import MultiRootBackend
+
+    collection = _FakeChromaCollection()
+    backend = MultiRootBackend.__new__(MultiRootBackend)
+    backend._cols = [("docs", None, collection)]
+
+    result = backend.query([0.1], k=1, language_filter="es")
+
+    assert result["ids"] == [["doc-1"]]
+    assert collection.query_kwargs["where"] == {"language": "es"}
+
+
+class _FakeZvecDoc:
+    def __init__(self, id="doc-1", score=-0.2, **fields):
+        self.id = id
+        self.score = score
+        self._fields = fields
+
+    def field(self, name):
+        return self._fields.get(name)
+
+
+class _FakeZvec:
+    class DataType:
+        STRING = "string"
+        VECTOR_FP32 = "vector"
+
+    class CollectionOption:
+        pass
+
+    class FieldSchema:
+        def __init__(self, name, data_type):
+            self.name = name
+            self.data_type = data_type
+
+    class VectorSchema:
+        def __init__(self, name, data_type, dimension):
+            self.name = name
+            self.data_type = data_type
+            self.dimension = dimension
+
+    class CollectionSchema:
+        def __init__(self, name, fields, vectors):
+            self.name = name
+            self.fields = fields
+            self.vectors = vectors
+
+    class VectorQuery:
+        def __init__(self, name, vector):
+            self.name = name
+            self.vector = vector
+
+    class Doc:
+        def __init__(self, id, vectors, fields):
+            self.id = id
+            self.vectors = vectors
+            self.fields = fields
+
+
+class _FakeZvecCollection:
+    def __init__(self, docs=None, raise_on_language=False):
+        self.docs = docs or []
+        self.raise_on_language = raise_on_language
+        self.upserted = None
+        self.flushed = False
+
+    def upsert(self, docs):
+        self.upserted = docs
+
+    def flush(self):
+        self.flushed = True
+
+    def query(self, vectors, topk, output_fields):
+        if self.raise_on_language and "language" in output_fields:
+            raise RuntimeError("old schema")
+        return self.docs[:topk]
+
+
+def test_zvec_add_writes_language_metadata():
+    from alcove.index.backend import ZvecBackend
+
+    backend = ZvecBackend.__new__(ZvecBackend)
+    backend._zvec = _FakeZvec
+    backend._collection = _FakeZvecCollection()
+
+    backend.add(
+        ids=["doc-1"],
+        embeddings=[[0.1]],
+        documents=["hola"],
+        metadatas=[{"source": "a.txt", "collection": "docs", "language": "ES"}],
+    )
+
+    doc = backend._collection.upserted[0]
+    assert doc.fields["language"] == "es"
+    assert backend._collection.flushed is True
+
+
+def test_zvec_query_filters_by_language_and_returns_metadata():
+    from alcove.index.backend import ZvecBackend
+
+    backend = ZvecBackend.__new__(ZvecBackend)
+    backend._zvec = _FakeZvec
+    backend._collection = _FakeZvecCollection([
+        _FakeZvecDoc(document="hello", source="a.txt", collection="docs", language="en"),
+        _FakeZvecDoc(id="doc-2", document="hola", source="b.txt", collection="docs", language="es"),
+    ])
+
+    result = backend.query([0.1], k=1, language_filter="es")
+
+    assert result["ids"] == [["doc-2"]]
+    assert result["metadatas"][0][0]["language"] == "es"
+
+
+def test_zvec_query_handles_old_schema_without_language():
+    from alcove.index.backend import ZvecBackend
+
+    backend = ZvecBackend.__new__(ZvecBackend)
+    backend._zvec = _FakeZvec
+    backend._collection = _FakeZvecCollection(
+        [_FakeZvecDoc(document="hello", source="a.txt", collection="docs")],
+        raise_on_language=True,
+    )
+
+    result = backend.query([0.1], k=1)
+
+    assert result["ids"] == [["doc-1"]]
+    assert result["metadatas"][0][0]["language"] == "unknown"
