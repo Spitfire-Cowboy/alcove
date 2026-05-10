@@ -86,7 +86,7 @@ Alcove stores everything on your disk because that is where your data already li
 
 v0.3.0 is a working search platform. That is the "index your world" part.
 
-The "share it with the universe" part comes next: a retrieval interface that lets AI tools like Claude or ChatGPT query your index, on your terms. Your files stay local. Your index stays yours. But if you choose to open a door, AI gets real answers from your actual documents. No hallucinations, because there is no generation. Just lookup.
+The "share it with the universe" part comes next: a retrieval interface that lets external tools query your index, on your terms. Your files stay local. Your index stays yours. But if you choose to open a door, AI gets real answers from your actual documents. No hallucinations, because there is no generation. Just lookup.
 
 Beyond that: streaming ingest, browsable corpus navigation, cross-modal indexing, a relevance layer that treats memory more like memory and less like a distance calculation, and federated indexes that let separate Alcove instances share a query surface without sharing raw data.
 
