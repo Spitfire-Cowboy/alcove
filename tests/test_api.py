@@ -218,6 +218,114 @@ def test_browse_page_renders_facets(monkeypatch):
     assert "Ada Lovelace" in r.text
 
 
+def test_backend_metadata_records_handles_collection_backend(monkeypatch):
+    from alcove.query import api as api_mod
+
+    class DummyCollection:
+        def get(self, include):
+            assert include == ["metadatas"]
+            return {"metadatas": [{"source": "data/raw/a.md"}, None, {"source": "data/raw/b.md"}]}
+
+    class DummyBackend:
+        _collection = DummyCollection()
+
+    monkeypatch.setattr("alcove.index.embedder.get_embedder", lambda: object())
+    monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: DummyBackend())
+
+    assert api_mod._backend_metadata_records() == [{"source": "data/raw/a.md"}, {"source": "data/raw/b.md"}]
+
+
+def test_backend_metadata_records_handles_collection_errors(monkeypatch):
+    from alcove.query import api as api_mod
+
+    class BrokenCollection:
+        def get(self, include):
+            raise RuntimeError("unavailable")
+
+    class DummyBackend:
+        _collection = BrokenCollection()
+
+    monkeypatch.setattr("alcove.index.embedder.get_embedder", lambda: object())
+    monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: DummyBackend())
+
+    assert api_mod._backend_metadata_records() == []
+
+
+def test_backend_metadata_records_handles_backend_factory_error(monkeypatch):
+    from alcove.query import api as api_mod
+
+    monkeypatch.setattr("alcove.index.embedder.get_embedder", lambda: object())
+    monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: (_ for _ in ()).throw(RuntimeError("no db")))
+
+    assert api_mod._backend_metadata_records() == []
+
+
+def test_backend_metadata_records_handles_multi_collection_backend(monkeypatch):
+    from alcove.query import api as api_mod
+
+    class DummyCollection:
+        name = "science"
+
+        def get(self, include):
+            return {"metadatas": [{"source": "data/raw/paper.md"}]}
+
+    class BrokenCollection:
+        name = "broken"
+
+        def get(self, include):
+            raise RuntimeError("unavailable")
+
+    class DummyBackend:
+        def _get_all_collections(self):
+            return [DummyCollection(), BrokenCollection()]
+
+    monkeypatch.setattr("alcove.index.embedder.get_embedder", lambda: object())
+    monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: DummyBackend())
+
+    assert api_mod._backend_metadata_records() == [{"source": "data/raw/paper.md", "collection": "science"}]
+
+
+def test_backend_metadata_records_handles_zvec_collection_cache(monkeypatch):
+    from alcove.query import api as api_mod
+
+    class DummyCollection:
+        def get(self, include):
+            return {"metadatas": [{"source": "data/raw/cache.md"}]}
+
+    class BrokenCollection:
+        def get(self, include):
+            raise RuntimeError("unavailable")
+
+    class DummyBackend:
+        _cols = [("cache", object(), DummyCollection()), ("broken", object(), BrokenCollection())]
+
+    monkeypatch.setattr("alcove.index.embedder.get_embedder", lambda: object())
+    monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: DummyBackend())
+
+    assert api_mod._backend_metadata_records() == [{"source": "data/raw/cache.md", "collection": "cache"}]
+
+
+def test_browse_helpers_handle_fallbacks(tmp_path, monkeypatch):
+    from alcove.query import api as api_mod
+
+    raw_dir = tmp_path / "raw"
+    source = raw_dir / "letters" / "note.txt"
+    source.parent.mkdir(parents=True)
+    source.write_text("hello", encoding="utf-8")
+    monkeypatch.setenv("RAW_DIR", str(raw_dir))
+
+    assert api_mod._source_key({"title": "Untitled"}) == "Untitled"
+    assert api_mod._source_key({}) == "(unknown)"
+    assert api_mod._source_label("(unknown)") == "Unknown source"
+    assert api_mod._source_label(str(source)) == "letters/note.txt"
+    assert api_mod._source_label("/external/archive/note.txt") == "archive/note.txt"
+    assert api_mod._source_label("") == "Unknown source"
+    assert api_mod._collection_label({}, str(source)) == "letters"
+    assert api_mod._collection_label({}, "/external/note.txt") == "default"
+    assert api_mod._document_sort_time("missing.txt", [{"uploaded_at": "not-a-date"}]) == 0.0
+    assert api_mod._document_sort_time(str(source), [{}]) > 0
+
+
 def test_root_backend_exception_still_renders_html():
     """GET / renders the search page even when the backend raises (doc_count falls back to 0)."""
     from unittest.mock import patch
