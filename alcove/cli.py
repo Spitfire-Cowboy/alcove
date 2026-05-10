@@ -130,6 +130,18 @@ def cmd_seed_demo(_args):
         subprocess.check_call([sys.executable, str(script_path)])
 
 
+def cmd_mirrulations_demo(args):
+    from alcove.govdata.mirrulations import ingest_mirrulations
+
+    count = ingest_mirrulations(
+        source=args.source,
+        agencies=args.agency,
+        collection_name=args.collection,
+        jsonl_out=args.jsonl_out,
+    )
+    print(f"indexed {count} Mirrulations records into {args.collection}")
+
+
 def _add_search_parser(sub, name, hidden=False):
     """Add a search/query subparser. Used for both the primary and alias."""
     help_text = argparse.SUPPRESS if hidden else "Search local index"
@@ -187,6 +199,35 @@ def main():
     # seed-demo
     p_seed = sub.add_parser("seed-demo", help="Fetch and index demo corpus")
     p_seed.set_defaults(func=cmd_seed_demo)
+
+    # mirrulations-demo
+    p_mirrulations = sub.add_parser(
+        "mirrulations-demo",
+        help="Ingest a local Mirrulations text subset into a dedicated collection",
+    )
+    p_mirrulations.add_argument(
+        "source",
+        nargs="?",
+        default=None,
+        help="Local Mirrulations root, agency, docket, or text-* path",
+    )
+    p_mirrulations.add_argument(
+        "--agency",
+        action="append",
+        default=[],
+        help="Optional agency filter; repeat for multiple agencies",
+    )
+    p_mirrulations.add_argument(
+        "--collection",
+        default="mirrulations_docs",
+        help="Target collection metadata value (default: mirrulations_docs)",
+    )
+    p_mirrulations.add_argument(
+        "--jsonl-out",
+        default=None,
+        help="Optional path to write normalized records as JSONL",
+    )
+    p_mirrulations.set_defaults(func=cmd_mirrulations_demo)
 
     # plugins
     p_plugins = sub.add_parser("plugins", help="List installed plugins")

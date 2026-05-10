@@ -13,6 +13,7 @@ def test_alcove_help_exits_zero():
     # search is the primary command; query is a hidden alias
     assert "search" in result.stdout
     assert "status" in result.stdout
+    assert "mirrulations-demo" in result.stdout
 
 
 def test_alcove_query_alias_still_works():
@@ -23,6 +24,16 @@ def test_alcove_query_alias_still_works():
     )
     assert result.returncode == 0
     assert "--k" in result.stdout
+
+
+def test_alcove_mirrulations_demo_help():
+    result = subprocess.run(
+        [sys.executable, "-m", "alcove", "mirrulations-demo", "--help"],
+        capture_output=True, text=True
+    )
+    assert result.returncode == 0
+    assert "--agency" in result.stdout
+    assert "--jsonl-out" in result.stdout
 
 
 def test_alcove_version():
