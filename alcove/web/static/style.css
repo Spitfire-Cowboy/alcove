@@ -141,21 +141,80 @@ body {
 /* ---- Demo shell: Los Angeles laws ---- */
 
 .demo-la {
-  --bg-body: #151411;
-  --bg-surface: #23211c;
-  --bg-card: #1d1b17;
-  --border: rgba(244, 196, 48, 0.16);
-  --border-hover: rgba(244, 196, 48, 0.42);
-  --gold: #f4c430;
-  --gold-dim: rgba(244, 196, 48, 0.68);
-  --gold-faint: rgba(244, 196, 48, 0.09);
-  --gold-glow: rgba(244, 196, 48, 0.18);
-  --text: #fbf5e6;
-  --text-muted: rgba(251, 245, 230, 0.6);
-  --text-excerpt: rgba(237, 227, 203, 0.86);
-  --scrollbar: #514a33;
-  --la-sky: #56a7b7;
-  --la-sunset: #d85f35;
+  --la-boulevard-sunset: #d24d38;
+  --la-fame-gold: #d69a3a;
+  --la-venice-sand: #d8c29a;
+  --la-hills-white: #e6e8f2;
+  --la-silver-screen: #a9bac2;
+  --la-hockney-blue: #72b7d8;
+  --la-sky: var(--la-hockney-blue);
+  --la-sunset: var(--la-boulevard-sunset);
+}
+
+:root:not([data-theme]) body.demo-la,
+[data-theme="dark"] body.demo-la {
+  color-scheme: dark;
+  --bg-body: #141414;
+  --bg-surface: #22201c;
+  --bg-card: #1b1a17;
+  --border: rgba(216, 194, 154, 0.18);
+  --border-hover: rgba(214, 154, 58, 0.5);
+  --gold: var(--la-fame-gold);
+  --gold-dim: rgba(214, 154, 58, 0.72);
+  --gold-faint: rgba(214, 154, 58, 0.11);
+  --gold-glow: rgba(210, 77, 56, 0.18);
+  --text: #f7f3ea;
+  --text-muted: rgba(247, 243, 234, 0.62);
+  --text-excerpt: rgba(230, 232, 242, 0.82);
+  --scrollbar: #5f573e;
+  --la-header-bg: rgba(20, 20, 20, 0.9);
+  --la-search-bg: rgba(27, 26, 23, 0.96);
+  --la-card-sheen: rgba(114, 183, 216, 0.035);
+  --la-mark-text: #ffe2a2;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) body.demo-la {
+    color-scheme: light;
+    --bg-body: var(--la-hills-white);
+    --bg-surface: #f7f3ea;
+    --bg-card: #fffdf8;
+    --border: rgba(96, 92, 82, 0.18);
+    --border-hover: rgba(210, 77, 56, 0.44);
+    --gold: #9d640e;
+    --gold-dim: rgba(96, 76, 44, 0.68);
+    --gold-faint: rgba(214, 154, 58, 0.13);
+    --gold-glow: rgba(114, 183, 216, 0.22);
+    --text: #171615;
+    --text-muted: rgba(23, 22, 21, 0.62);
+    --text-excerpt: rgba(51, 45, 34, 0.9);
+    --scrollbar: var(--la-silver-screen);
+    --la-header-bg: rgba(230, 232, 242, 0.9);
+    --la-search-bg: rgba(255, 253, 248, 0.97);
+    --la-card-sheen: rgba(114, 183, 216, 0.055);
+    --la-mark-text: #643f00;
+  }
+}
+
+[data-theme="light"] body.demo-la {
+  color-scheme: light;
+  --bg-body: var(--la-hills-white);
+  --bg-surface: #f7f3ea;
+  --bg-card: #fffdf8;
+  --border: rgba(96, 92, 82, 0.18);
+  --border-hover: rgba(210, 77, 56, 0.44);
+  --gold: #9d640e;
+  --gold-dim: rgba(96, 76, 44, 0.68);
+  --gold-faint: rgba(214, 154, 58, 0.13);
+  --gold-glow: rgba(114, 183, 216, 0.22);
+  --text: #171615;
+  --text-muted: rgba(23, 22, 21, 0.62);
+  --text-excerpt: rgba(51, 45, 34, 0.9);
+  --scrollbar: var(--la-silver-screen);
+  --la-header-bg: rgba(230, 232, 242, 0.9);
+  --la-search-bg: rgba(255, 253, 248, 0.97);
+  --la-card-sheen: rgba(114, 183, 216, 0.055);
+  --la-mark-text: #643f00;
 }
 
 .demo-sidebar {
@@ -171,6 +230,12 @@ body {
   flex-direction: column;
   gap: 1.25rem;
   z-index: 70;
+}
+
+[data-theme="light"] body.demo-la .demo-sidebar {
+  background:
+    linear-gradient(180deg, rgba(114, 183, 216, 0.22), transparent 38%),
+    #f2e6cf;
 }
 
 .demo-brand {
@@ -242,7 +307,7 @@ body {
   font-size: 0.86rem;
   line-height: 1.25;
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--gold-faint);
 }
 
 .demo-sidebar-nav a:hover {
@@ -272,7 +337,7 @@ body {
   padding: 1.1rem 0 0.9rem;
   text-align: left;
   border-bottom: 1px solid var(--border);
-  background: rgba(21, 20, 17, 0.88);
+  background: var(--la-header-bg);
   backdrop-filter: blur(14px);
   position: sticky;
   top: 0;
@@ -338,7 +403,7 @@ body {
 }
 
 .demo-la .search-form {
-  background: rgba(29, 27, 23, 0.94);
+  background: var(--la-search-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 0.7rem;
@@ -376,7 +441,7 @@ body {
   border-radius: var(--radius-md);
   padding: 1rem;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
+    linear-gradient(180deg, var(--la-card-sheen), transparent),
     var(--bg-card);
 }
 
@@ -401,7 +466,7 @@ body {
 
 .demo-la mark {
   background: rgba(244, 196, 48, 0.18);
-  color: #ffe07b;
+  color: var(--la-mark-text);
 }
 
 /* ---- Accessibility ---- */

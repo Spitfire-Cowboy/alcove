@@ -175,3 +175,10 @@ class TestStylesheet:
 
     def test_amber_badge_variable(self):
         assert "--amber-badge" in self.css
+
+    def test_la_demo_theme_has_distinct_light_and_dark_tokens(self):
+        assert ":root:not([data-theme]) body.demo-la" in self.css
+        assert '[data-theme="dark"] body.demo-la' in self.css
+        assert '[data-theme="light"] body.demo-la' in self.css
+        assert "--la-boulevard-sunset" in self.css
+        assert "--la-hockney-blue" in self.css
