@@ -42,6 +42,7 @@ Repository = "https://github.com/Spitfire-Cowboy/alcove"
 
 [project.scripts]
 alcove = "alcove.cli:main"
+alcove-mcp = "alcove.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["alcove"]
