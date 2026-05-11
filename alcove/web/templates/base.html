@@ -13,9 +13,29 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  {% if demo.theme == "la" %}
+  <script>
+    tailwind = {
+      config: {
+        theme: {
+          extend: {
+            colors: {
+              laGold: "#f4c430",
+              laSky: "#56a7b7",
+              laSunset: "#d85f35",
+              laInk: "#151411",
+              laCream: "#f7f1e4"
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  {% endif %}
   <link rel="stylesheet" href="{{ base_url }}/static/style.css">
 </head>
-<body>
+<body class="{% if demo.theme %}demo-{{ demo.theme }}{% endif %}">
   <a href="#main-content" class="skip-link">Skip to main content</a>
 
   <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
@@ -23,13 +43,35 @@
   </button>
 
   <div class="page-wrap">
+    {% if demo.theme == "la" %}
+    <aside class="demo-sidebar shadow-2xl shadow-black/30" aria-label="Los Angeles laws navigation">
+      <a class="demo-brand group" href="{{ base_url }}/">
+        <span class="demo-brand-mark transition-transform group-hover:scale-105" aria-hidden="true">LA</span>
+        <span>
+          <span class="demo-brand-title">{{ demo.title }}</span>
+          <span class="demo-brand-subtitle">{{ demo.subtitle }}</span>
+        </span>
+      </a>
+      <nav class="demo-sidebar-nav" aria-label="Common searches">
+        <span class="demo-nav-label">Common Searches</span>
+        {% for item in demo.quick_queries %}
+        <a class="transition-colors" href="{{ base_url }}/search?q={{ item | urlencode }}&mode={{ demo.default_mode }}&k=5">{{ item }}</a>
+        {% endfor %}
+      </nav>
+      <div class="demo-sidebar-meta space-y-1">
+        <span>Current through March 31, 2026</span>
+        <span>Retrieval only</span>
+      </div>
+    </aside>
+    {% endif %}
+
     <header class="site-header">
       <div class="container">
         <div class="logo-row">
-          <div class="logo-mark" aria-hidden="true">A</div>
-          <h1 class="site-title">Alcove</h1>
+          <div class="logo-mark" aria-hidden="true">{% if demo.theme == "la" %}LA{% else %}A{% endif %}</div>
+          <h1 class="site-title">{% if demo.theme == "la" %}Los Angeles Laws{% else %}Alcove{% endif %}</h1>
         </div>
-        <p class="site-tagline">Local-first retrieval</p>
+        <p class="site-tagline">{% if demo.theme == "la" %}{{ demo.tagline }}{% else %}Local-first retrieval{% endif %}</p>
         <nav class="site-nav" aria-label="Primary">
           <a href="{{ base_url }}/">Search</a>
           <a href="{{ base_url }}/browse">Browse</a>
@@ -47,7 +89,11 @@
       <div class="container">
         <p>
           <span class="footer-dot" aria-hidden="true"></span>
+          {% if demo.theme == "la" %}
+          Public LA laws search demo powered by Alcove.
+          {% else %}
           Runs locally. No cloud. No telemetry.
+          {% endif %}
         </p>
       </div>
     </footer>

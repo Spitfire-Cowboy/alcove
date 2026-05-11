@@ -1,6 +1,37 @@
 {% extends "base.html" %}
 
 {% block content %}
+  <form class="search-form sticky-search-form" method="GET" action="{{ base_url }}/search" role="search" aria-label="Search again">
+    <label for="results-search-input" class="sr-only">Search Los Angeles laws</label>
+    <div class="search-input-wrap">
+      <span class="search-icon" aria-hidden="true">&#128269;</span>
+      <input
+        id="results-search-input"
+        type="text"
+        name="q"
+        value="{{ query | e }}"
+        placeholder="Search by section, topic, or phrase..."
+        aria-label="Search your documents">
+    </div>
+    <input type="hidden" name="collections" value="{{ collections | e }}">
+    <fieldset class="search-mode-selector compact-search-mode" role="radiogroup" aria-label="Search mode">
+      <label class="mode-option">
+        <input type="radio" name="mode" value="semantic" {% if mode == "semantic" %}checked{% endif %}>
+        <span class="mode-label">Semantic</span>
+      </label>
+      <label class="mode-option">
+        <input type="radio" name="mode" value="keyword" {% if mode == "keyword" %}checked{% endif %}>
+        <span class="mode-label">Keyword</span>
+      </label>
+      <label class="mode-option">
+        <input type="radio" name="mode" value="hybrid" {% if mode == "hybrid" %}checked{% endif %}>
+        <span class="mode-label">Hybrid</span>
+      </label>
+    </fieldset>
+    <input type="hidden" name="k" value="{{ k }}">
+    <button type="submit" class="search-btn">Search</button>
+  </form>
+
   {% if results %}
   <div class="results-header">
     <span class="results-count">{{ results | length }} result{% if results | length != 1 %}s{% endif %} for</span>

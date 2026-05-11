@@ -33,7 +33,27 @@ def _root_path() -> str:
 def _tpl(ctx: dict) -> dict:
     """Merge template context with the base_url global."""
     ctx.setdefault("base_url", _root_path())
+    ctx.setdefault("demo", _demo_context())
     return ctx
+
+
+def _demo_context() -> dict:
+    theme = os.getenv("ALCOVE_DEMO_THEME", "").strip().lower()
+    if theme != "la":
+        return {"theme": ""}
+    return {
+        "theme": "la",
+        "title": "Los Angeles Laws",
+        "subtitle": "City Charter, Administrative Code, and Municipal Code",
+        "tagline": "Public civic law search",
+        "default_mode": "keyword",
+        "quick_queries": [
+            "parking of oversize vehicles between 2:00 a.m. and 6:00 a.m.",
+            "minimum wage paid sick leave",
+            "SEC. 41.18 sitting lying sleeping public right-of-way",
+            "independent redistricting commission",
+        ],
+    }
 
 SUPPORTED_EXTENSIONS = {
     ".txt", ".pdf", ".epub",
@@ -163,7 +183,7 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = "", mod
     return templates.TemplateResponse(
         request,
         "results.html",
-        _tpl({"query": q, "results": results}),
+        _tpl({"query": q, "results": results, "mode": mode, "k": k, "collections": collections}),
     )
 
 

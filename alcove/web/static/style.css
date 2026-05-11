@@ -138,6 +138,272 @@ body {
   padding: 0 1.5rem;
 }
 
+/* ---- Demo shell: Los Angeles laws ---- */
+
+.demo-la {
+  --bg-body: #151411;
+  --bg-surface: #23211c;
+  --bg-card: #1d1b17;
+  --border: rgba(244, 196, 48, 0.16);
+  --border-hover: rgba(244, 196, 48, 0.42);
+  --gold: #f4c430;
+  --gold-dim: rgba(244, 196, 48, 0.68);
+  --gold-faint: rgba(244, 196, 48, 0.09);
+  --gold-glow: rgba(244, 196, 48, 0.18);
+  --text: #fbf5e6;
+  --text-muted: rgba(251, 245, 230, 0.6);
+  --text-excerpt: rgba(237, 227, 203, 0.86);
+  --scrollbar: #514a33;
+  --la-sky: #56a7b7;
+  --la-sunset: #d85f35;
+}
+
+.demo-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 288px;
+  padding: 1.1rem;
+  background:
+    linear-gradient(180deg, rgba(244, 196, 48, 0.08), transparent 34%),
+    var(--bg-card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  z-index: 70;
+}
+
+.demo-brand {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  color: var(--text);
+  text-decoration: none;
+  min-width: 0;
+}
+
+.demo-brand:hover {
+  text-decoration: none;
+}
+
+.demo-brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--gold), var(--la-sunset));
+  color: #151411;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.demo-brand-title,
+.demo-brand-subtitle,
+.demo-nav-label,
+.demo-sidebar-meta span {
+  display: block;
+}
+
+.demo-brand-title {
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.demo-brand-subtitle {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.25;
+  margin-top: 0.2rem;
+}
+
+.demo-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.demo-nav-label {
+  color: var(--gold-dim);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+}
+
+.demo-sidebar-nav a {
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.62rem 0.72rem;
+  font-size: 0.86rem;
+  line-height: 1.25;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.demo-sidebar-nav a:hover {
+  border-color: var(--border-hover);
+  background: var(--gold-faint);
+  text-decoration: none;
+}
+
+.demo-sidebar-meta {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  padding-top: 0.9rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+
+.demo-la .page-wrap {
+  padding-left: 288px;
+}
+
+.demo-la .container {
+  max-width: 1040px;
+}
+
+.demo-la .site-header {
+  padding: 1.1rem 0 0.9rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  background: rgba(21, 20, 17, 0.88);
+  backdrop-filter: blur(14px);
+  position: sticky;
+  top: 0;
+  z-index: 60;
+}
+
+.demo-la .site-header .container {
+  align-items: center;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.demo-la .site-tagline {
+  display: none;
+}
+
+.demo-la .site-nav {
+  padding-right: 3.25rem;
+}
+
+.demo-la .logo-mark {
+  background: var(--la-sky);
+  color: #081315;
+  letter-spacing: 0;
+}
+
+.demo-la .site-main {
+  padding-top: 1rem;
+}
+
+.demo-la .hero-panel,
+.demo-la .workspace-panel,
+.demo-la .trust-strip,
+.demo-la .upload-zone,
+.demo-la .formats-note,
+.demo-la .hero-actions,
+.demo-la .hero-use-cases,
+.demo-la .welcome-banner {
+  display: none;
+}
+
+.demo-la .landing-shell {
+  gap: 0;
+}
+
+.demo-la .workspace-panel {
+  display: block;
+  padding: 1rem;
+  background: var(--bg-card);
+}
+
+.demo-la .workspace-header {
+  margin-bottom: 1rem;
+}
+
+.demo-la .workspace-header .quickstart-card,
+.demo-la .workspace-header .section-kicker {
+  display: none;
+}
+
+.demo-la .workspace-header h3 {
+  font-size: 1.05rem;
+}
+
+.demo-la .search-form {
+  background: rgba(29, 27, 23, 0.94);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.7rem;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+.demo-la .workspace-panel .search-form {
+  position: sticky;
+  top: 5.25rem;
+  z-index: 50;
+}
+
+.sticky-search-form {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 50;
+  align-items: center;
+}
+
+.demo-la .sticky-search-form {
+  top: 5.25rem;
+  margin-bottom: 1rem;
+}
+
+.compact-search-mode {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.demo-la .results-header {
+  padding-top: 0.1rem;
+}
+
+.demo-la .result-card {
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
+    var(--bg-card);
+}
+
+.demo-la .result-filename {
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.demo-la .file-type-icon {
+  background: rgba(86, 167, 183, 0.14);
+  border-color: rgba(86, 167, 183, 0.34);
+  color: var(--la-sky);
+}
+
+.demo-la .result-chunk {
+  color: var(--text-excerpt);
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.75;
+  border-left-color: rgba(86, 167, 183, 0.45);
+}
+
+.demo-la mark {
+  background: rgba(244, 196, 48, 0.18);
+  color: #ffe07b;
+}
+
 /* ---- Accessibility ---- */
 
 .sr-only {
@@ -1148,5 +1414,56 @@ a:hover {
 
   .result-chunk {
     font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 980px) {
+  .demo-sidebar {
+    position: sticky;
+    top: 0;
+    width: auto;
+    inset: auto;
+    padding: 0.9rem 1rem;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .demo-sidebar-nav,
+  .demo-sidebar-meta {
+    display: none;
+  }
+
+  .demo-la .page-wrap {
+    padding-left: 0;
+  }
+
+  .demo-la .site-header {
+    top: 73px;
+  }
+
+  .demo-la .workspace-panel .search-form,
+  .demo-la .sticky-search-form {
+    top: 8.4rem;
+  }
+
+  .compact-search-mode {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .demo-la .site-header .container {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .demo-la .search-form {
+    flex-direction: column;
+  }
+
+  .demo-la .workspace-panel .search-form,
+  .demo-la .sticky-search-form {
+    top: 9.8rem;
   }
 }

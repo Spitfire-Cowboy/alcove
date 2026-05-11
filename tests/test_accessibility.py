@@ -72,7 +72,7 @@ class TestSearchTemplate:
     def test_use_cases_heading_present(self):
         html = _read("search.html")
         assert 'id="use-cases-heading"' in html
-        assert 'id="use-cases-heading">Built for collections that should stay on your machine<' in html
+        assert "Built for collections that should stay on your machine" in html
 
     def test_workspace_section_present(self):
         html = _read("search.html")

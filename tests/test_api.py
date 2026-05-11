@@ -24,6 +24,26 @@ def test_root_returns_html():
     assert "alcove seed-demo" in r.text
 
 
+def test_la_demo_theme_changes_public_positioning(monkeypatch):
+    monkeypatch.setenv("ALCOVE_DEMO_THEME", "la")
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "Los Angeles Laws" in r.text
+    assert "Public civic law search" in r.text
+    assert "Local-first retrieval" not in r.text
+    assert "Runs locally. No cloud. No telemetry." not in r.text
+    assert "cdn.tailwindcss.com" in r.text
+    assert "demo-sidebar" in r.text
+
+
+def test_results_page_has_sticky_search(monkeypatch):
+    monkeypatch.setenv("ALCOVE_DEMO_THEME", "la")
+    r = client.get("/search", params={"q": "minimum wage", "mode": "keyword", "k": 3})
+    assert r.status_code == 200
+    assert "sticky-search-form" in r.text
+    assert 'value="minimum wage"' in r.text
+
+
 def test_query_post_returns_json():
     """Query endpoint works even with empty index (returns empty results)."""
     r = client.post("/query", json={"query": "test", "k": 1})

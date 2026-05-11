@@ -4,11 +4,15 @@
   <div class="landing-shell">
     <section class="hero-panel">
       <div class="hero-copy">
-        <p class="eyebrow">Local-first retrieval for operators who keep the disk.</p>
-        <h2 class="hero-title">Index your world. Search it without handing it over.</h2>
+        <p class="eyebrow">{% if demo.theme == "la" %}Los Angeles civic law search{% else %}Local-first retrieval for operators who keep the disk.{% endif %}</p>
+        <h2 class="hero-title">{% if demo.theme == "la" %}Search Los Angeles laws by section.{% else %}Index your world. Search it without handing it over.{% endif %}</h2>
         <p class="hero-lede">
+          {% if demo.theme == "la" %}
+          Search Los Angeles city law by section, topic, and exact legal phrase.
+          {% else %}
           Alcove ingests a directory of documents, builds a local semantic index, and serves fast search on
           localhost. No cloud account. No telemetry. No custody transfer.
+          {% endif %}
         </p>
         <div class="hero-actions">
           <a class="hero-link hero-link-primary" href="#workspace">Try the local workspace</a>
@@ -33,8 +37,8 @@
 
       <section class="hero-use-cases" aria-labelledby="use-cases-heading">
         <div class="section-heading">
-          <p class="section-kicker">Lead with the use cases</p>
-          <h3 id="use-cases-heading">Built for collections that should stay on your machine</h3>
+          <p class="section-kicker">{% if demo.theme == "la" %}Explore the corpus{% else %}Lead with the use cases{% endif %}</p>
+          <h3 id="use-cases-heading">{% if demo.theme == "la" %}Built for public city law lookup{% else %}Built for collections that should stay on your machine{% endif %}</h3>
         </div>
         <div class="use-case-grid">
           <article class="use-case-card">
@@ -69,8 +73,8 @@
       </article>
       <article class="trust-card">
         <span class="trust-step">03</span>
-        <h3>Serve search on localhost</h3>
-        <p>Operators get a web interface that stays near the source material instead of sending it into a control plane.</p>
+          <h3>{% if demo.theme == "la" %}Serve a public demo{% else %}Serve search on localhost{% endif %}</h3>
+          <p>{% if demo.theme == "la" %}Visitors get a focused search surface over public civic source material.{% else %}Operators get a web interface that stays near the source material instead of sending it into a control plane.{% endif %}</p>
       </article>
     </section>
 
@@ -111,11 +115,11 @@
 
         <fieldset class="search-mode-selector" role="radiogroup" aria-label="Search mode">
           <label class="mode-option">
-            <input type="radio" name="mode" value="semantic" checked>
+            <input type="radio" name="mode" value="semantic" {% if demo.default_mode != "keyword" %}checked{% endif %}>
             <span class="mode-label">Semantic</span>
           </label>
           <label class="mode-option">
-            <input type="radio" name="mode" value="keyword">
+            <input type="radio" name="mode" value="keyword" {% if demo.default_mode == "keyword" %}checked{% endif %}>
             <span class="mode-label">Keyword</span>
           </label>
           <label class="mode-option">
