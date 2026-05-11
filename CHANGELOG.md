@@ -4,6 +4,7 @@ All notable changes to alcove-search.
 
 ## [Unreleased]
 
+- Add local Ed25519 signing helpers and a standalone index signing tool for provenance checks.
 - Add a STDIO Model Context Protocol server for querying local Alcove indexes.
 - Add runtime configuration feature flags for environment and config-file controlled deployments.
 

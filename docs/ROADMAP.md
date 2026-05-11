@@ -20,6 +20,8 @@ This is the foundation. Everything below builds on it.
 
 **Streaming ingest.** Watch a directory and re-index on change. The current pipeline is batch-oriented: you run `alcove ingest`, it processes everything. Streaming mode keeps the index current without manual intervention.
 
+**Provenance and index signing.** Local signing should let operators publish or move index exports with tamper-evident metadata. The first step is Ed25519 signing and verification for document hashes and index export envelopes. Signature verification proves integrity against a public key; identity trust still depends on the operator pinning or verifying the key fingerprint out of band.
+
 **Runtime deployment controls.** Feature flags and deployment metadata should stay explicit, testable, and file-backed so public builds, local installs, and future hosted demos do not drift through ad hoc environment tweaks.
 
 ## Mid-term
