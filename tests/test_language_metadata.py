@@ -118,6 +118,12 @@ def test_detect_language_handles_invalid_sample_limit(monkeypatch):
     assert detect_language("The family history interview") == "en"
 
 
+def test_detect_language_uses_configured_sample_limit(monkeypatch):
+    monkeypatch.setenv("ALCOVE_LANGUAGE_MAX_CHARS", "6")
+
+    assert detect_language("qwerty The family history interview") == "unknown"
+
+
 def test_get_language_detector_can_disable_detection(monkeypatch):
     monkeypatch.setenv("ALCOVE_LANGUAGE_PROVIDER", "none")
 
@@ -326,6 +332,31 @@ def test_ollama_provider_reads_json_language_response(monkeypatch):
     assert calls["body"]["format"] == "json"
 
 
+def test_ollama_provider_limits_sample_text(monkeypatch):
+    calls = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return json.dumps({"response": json.dumps({"language": "fr"})}).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        calls["body"] = json.loads(request.data.decode("utf-8"))
+        return FakeResponse()
+
+    monkeypatch.setattr("alcove.index.language.urllib.request.urlopen", fake_urlopen)
+
+    detector = OllamaLanguageDetector(max_chars=7)
+    detector.detect("Bonjour la famille")
+
+    assert calls["body"]["prompt"].endswith("Bonjour")
+
+
 def test_ollama_provider_handles_empty_text():
     assert OllamaLanguageDetector().detect("").language == "unknown"
 
@@ -348,6 +379,40 @@ def test_ollama_provider_returns_unknown_for_unparseable_response(monkeypatch):
 
     detector = OllamaLanguageDetector()
 
+    assert detector.detect("Bonjour la famille").language == "unknown"
+
+
+def test_ollama_provider_returns_unknown_for_malformed_payloads(monkeypatch):
+    class FakeResponse:
+        def __init__(self, body):
+            self.body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return self.body
+
+    monkeypatch.setattr(
+        "alcove.index.language.urllib.request.urlopen",
+        lambda request, timeout: FakeResponse(b"[1, 2, 3]"),
+    )
+    detector = OllamaLanguageDetector()
+    assert detector.detect("Bonjour la famille").language == "unknown"
+
+    monkeypatch.setattr(
+        "alcove.index.language.urllib.request.urlopen",
+        lambda request, timeout: FakeResponse(json.dumps({"response": "[1]"}).encode("utf-8")),
+    )
+    assert detector.detect("Bonjour la famille").language == "unknown"
+
+    monkeypatch.setattr(
+        "alcove.index.language.urllib.request.urlopen",
+        lambda request, timeout: FakeResponse(b"\xff"),
+    )
     assert detector.detect("Bonjour la famille").language == "unknown"
 
 
@@ -378,6 +443,15 @@ def test_ollama_provider_preserves_explicit_zero_timeout():
     detector = OllamaLanguageDetector(timeout=0.0)
 
     assert detector.timeout == 0.0
+
+
+def test_ollama_provider_rejects_non_local_base_url():
+    with pytest.raises(ValueError, match="loopback"):
+        OllamaLanguageDetector(base_url="https://example.com")
+    with pytest.raises(ValueError, match="loopback"):
+        OllamaLanguageDetector(base_url="file:///tmp/ollama.sock")
+    with pytest.raises(ValueError, match="loopback"):
+        OllamaLanguageDetector(base_url="http:///missing-host")
 
 
 def test_invalid_confidence_env_falls_back(monkeypatch):
@@ -434,12 +508,14 @@ def test_get_language_detector_configures_ollama_provider(monkeypatch):
     monkeypatch.setenv("ALCOVE_LANGUAGE_MODEL", "llama3.2")
     monkeypatch.setenv("ALCOVE_LANGUAGE_OLLAMA_BASE_URL", "http://localhost:11435")
     monkeypatch.setenv("ALCOVE_LANGUAGE_TIMEOUT", "7")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_MAX_CHARS", "700")
 
     detector = get_language_detector()
 
     assert detector.model_name == "llama3.2"
     assert detector.base_url == "http://localhost:11435"
     assert detector.timeout == 7
+    assert detector.max_chars == 700
 
 
 def test_plugin_language_detector_can_be_selected(monkeypatch):

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from typing import Protocol
@@ -48,13 +50,10 @@ def _normalize_language(value: object) -> str:
     return normalized or "unknown"
 
 
-def _sample_text(text: str) -> str:
-    try:
-        limit = int(os.getenv("ALCOVE_LANGUAGE_MAX_CHARS", "4000"))
-    except ValueError:
-        limit = 4000
+def _sample_text(text: str, max_chars: int = 4000) -> str:
+    limit = max(1, max_chars)
     sample = (text or "").strip()
-    return sample[: max(1, limit)]
+    return sample[:limit]
 
 
 class NoneLanguageDetector:
@@ -67,8 +66,11 @@ class NoneLanguageDetector:
 class HeuristicLanguageDetector:
     provider = "heuristic"
 
+    def __init__(self, max_chars: int = 4000):
+        self.max_chars = max_chars
+
     def detect(self, text: str) -> LanguageDetection:
-        sample = _sample_text(text)
+        sample = _sample_text(text, self.max_chars)
         if not sample:
             return LanguageDetection(provider=self.provider)
 
@@ -104,8 +106,9 @@ class HeuristicLanguageDetector:
 class LangdetectLanguageDetector:
     provider = "langdetect"
 
-    def __init__(self, confidence_threshold: float | None = None):
+    def __init__(self, confidence_threshold: float | None = None, max_chars: int = 4000):
         self.confidence_threshold = _confidence_threshold(confidence_threshold)
+        self.max_chars = max_chars
         try:
             from langdetect import DetectorFactory, LangDetectException, detect_langs
         except Exception as exc:
@@ -119,7 +122,7 @@ class LangdetectLanguageDetector:
         self._LangDetectException = LangDetectException
 
     def detect(self, text: str) -> LanguageDetection:
-        sample = _sample_text(text)
+        sample = _sample_text(text, self.max_chars)
         if not sample:
             return LanguageDetection(provider=self.provider)
 
@@ -144,12 +147,14 @@ class TransformersLanguageDetector:
         self,
         model_name: str | None = None,
         confidence_threshold: float | None = None,
+        max_chars: int = 4000,
     ):
         self.model_name = model_name or os.getenv(
             "ALCOVE_LANGUAGE_MODEL",
             "papluca/xlm-roberta-base-language-detection",
         )
         self.confidence_threshold = _confidence_threshold(confidence_threshold)
+        self.max_chars = max_chars
         try:
             from transformers import pipeline
         except Exception as exc:
@@ -160,7 +165,7 @@ class TransformersLanguageDetector:
         self._classifier = pipeline("text-classification", model=self.model_name)
 
     def detect(self, text: str) -> LanguageDetection:
-        sample = _sample_text(text)
+        sample = _sample_text(text, self.max_chars)
         if not sample:
             return LanguageDetection(provider=self.provider)
         result = self._classifier(sample, truncation=True)
@@ -181,6 +186,7 @@ class OllamaLanguageDetector:
         model_name: str | None = None,
         base_url: str | None = None,
         timeout: float | None = None,
+        max_chars: int = 4000,
     ):
         self.model_name = model_name or os.getenv("ALCOVE_LANGUAGE_MODEL", "llama3.2")
         self.base_url = (
@@ -188,11 +194,14 @@ class OllamaLanguageDetector:
             or os.getenv("ALCOVE_LANGUAGE_OLLAMA_BASE_URL")
             or os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
         ).rstrip("/")
+        if not _is_local_ollama_url(self.base_url):
+            raise ValueError("Ollama language detection requires a loopback base URL.")
         timeout_value = timeout if timeout is not None else os.getenv("ALCOVE_LANGUAGE_TIMEOUT", "30")
         self.timeout = float(timeout_value)
+        self.max_chars = max_chars
 
     def detect(self, text: str) -> LanguageDetection:
-        sample = _sample_text(text)
+        sample = _sample_text(text, self.max_chars)
         if not sample:
             return LanguageDetection(provider=self.provider)
         payload = {
@@ -207,13 +216,17 @@ class OllamaLanguageDetector:
         }
         try:
             response = self._post("/api/generate", payload)
-        except (urllib.error.HTTPError, urllib.error.URLError):
+        except (json.JSONDecodeError, TypeError, UnicodeDecodeError, urllib.error.HTTPError, urllib.error.URLError):
             return LanguageDetection(_normalize_language(None), provider=self.provider)
 
+        if not isinstance(response, dict):
+            return LanguageDetection(_normalize_language(None), provider=self.provider)
         raw = response.get("response", "")
         try:
             data = json.loads(raw) if isinstance(raw, str) else raw
         except json.JSONDecodeError:
+            data = {}
+        if not isinstance(data, dict):
             data = {}
         return LanguageDetection(_normalize_language(data.get("language")), provider=self.provider)
 
@@ -227,6 +240,21 @@ class OllamaLanguageDetector:
         )
         with urllib.request.urlopen(request, timeout=self.timeout) as response:
             return json.loads(response.read().decode("utf-8"))
+
+
+def _is_local_ollama_url(base_url: str) -> bool:
+    parsed = urllib.parse.urlparse(base_url)
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    host = parsed.hostname
+    if host is None:
+        return False
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 _BUILTIN_LANGUAGE_DETECTORS = {
     "none": NoneLanguageDetector,
@@ -262,18 +290,25 @@ def get_language_detector(provider: str | None = None) -> LanguageDetector:
         raise ValueError(f"Unknown language detector: {choice!r}.")
 
     if choice in {"langdetect"}:
-        return cls(confidence_threshold=cfg.confidence_threshold)
+        return cls(
+            confidence_threshold=cfg.confidence_threshold,
+            max_chars=cfg.max_chars,
+        )
     if choice in {"transformers", "huggingface"}:
         return cls(
             model_name=cfg.model,
             confidence_threshold=cfg.confidence_threshold,
+            max_chars=cfg.max_chars,
         )
     if choice == "ollama":
         return cls(
             model_name=cfg.model,
             base_url=cfg.ollama_base_url,
             timeout=cfg.timeout,
+            max_chars=cfg.max_chars,
         )
+    if choice == "heuristic":
+        return cls(max_chars=cfg.max_chars)
     return cls()
 
 

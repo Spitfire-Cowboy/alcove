@@ -41,6 +41,7 @@ def test_default_language_config_is_local_heuristic():
     assert language.confidence_threshold == 0.0
     assert language.ollama_base_url == "http://127.0.0.1:11434"
     assert language.timeout == 30.0
+    assert language.max_chars == 4000
 
 
 def test_default_private_mode_is_true(monkeypatch):
@@ -91,6 +92,7 @@ def test_env_language_overrides(monkeypatch):
     monkeypatch.setenv("ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD", "0.8")
     monkeypatch.setenv("ALCOVE_LANGUAGE_OLLAMA_BASE_URL", "http://localhost:11435")
     monkeypatch.setenv("ALCOVE_LANGUAGE_TIMEOUT", "12.5")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_MAX_CHARS", "500")
 
     cfg = load_config()
 
@@ -99,6 +101,7 @@ def test_env_language_overrides(monkeypatch):
     assert cfg.language.confidence_threshold == 0.8
     assert cfg.language.ollama_base_url == "http://localhost:11435"
     assert cfg.language.timeout == 12.5
+    assert cfg.language.max_chars == 500
 
 
 def test_custom_language_provider_name_is_preserved(monkeypatch):
@@ -131,12 +134,14 @@ def test_invalid_numeric_env_uses_defaults(monkeypatch):
     monkeypatch.setenv("ALCOVE_EXCERPT_CHARS", "wide")
     monkeypatch.setenv("ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD", "maybe")
     monkeypatch.setenv("ALCOVE_LANGUAGE_TIMEOUT", "later")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_MAX_CHARS", "wide")
 
     cfg = load_config()
     assert cfg.recent_activity_limit == 5
     assert cfg.excerpt_chars is None
     assert cfg.language.confidence_threshold == 0.0
     assert cfg.language.timeout == 30.0
+    assert cfg.language.max_chars == 4000
 
 
 def test_numeric_env_clamps_to_minimum(monkeypatch):
@@ -145,12 +150,14 @@ def test_numeric_env_clamps_to_minimum(monkeypatch):
     monkeypatch.setenv("ALCOVE_EXCERPT_CHARS", "-100")
     monkeypatch.setenv("ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD", "2")
     monkeypatch.setenv("ALCOVE_LANGUAGE_TIMEOUT", "0")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_MAX_CHARS", "0")
 
     cfg = load_config()
     assert cfg.recent_activity_limit == 1
     assert cfg.excerpt_chars == 1
     assert cfg.language.confidence_threshold == 1.0
     assert cfg.language.timeout == 0.1
+    assert cfg.language.max_chars == 1
 
 
 def test_float_config_values_can_be_booleans(tmp_path, monkeypatch):
@@ -182,7 +189,8 @@ def test_toml_feature_flags(tmp_path, monkeypatch):
         'model = "llama3.2"\n'
         'confidence_threshold = 0.6\n'
         'ollama_base_url = "http://localhost:11435"\n'
-        'timeout = 15.5\n',
+        'timeout = 15.5\n'
+        'max_chars = 250\n',
         encoding="utf-8",
     )
     monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
@@ -200,6 +208,7 @@ def test_toml_feature_flags(tmp_path, monkeypatch):
         "ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD",
         "ALCOVE_LANGUAGE_OLLAMA_BASE_URL",
         "ALCOVE_LANGUAGE_TIMEOUT",
+        "ALCOVE_LANGUAGE_MAX_CHARS",
     ):
         monkeypatch.delenv(env_name, raising=False)
 
@@ -215,6 +224,7 @@ def test_toml_feature_flags(tmp_path, monkeypatch):
     assert cfg.language.confidence_threshold == 0.6
     assert cfg.language.ollama_base_url == "http://localhost:11435"
     assert cfg.language.timeout == 15.5
+    assert cfg.language.max_chars == 250
     assert cfg.excerpt_chars == 250
     assert cfg.private_mode is False
 
@@ -258,6 +268,7 @@ def test_json_feature_flags(tmp_path, monkeypatch):
                 "language": {
                     "provider": "langdetect",
                     "confidence_threshold": 0.7,
+                    "max_chars": 600,
                 },
                 "excerpt_chars": 120,
                 "private_mode": False,
@@ -274,6 +285,7 @@ def test_json_feature_flags(tmp_path, monkeypatch):
     assert cfg.deployment.instance_name == "Demo Archive"
     assert cfg.language.provider == "langdetect"
     assert cfg.language.confidence_threshold == 0.7
+    assert cfg.language.max_chars == 600
     assert cfg.excerpt_chars == 120
     assert cfg.private_mode is False
 

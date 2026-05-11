@@ -48,6 +48,7 @@ class Language:
     confidence_threshold: float = 0.0
     ollama_base_url: str = "http://127.0.0.1:11434"
     timeout: float = 30.0
+    max_chars: int = 4000
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +151,12 @@ def load_config() -> RuntimeConfig:
                 config_value=values.get("language.timeout"),
                 default=30.0,
                 minimum=0.1,
+            ),
+            max_chars=_resolve_int(
+                env_name="ALCOVE_LANGUAGE_MAX_CHARS",
+                config_value=values.get("language.max_chars"),
+                default=4000,
+                minimum=1,
             ),
         ),
         recent_activity_limit=_resolve_int(
