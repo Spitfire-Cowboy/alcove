@@ -192,6 +192,18 @@ def test_browse_corpus_stats_groups_source_documents(monkeypatch):
     assert all("/tmp/alcove-corpus" not in item["label"] for item in stats["recent"])
 
 
+def test_browse_corpus_stats_empty_records():
+    from alcove.query.browse import browse_corpus_stats
+
+    assert browse_corpus_stats([]) == {
+        "collections": [],
+        "filetypes": [],
+        "authors": [],
+        "years": [],
+        "recent": [],
+    }
+
+
 def test_browse_page_renders_facets(monkeypatch):
     """GET /browse renders recent documents, collections, and facet chips."""
     from alcove.query import api as api_mod
@@ -244,8 +256,10 @@ def test_browse_helpers_handle_fallbacks(tmp_path, monkeypatch):
 
     raw_dir = tmp_path / "raw"
     source = raw_dir / "letters" / "note.txt"
+    root_source = raw_dir / "root.txt"
     source.parent.mkdir(parents=True)
     source.write_text("hello", encoding="utf-8")
+    root_source.write_text("root", encoding="utf-8")
     monkeypatch.setenv("RAW_DIR", str(raw_dir))
 
     assert browse_mod.source_key({"title": "Untitled"}) == "Untitled"
@@ -253,8 +267,10 @@ def test_browse_helpers_handle_fallbacks(tmp_path, monkeypatch):
     assert browse_mod.source_label("(unknown)") == "Unknown source"
     assert browse_mod.source_label(str(source)) == "letters/note.txt"
     assert browse_mod.source_label("/external/archive/note.txt") == "archive/note.txt"
+    assert browse_mod.source_label("note.txt") == "note.txt"
     assert browse_mod.source_label("") == "Unknown source"
     assert browse_mod.collection_label({}, str(source)) == "letters"
+    assert browse_mod.collection_label({}, str(root_source)) == "default"
     assert browse_mod.collection_label({}, "/external/note.txt") == "default"
     assert browse_mod.document_sort_time("missing.txt", [{"uploaded_at": "not-a-date"}]) == 0.0
     assert browse_mod.document_sort_time(str(source), [{}]) > 0

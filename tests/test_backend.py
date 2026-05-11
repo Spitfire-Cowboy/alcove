@@ -93,6 +93,76 @@ class TestChromaBackend:
         ]
 
 
+class _MetadataCollection:
+    def __init__(self, name="docs", metadatas=None, *, raises=False):
+        self.name = name
+        self._metadatas = metadatas or []
+        self._raises = raises
+
+    def get(self, include):
+        assert include == ["metadatas"]
+        if self._raises:
+            raise RuntimeError("unavailable")
+        return {"metadatas": self._metadatas}
+
+
+def test_multi_chroma_iter_metadata_records_enriches_collection():
+    from alcove.index.backend import MultiChromaBackend
+
+    backend = MultiChromaBackend.__new__(MultiChromaBackend)
+    backend._get_all_collections = lambda: [
+        _MetadataCollection("science", [{"source": "paper.md"}, None]),
+        _MetadataCollection("broken", raises=True),
+    ]
+
+    assert backend.iter_metadata_records() == [{"source": "paper.md", "collection": "science"}]
+
+
+def test_multi_root_iter_metadata_records_enriches_collection():
+    from alcove.index.backend import MultiRootBackend
+
+    backend = MultiRootBackend.__new__(MultiRootBackend)
+    backend._cols = [
+        ("letters", object(), _MetadataCollection(metadatas=[{"source": "note.txt"}])),
+    ]
+
+    assert backend.iter_metadata_records() == [{"source": "note.txt", "collection": "letters"}]
+
+
+class _ZvecMetadataDoc:
+    def __init__(self, **fields):
+        self._fields = fields
+
+    def field(self, name):
+        return self._fields.get(name)
+
+
+class _ZvecMetadataCollection:
+    def __init__(self, docs):
+        self._docs = docs
+
+    def query(self, vectors, topk, output_fields):
+        assert vectors is None
+        assert output_fields == ["source", "collection"]
+        return self._docs[:topk]
+
+
+def test_zvec_iter_metadata_records_returns_source_and_collection():
+    from alcove.index.backend import ZvecBackend
+
+    backend = ZvecBackend.__new__(ZvecBackend)
+    backend._collection = _ZvecMetadataCollection([
+        _ZvecMetadataDoc(source="a.txt", collection="letters"),
+        _ZvecMetadataDoc(source="b.txt"),
+    ])
+    backend.count = lambda: 2
+
+    assert backend.iter_metadata_records() == [
+        {"source": "a.txt", "collection": "letters"},
+        {"source": "b.txt", "collection": "default"},
+    ]
+
+
 @_skip_zvec
 class TestZvecBackend:
     def test_add_and_count(self, embedder, tmp_path, monkeypatch):
