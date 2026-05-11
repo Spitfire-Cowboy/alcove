@@ -417,14 +417,20 @@ class ZvecBackend:
         results = self._collection.query(
             vectors=None,
             topk=self.count() or 1,
-            output_fields=["source", "collection"],
+            output_fields=["document", "source", "collection"],
         )
         records: List[Dict[str, object]] = []
         for doc in results:
-            records.append({
-                "source": doc.field("source"),
-                "collection": doc.field("collection") or "default",
-            })
+            records.append(
+                _enrich_metadata_record(
+                    {
+                        "source": doc.field("source"),
+                        "collection": doc.field("collection") or "default",
+                    },
+                    document=doc.field("document"),
+                    chunk_id=doc.id,
+                )
+            )
         return records
 
 
@@ -434,19 +440,42 @@ def _collection_metadata_records(
     collection_name: str | None = None,
 ) -> List[Dict[str, object]]:
     try:
-        raw = collection.get(include=["metadatas"])
+        raw = collection.get(include=["metadatas", "documents"])
     except Exception:
         return []
 
+    documents = raw.get("documents") or []
+    ids = raw.get("ids") or []
     records: List[Dict[str, object]] = []
-    for meta in raw.get("metadatas") or []:
+    for index, meta in enumerate(raw.get("metadatas") or []):
         if not isinstance(meta, dict):
             continue
         record = dict(meta)
-        if collection_name:
-            record.setdefault("collection", collection_name)
-        records.append(record)
+        records.append(
+            _enrich_metadata_record(
+                record,
+                collection_name=collection_name,
+                document=documents[index] if index < len(documents) else None,
+                chunk_id=ids[index] if index < len(ids) else None,
+            )
+        )
     return records
+
+
+def _enrich_metadata_record(
+    record: Dict[str, object],
+    *,
+    collection_name: str | None = None,
+    document: object = None,
+    chunk_id: object = None,
+) -> Dict[str, object]:
+    if collection_name:
+        record.setdefault("collection", collection_name)
+    if isinstance(document, str):
+        record["__document"] = document
+    if isinstance(chunk_id, str):
+        record["__chunk_id"] = chunk_id
+    return record
 
 
 _BUILTIN_BACKENDS = {

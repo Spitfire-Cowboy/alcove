@@ -89,21 +89,29 @@ class TestChromaBackend:
         )
 
         assert backend.iter_metadata_records() == [
-            {"source": "a.txt", "collection": "letters", "author": "Ada"}
+            {
+                "source": "a.txt",
+                "collection": "letters",
+                "author": "Ada",
+                "__document": "hello world",
+                "__chunk_id": "doc1",
+            }
         ]
 
 
 class _MetadataCollection:
-    def __init__(self, name="docs", metadatas=None, *, raises=False):
+    def __init__(self, name="docs", metadatas=None, documents=None, ids=None, *, raises=False):
         self.name = name
         self._metadatas = metadatas or []
+        self._documents = documents or []
+        self._ids = ids or []
         self._raises = raises
 
     def get(self, include):
-        assert include == ["metadatas"]
+        assert include == ["metadatas", "documents"]
         if self._raises:
             raise RuntimeError("unavailable")
-        return {"metadatas": self._metadatas}
+        return {"metadatas": self._metadatas, "documents": self._documents, "ids": self._ids}
 
 
 def test_multi_chroma_iter_metadata_records_enriches_collection():
@@ -111,11 +119,13 @@ def test_multi_chroma_iter_metadata_records_enriches_collection():
 
     backend = MultiChromaBackend.__new__(MultiChromaBackend)
     backend._get_all_collections = lambda: [
-        _MetadataCollection("science", [{"source": "paper.md"}, None]),
+        _MetadataCollection("science", [{"source": "paper.md"}, None], ["body"], ["chunk-1"]),
         _MetadataCollection("broken", raises=True),
     ]
 
-    assert backend.iter_metadata_records() == [{"source": "paper.md", "collection": "science"}]
+    assert backend.iter_metadata_records() == [
+        {"source": "paper.md", "collection": "science", "__document": "body", "__chunk_id": "chunk-1"}
+    ]
 
 
 def test_multi_root_iter_metadata_records_enriches_collection():
@@ -123,14 +133,17 @@ def test_multi_root_iter_metadata_records_enriches_collection():
 
     backend = MultiRootBackend.__new__(MultiRootBackend)
     backend._cols = [
-        ("letters", object(), _MetadataCollection(metadatas=[{"source": "note.txt"}])),
+        ("letters", object(), _MetadataCollection(metadatas=[{"source": "note.txt"}], documents=["note body"])),
     ]
 
-    assert backend.iter_metadata_records() == [{"source": "note.txt", "collection": "letters"}]
+    assert backend.iter_metadata_records() == [
+        {"source": "note.txt", "collection": "letters", "__document": "note body"}
+    ]
 
 
 class _ZvecMetadataDoc:
-    def __init__(self, **fields):
+    def __init__(self, id_="doc-id", **fields):
+        self.id = id_
         self._fields = fields
 
     def field(self, name):
@@ -143,7 +156,7 @@ class _ZvecMetadataCollection:
 
     def query(self, vectors, topk, output_fields):
         assert vectors is None
-        assert output_fields == ["source", "collection"]
+        assert output_fields == ["document", "source", "collection"]
         return self._docs[:topk]
 
 
@@ -152,14 +165,14 @@ def test_zvec_iter_metadata_records_returns_source_and_collection():
 
     backend = ZvecBackend.__new__(ZvecBackend)
     backend._collection = _ZvecMetadataCollection([
-        _ZvecMetadataDoc(source="a.txt", collection="letters"),
-        _ZvecMetadataDoc(source="b.txt"),
+        _ZvecMetadataDoc(id_="a-1", source="a.txt", collection="letters", document="A body"),
+        _ZvecMetadataDoc(id_="b-1", source="b.txt"),
     ])
     backend.count = lambda: 2
 
     assert backend.iter_metadata_records() == [
-        {"source": "a.txt", "collection": "letters"},
-        {"source": "b.txt", "collection": "default"},
+        {"source": "a.txt", "collection": "letters", "__document": "A body", "__chunk_id": "a-1"},
+        {"source": "b.txt", "collection": "default", "__chunk_id": "b-1"},
     ]
 
 

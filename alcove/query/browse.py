@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from collections import Counter
@@ -36,39 +37,32 @@ def browse_corpus_stats(records: list[dict[str, Any]] | None = None) -> dict[str
     if not records:
         return dict(EMPTY_BROWSE_STATS)
 
-    grouped: dict[str, list[dict[str, Any]]] = {}
-    for meta in records:
-        grouped.setdefault(source_key(meta), []).append(meta)
+    groups = source_groups(records)
+    documents = documents_from_groups(groups)
 
     collections: Counter[str] = Counter()
     filetypes: Counter[str] = Counter()
     authors: Counter[str] = Counter()
     years: Counter[str] = Counter()
-    recent: list[dict[str, Any]] = []
 
-    for source, metas in grouped.items():
-        first = metas[0]
-        label = source_label(source)
-        collection = collection_label(first, source)
-        collections[collection] += 1
+    # Collection and filetype counts use grouped source documents. Author and
+    # year facets below inspect raw metadata so chunks without text still count.
+    for document in documents:
+        collections[document["collection"]] += 1
 
-        ext = Path(label).suffix.lower().lstrip(".")
+        ext = Path(document["label"]).suffix.lower().lstrip(".")
         if ext:
             filetypes[ext.upper()] += 1
 
-        for author in metadata_authors(first):
+    for metas in groups.values():
+        meta = metas[0]
+
+        for author in metadata_authors(meta):
             authors[author] += 1
 
-        year = str(first.get("year") or "").strip()
+        year = str(meta.get("year") or "").strip()
         if re.fullmatch(r"\d{4}", year):
             years[year] += 1
-
-        recent.append({
-            "label": label,
-            "collection": collection,
-            "chunk_count": len(metas),
-            "sort_time": document_sort_time(source, metas),
-        })
 
     return {
         "collections": counted_items(collections, "name"),
@@ -78,8 +72,59 @@ def browse_corpus_stats(records: list[dict[str, Any]] | None = None) -> dict[str
             {"year": year, "doc_count": count}
             for year, count in sorted(years.items(), key=lambda item: item[0], reverse=True)
         ],
-        "recent": sorted(recent, key=lambda item: (-item["sort_time"], item["label"].lower()))[:12],
+        "recent": sorted(documents, key=lambda item: (-item["sort_time"], item["label"].lower()))[:12],
     }
+
+
+def browse_document_detail(
+    document_id: str,
+    records: list[dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
+    """Return one read-only source document entry by stable browse ID."""
+    records = backend_metadata_records() if records is None else records
+    for document in browse_documents(records):
+        if document["id"] == document_id:
+            return document
+    return None
+
+
+def browse_documents(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return documents_from_groups(source_groups(records))
+
+
+def source_groups(records: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for meta in records:
+        grouped.setdefault(source_key(meta), []).append(meta)
+    return grouped
+
+
+def documents_from_groups(groups: dict[str, list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    documents: list[dict[str, Any]] = []
+    for source, metas in groups.items():
+        first = metas[0]
+        documents.append(
+            {
+                "id": browse_document_id(source),
+                "label": source_label(source),
+                "collection": collection_label(first, source),
+                "chunk_count": len(metas),
+                "sort_time": document_sort_time(source, metas),
+                "chunks": document_chunks(metas),
+            }
+        )
+    return documents
+
+
+def document_chunks(metas: list[dict[str, Any]]) -> list[dict[str, str]]:
+    return [
+        {
+            "id": str(meta.get("__chunk_id") or ""),
+            "text": chunk_preview(str(meta.get("__document") or "")),
+        }
+        for meta in metas
+        if str(meta.get("__document") or "").strip()
+    ][:8]
 
 
 def counted_items(counter: Counter[str], key: str) -> list[dict[str, Any]]:
@@ -150,3 +195,14 @@ def document_sort_time(source: str, metas: list[dict[str, Any]]) -> float:
         return Path(source).expanduser().stat().st_mtime
     except OSError:
         return 0.0
+
+
+def browse_document_id(source: str) -> str:
+    return hashlib.sha256(source.encode("utf-8")).hexdigest()[:16]
+
+
+def chunk_preview(text: str, *, limit: int = 360) -> str:
+    normalized = re.sub(r"\s+", " ", text).strip()
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 1].rstrip() + "..."

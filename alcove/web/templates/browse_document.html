@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="browse-hero" aria-labelledby="document-heading">
+    <div>
+      <p class="section-kicker">Document detail</p>
+      <h2 id="document-heading">{{ document.label | e }}</h2>
+      <p>{{ document.collection | e }} &middot; {{ document.chunk_count }} indexed chunk{% if document.chunk_count != 1 %}s{% endif %}</p>
+    </div>
+    <form class="browse-search" method="GET" action="{{ base_url }}/search" role="search">
+      <label class="sr-only" for="document-search-input">Search within {{ document.collection | e }}</label>
+      <input id="document-search-input" type="text" name="q" placeholder="Search {{ document.collection | e }} collection">
+      <input type="hidden" name="collections" value="{{ document.collection | e }}">
+      <button class="search-btn" type="submit">Search</button>
+    </form>
+  </section>
+
+  <section class="browse-panel browse-panel-wide" aria-labelledby="chunk-preview-heading">
+    <div class="browse-panel-heading">
+      <h3 id="chunk-preview-heading">Chunk previews</h3>
+    </div>
+    {% if document.chunks %}
+    <div class="browse-list">
+      {% for chunk in document.chunks %}
+      <article class="browse-list-item browse-chunk-preview">
+        {% if chunk.id %}
+        <span class="browse-list-meta">{{ chunk.id | e }}</span>
+        {% endif %}
+        <p>{{ chunk.text | e }}</p>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty-state">This backend exposed metadata for the document, but not chunk text.</p>
+    {% endif %}
+  </section>
+
+  <a class="back-link" href="{{ base_url }}/browse">&#8592; Back to browse</a>
+{% endblock %}
