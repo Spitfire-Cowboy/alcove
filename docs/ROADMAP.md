@@ -2,7 +2,7 @@
 
 ## Current release (v0.3.0)
 
-Alcove ships a working three-stage pipeline: ingest, index, query. Eleven document formats. Three embedders (hash for offline determinism, sentence-transformers for local semantic search, Ollama for operator-managed local models). Two vector backends (ChromaDB, zvec). Local language metadata is written during indexing and can be used as a query filter. A plugin system.
+Alcove ships a working three-stage pipeline: ingest, index, query. Eleven document formats. Three embedders (hash for offline determinism, sentence-transformers for local semantic search, Ollama for operator-managed local models). Two vector backends (ChromaDB, zvec). Configurable local language metadata is written during indexing and can be used as a query filter. A plugin system.
 
 A web UI with upload and search. CI across Python 3.10, 3.11, 3.12. Docker deployment. Apache 2.0.
 
@@ -18,7 +18,7 @@ This is the foundation. Everything below builds on it.
 
 **Browse mode.** Alcove should be navigable, not just searchable. Directory-aware corpus browsing in the web UI: see what you have, not just what matches a query. Search and browse are complementary interfaces to the same index.
 
-**Language-aware browsing.** Language metadata now exists at chunk level. Near-term work is exposing it cleanly in the web UI and collection views so multilingual corpora can be filtered without changing the retrieval model.
+**Language-aware browsing.** Language metadata now exists at chunk level through configurable providers (`heuristic`, `langdetect`, Hugging Face, Ollama, or plugins). Near-term work is exposing it cleanly in the web UI and collection views so multilingual corpora can be filtered without changing the retrieval model.
 
 **MCP endpoint.** This is the "share it with the universe" part. An MCP-compatible retrieval surface lets AI tools, public-facing websites, or any other tool query your index. The first public step is a local STDIO MCP server that exposes search and collection-listing tools. Your corpus stays local. Your index stays yours. The answers are available to whoever you choose to expose them to. Because Alcove is retrieval, not generation, those answers are what your documents actually say: no hallucinations, no editorializing, no slop. [MCP changes the security surface](SECURITY.md#security-model); review it before exposing the endpoint. Context7 compatibility is a goal.
 

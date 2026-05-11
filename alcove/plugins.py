@@ -25,6 +25,7 @@ else:
 EXTRACTORS_GROUP = "alcove.extractors"
 BACKENDS_GROUP = "alcove.backends"
 EMBEDDERS_GROUP = "alcove.embedders"
+LANGUAGE_DETECTORS_GROUP = "alcove.language_detectors"
 
 
 def discover_extractors() -> Dict[str, callable]:
@@ -46,6 +47,11 @@ def discover_embedders() -> Dict[str, type]:
     return {ep.name: ep.load() for ep in entry_points(group=EMBEDDERS_GROUP)}
 
 
+def discover_language_detectors() -> Dict[str, type]:
+    """Return {"name": LanguageDetectorClass} from installed plugins."""
+    return {ep.name: ep.load() for ep in entry_points(group=LANGUAGE_DETECTORS_GROUP)}
+
+
 def list_plugins() -> List[dict]:
     """List all discovered Alcove plugins across all groups."""
     plugins = []
@@ -53,6 +59,7 @@ def list_plugins() -> List[dict]:
         (EXTRACTORS_GROUP, "extractor"),
         (BACKENDS_GROUP, "backend"),
         (EMBEDDERS_GROUP, "embedder"),
+        (LANGUAGE_DETECTORS_GROUP, "language_detector"),
     ]:
         for ep in entry_points(group=group):
             plugins.append({

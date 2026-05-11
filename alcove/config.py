@@ -40,9 +40,21 @@ class Deployment:
 
 
 @dataclass(frozen=True, slots=True)
+class Language:
+    """Language metadata detection settings."""
+
+    provider: str = "heuristic"
+    model: str | None = None
+    confidence_threshold: float = 0.0
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    timeout: float = 30.0
+
+
+@dataclass(frozen=True, slots=True)
 class RuntimeConfig:
     features: Features = field(default_factory=Features)
     deployment: Deployment = field(default_factory=Deployment)
+    language: Language = field(default_factory=Language)
     recent_activity_limit: int = 5
     excerpt_chars: int | None = None
     private_mode: bool = True
@@ -109,6 +121,35 @@ def load_config() -> RuntimeConfig:
                 env_name="ALCOVE_INSTANCE_NAME",
                 config_value=values.get("deployment.instance_name"),
                 default="Alcove",
+            ),
+        ),
+        language=Language(
+            provider=_resolve_str(
+                env_name="ALCOVE_LANGUAGE_PROVIDER",
+                config_value=values.get("language.provider"),
+                default="heuristic",
+            ),
+            model=_resolve_optional_str(
+                env_name="ALCOVE_LANGUAGE_MODEL",
+                config_value=values.get("language.model"),
+            ),
+            confidence_threshold=_resolve_float(
+                env_name="ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD",
+                config_value=values.get("language.confidence_threshold"),
+                default=0.0,
+                minimum=0.0,
+                maximum=1.0,
+            ),
+            ollama_base_url=_resolve_str(
+                env_name="ALCOVE_LANGUAGE_OLLAMA_BASE_URL",
+                config_value=values.get("language.ollama_base_url"),
+                default=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
+            ),
+            timeout=_resolve_float(
+                env_name="ALCOVE_LANGUAGE_TIMEOUT",
+                config_value=values.get("language.timeout"),
+                default=30.0,
+                minimum=0.1,
             ),
         ),
         recent_activity_limit=_resolve_int(
@@ -198,6 +239,11 @@ def _load_json_values(path: Path) -> dict[str, object]:
         for key, value in deployment.items():
             out[f"deployment.{key}"] = value
 
+    language = data.get("language")
+    if isinstance(language, dict):
+        for key, value in language.items():
+            out[f"language.{key}"] = value
+
     if "excerpt_chars" in data:
         out["excerpt_chars"] = data["excerpt_chars"]
     if "private_mode" in data:
@@ -266,6 +312,19 @@ def _resolve_str(
     return default
 
 
+def _resolve_optional_str(*, env_name: str, config_value: object) -> str | None:
+    env_value = os.getenv(env_name)
+    if env_value is not None:
+        value = env_value.strip()
+        return value or None
+
+    if isinstance(config_value, str):
+        value = config_value.strip()
+        return value or None
+
+    return None
+
+
 def _resolve_int(*, env_name: str, config_value: object, default: int, minimum: int) -> int:
     env_value = os.getenv(env_name)
     if env_value is not None:
@@ -286,6 +345,25 @@ def _resolve_optional_int(*, env_name: str, config_value: object, minimum: int) 
     return None if parsed is None else max(minimum, parsed)
 
 
+def _resolve_float(
+    *,
+    env_name: str,
+    config_value: object,
+    default: float,
+    minimum: float,
+    maximum: float | None = None,
+) -> float:
+    env_value = os.getenv(env_name)
+    if env_value is not None:
+        parsed = _coerce_float(env_value)
+        value = default if parsed is None else max(minimum, parsed)
+        return min(maximum, value) if maximum is not None else value
+
+    parsed = _coerce_float(config_value)
+    value = default if parsed is None else max(minimum, parsed)
+    return min(maximum, value) if maximum is not None else value
+
+
 def _coerce_bool(value: object) -> bool | None:
     if isinstance(value, bool):
         return value
@@ -297,6 +375,19 @@ def _coerce_bool(value: object) -> bool | None:
             return True
         if lowered in {"0", "false", "no", "off"}:
             return False
+    return None
+
+
+def _coerce_float(value: object) -> float | None:
+    if isinstance(value, bool):
+        return float(value)
+    if isinstance(value, (float, int)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value.strip())
+        except ValueError:
+            return None
     return None
 
 

@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .language import detect_language
+from .language import get_language_detector
 
 
 class KeywordIndex:
@@ -23,6 +23,7 @@ class KeywordIndex:
         )
         self._bm25 = None
         self._chunks: List[Dict] = []
+        self._language_detector = None
 
     def _load(self):
         """Read chunks.jsonl, tokenize, and build BM25 index."""
@@ -45,7 +46,7 @@ class KeywordIndex:
                         "text": text,
                         "source": rec.get("source", ""),
                         "collection": rec.get("collection", "default"),
-                        "language": (rec.get("language") or detect_language(text)).lower(),
+                        "language": self._language_for_record(rec, text),
                     })
                     tokenized.append(text.lower().split())
 
@@ -53,6 +54,14 @@ class KeywordIndex:
             self._bm25 = BM25Okapi(tokenized)
         else:
             self._bm25 = None
+
+    def _language_for_record(self, rec: dict, text: str) -> str:
+        language = rec.get("language")
+        if language:
+            return str(language).lower()
+        if self._language_detector is None:
+            self._language_detector = get_language_detector()
+        return self._language_detector.detect(text).language.lower()
 
     def search(
         self,

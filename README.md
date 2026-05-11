@@ -48,9 +48,10 @@ This pulls in sentence-transformers for real vector similarity (~80 MB model dow
 | Extra | Install command | What it adds |
 |-------|----------------|--------------|
 | Semantic search | `pip install alcove-search[semantic]` | Real vector similarity via sentence-transformers |
+| Language detection | `pip install alcove-search[language]` | Optional langdetect and Hugging Face language metadata providers |
 | EPUB support | `pip install alcove-search[epub]` | `.epub` file ingestion |
 | DOCX support | `pip install alcove-search[docx]` | `.docx` file ingestion |
-| Everything | `pip install alcove-search[semantic,epub,docx]` | All of the above |
+| Everything | `pip install alcove-search[semantic,language,epub,docx]` | All of the above |
 
 </details>
 

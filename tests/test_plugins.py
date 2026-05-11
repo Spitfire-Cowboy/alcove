@@ -10,6 +10,7 @@ from alcove.plugins import (
     discover_extractors,
     discover_backends,
     discover_embedders,
+    discover_language_detectors,
     list_plugins,
 )
 
@@ -71,6 +72,20 @@ class TestDiscoverEmbedders:
             assert result["cohere"] is fake_cls
 
 
+class TestDiscoverLanguageDetectors:
+    def test_returns_empty_when_no_plugins(self):
+        with patch("alcove.plugins.entry_points", return_value=[]):
+            assert discover_language_detectors() == {}
+
+    def test_discovers_language_detector_plugin(self):
+        fake_cls = type("CustomLanguageDetector", (), {})
+        ep = _make_entry_point("custom", "alcove_lang:CustomLanguageDetector", fake_cls)
+        with patch("alcove.plugins.entry_points", return_value=[ep]):
+            result = discover_language_detectors()
+            assert "custom" in result
+            assert result["custom"] is fake_cls
+
+
 class TestListPlugins:
     def test_empty_when_no_plugins(self):
         with patch("alcove.plugins.entry_points", return_value=[]):
@@ -80,19 +95,21 @@ class TestListPlugins:
         ext_ep = _make_entry_point("docx", "alcove_docx:extract_docx")
         backend_ep = _make_entry_point("milvus", "alcove_milvus:Milvus")
         embedder_ep = _make_entry_point("cohere", "alcove_cohere:Cohere")
+        language_ep = _make_entry_point("custom", "alcove_lang:Detector")
 
         def fake_entry_points(*, group):
             return {
                 "alcove.extractors": [ext_ep],
                 "alcove.backends": [backend_ep],
                 "alcove.embedders": [embedder_ep],
+                "alcove.language_detectors": [language_ep],
             }.get(group, [])
 
         with patch("alcove.plugins.entry_points", side_effect=fake_entry_points):
             plugins = list_plugins()
-            assert len(plugins) == 3
+            assert len(plugins) == 4
             types = {p["type"] for p in plugins}
-            assert types == {"extractor", "backend", "embedder"}
+            assert types == {"extractor", "backend", "embedder", "language_detector"}
 
 
 class TestPipelineUsesPlugins:
@@ -138,6 +155,23 @@ class TestEmbedderUsesPlugins:
         with patch("alcove.plugins.discover_embedders", return_value={"custom-emb": fake_cls}):
             from alcove.index.embedder import get_embedder
             result = get_embedder()
+
+        fake_cls.assert_called_once()
+        assert result is fake_instance
+
+
+class TestLanguageDetectorUsesPlugins:
+    def test_plugin_language_detector_used_when_configured(self, monkeypatch):
+        fake_instance = MagicMock()
+        fake_cls = MagicMock(return_value=fake_instance)
+
+        monkeypatch.setenv("ALCOVE_LANGUAGE_PROVIDER", "custom-lang")
+        with patch(
+            "alcove.plugins.discover_language_detectors",
+            return_value={"custom-lang": fake_cls},
+        ):
+            from alcove.index.language import get_language_detector
+            result = get_language_detector()
 
         fake_cls.assert_called_once()
         assert result is fake_instance

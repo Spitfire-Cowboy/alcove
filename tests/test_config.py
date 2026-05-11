@@ -4,7 +4,15 @@ import json
 
 import pytest
 
-from alcove.config import Deployment, Features, Path as ConfigPath, RuntimeConfig, load_config, set_private_mode
+from alcove.config import (
+    Deployment,
+    Features,
+    Language,
+    Path as ConfigPath,
+    RuntimeConfig,
+    load_config,
+    set_private_mode,
+)
 
 
 def test_default_features_are_conservative():
@@ -24,6 +32,15 @@ def test_default_deployment_identity():
     deployment = Deployment()
     assert deployment.mode == "local"
     assert deployment.instance_name == "Alcove"
+
+
+def test_default_language_config_is_local_heuristic():
+    language = Language()
+    assert language.provider == "heuristic"
+    assert language.model is None
+    assert language.confidence_threshold == 0.0
+    assert language.ollama_base_url == "http://127.0.0.1:11434"
+    assert language.timeout == 30.0
 
 
 def test_default_private_mode_is_true(monkeypatch):
@@ -65,6 +82,30 @@ def test_env_deployment_overrides(monkeypatch):
     cfg = load_config()
     assert cfg.deployment.mode == "demo"
     assert cfg.deployment.instance_name == "Community Archive"
+
+
+def test_env_language_overrides(monkeypatch):
+    monkeypatch.delenv("ALCOVE_CONFIG_PATH", raising=False)
+    monkeypatch.setenv("ALCOVE_LANGUAGE_PROVIDER", "transformers")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_MODEL", "local-language-id")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD", "0.8")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_OLLAMA_BASE_URL", "http://localhost:11435")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_TIMEOUT", "12.5")
+
+    cfg = load_config()
+
+    assert cfg.language.provider == "transformers"
+    assert cfg.language.model == "local-language-id"
+    assert cfg.language.confidence_threshold == 0.8
+    assert cfg.language.ollama_base_url == "http://localhost:11435"
+    assert cfg.language.timeout == 12.5
+
+
+def test_custom_language_provider_name_is_preserved(monkeypatch):
+    monkeypatch.delenv("ALCOVE_CONFIG_PATH", raising=False)
+    monkeypatch.setenv("ALCOVE_LANGUAGE_PROVIDER", "custom-lang")
+
+    assert load_config().language.provider == "custom-lang"
 
 
 def test_invalid_deployment_mode_falls_back(monkeypatch):
@@ -116,7 +157,13 @@ def test_toml_feature_flags(tmp_path, monkeypatch):
         "recent_activity_limit = 9\n"
         "[deployment]\n"
         'mode = "hosted"\n'
-        'instance_name = "My Archive"\n',
+        'instance_name = "My Archive"\n'
+        "[language]\n"
+        'provider = "ollama"\n'
+        'model = "llama3.2"\n'
+        'confidence_threshold = 0.6\n'
+        'ollama_base_url = "http://localhost:11435"\n'
+        'timeout = 15.5\n',
         encoding="utf-8",
     )
     monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(toml))
@@ -129,6 +176,11 @@ def test_toml_feature_flags(tmp_path, monkeypatch):
         "ALCOVE_RECENT_ACTIVITY_LIMIT",
         "ALCOVE_EXCERPT_CHARS",
         "ALCOVE_PRIVATE",
+        "ALCOVE_LANGUAGE_PROVIDER",
+        "ALCOVE_LANGUAGE_MODEL",
+        "ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD",
+        "ALCOVE_LANGUAGE_OLLAMA_BASE_URL",
+        "ALCOVE_LANGUAGE_TIMEOUT",
     ):
         monkeypatch.delenv(env_name, raising=False)
 
@@ -139,6 +191,11 @@ def test_toml_feature_flags(tmp_path, monkeypatch):
     assert cfg.recent_activity_limit == 9
     assert cfg.deployment.mode == "hosted"
     assert cfg.deployment.instance_name == "My Archive"
+    assert cfg.language.provider == "ollama"
+    assert cfg.language.model == "llama3.2"
+    assert cfg.language.confidence_threshold == 0.6
+    assert cfg.language.ollama_base_url == "http://localhost:11435"
+    assert cfg.language.timeout == 15.5
     assert cfg.excerpt_chars == 250
     assert cfg.private_mode is False
 
@@ -179,6 +236,10 @@ def test_json_feature_flags(tmp_path, monkeypatch):
             {
                 "features": {"uploads": False, "turnstile": True},
                 "deployment": {"mode": "hosted", "instance_name": "Demo Archive"},
+                "language": {
+                    "provider": "langdetect",
+                    "confidence_threshold": 0.7,
+                },
                 "excerpt_chars": 120,
                 "private_mode": False,
             }
@@ -192,6 +253,8 @@ def test_json_feature_flags(tmp_path, monkeypatch):
     assert cfg.features.turnstile is True
     assert cfg.deployment.mode == "hosted"
     assert cfg.deployment.instance_name == "Demo Archive"
+    assert cfg.language.provider == "langdetect"
+    assert cfg.language.confidence_threshold == 0.7
     assert cfg.excerpt_chars == 120
     assert cfg.private_mode is False
 
@@ -225,6 +288,8 @@ def test_config_objects_are_frozen(monkeypatch):
         cfg.features.uploads = False  # type: ignore[misc]
     with pytest.raises((AttributeError, TypeError)):
         cfg.deployment.mode = "hosted"  # type: ignore[misc]
+    with pytest.raises((AttributeError, TypeError)):
+        cfg.language.provider = "none"  # type: ignore[misc]
 
 
 def test_set_private_mode_creates_toml_when_file_missing(tmp_path, monkeypatch):

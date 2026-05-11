@@ -67,6 +67,12 @@ Bind to a non-localhost address only after reviewing [Security: Operator Respons
 | `OLLAMA_MODEL` | `nomic-embed-text` | Ollama embedding model when `EMBEDDER=ollama` |
 | `OLLAMA_TIMEOUT` | `60` | Ollama request timeout in seconds |
 | `OLLAMA_DIM` | `768` | Ollama embedding dimension for backends that need it at initialization |
+| `ALCOVE_LANGUAGE_PROVIDER` | `heuristic` | Language metadata detector (`none`, `heuristic`, `langdetect`, `transformers`, `huggingface`, `ollama`, or plugin name) |
+| `ALCOVE_LANGUAGE_MODEL` | provider-specific | Hugging Face or Ollama model for language detection |
+| `ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD` | `0.0` | Minimum detector confidence before writing a language code |
+| `ALCOVE_LANGUAGE_OLLAMA_BASE_URL` | `OLLAMA_BASE_URL` or `http://127.0.0.1:11434` | Local Ollama base URL for `ALCOVE_LANGUAGE_PROVIDER=ollama` |
+| `ALCOVE_LANGUAGE_TIMEOUT` | `30` | Ollama language detection timeout in seconds |
+| `ALCOVE_LANGUAGE_MAX_CHARS` | `4000` | Maximum characters sampled per chunk for language detection |
 | `VECTOR_BACKEND` | `chromadb` | Vector store (`chromadb` or `zvec`) |
 | `CHROMA_PATH` | `./data/chroma` | ChromaDB persistence directory |
 | `CHROMA_COLLECTION` | `alcove_docs` | Collection name |

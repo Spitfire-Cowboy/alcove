@@ -4,11 +4,33 @@ import json
 import sys
 import types
 
+import pytest
 from fastapi.testclient import TestClient
 
-from alcove.index.language import detect_language
+from alcove.index.language import (
+    LanguageDetection,
+    LangdetectLanguageDetector,
+    OllamaLanguageDetector,
+    TransformersLanguageDetector,
+    detect_language,
+    get_language_detector,
+)
 from alcove.query import api
 from alcove.query.retriever import query_text
+
+
+@pytest.fixture(autouse=True)
+def clear_language_config(monkeypatch):
+    for env_name in (
+        "ALCOVE_CONFIG_PATH",
+        "ALCOVE_LANGUAGE_PROVIDER",
+        "ALCOVE_LANGUAGE_MODEL",
+        "ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD",
+        "ALCOVE_LANGUAGE_OLLAMA_BASE_URL",
+        "ALCOVE_LANGUAGE_TIMEOUT",
+        "ALCOVE_LANGUAGE_MAX_CHARS",
+    ):
+        monkeypatch.delenv(env_name, raising=False)
 
 
 class _FakeEmbedder:
@@ -37,6 +59,18 @@ class _CaptureBackend:
             "language_filter": language_filter,
         })
         return {"ids": [[]], "documents": [[]], "distances": [[]], "metadatas": [[]]}
+
+
+class _FakeLanguageDetector:
+    provider = "fake"
+
+    def __init__(self):
+        self.seen = []
+
+    def detect(self, text):
+        self.seen.append(text)
+        language = "es" if "La entrevista" in text else "en"
+        return LanguageDetection(language, 1.0, self.provider)
 
 
 def test_detect_language_empty_returns_unknown():
@@ -77,7 +111,21 @@ def test_detect_language_unknown_for_unscored_latin_text():
     assert detect_language("qwerty zxcv asdf") == "unknown"
 
 
-def test_detect_language_uses_optional_langdetect(monkeypatch):
+def test_detect_language_handles_invalid_sample_limit(monkeypatch):
+    monkeypatch.setenv("ALCOVE_LANGUAGE_MAX_CHARS", "wide")
+
+    assert detect_language("The family history interview") == "en"
+
+
+def test_get_language_detector_can_disable_detection(monkeypatch):
+    monkeypatch.setenv("ALCOVE_LANGUAGE_PROVIDER", "none")
+
+    detector = get_language_detector()
+
+    assert detector.detect("The family history interview").language == "unknown"
+
+
+def test_detect_language_uses_configured_langdetect_provider(monkeypatch):
     fake_module = types.ModuleType("langdetect")
 
     class FakeDetectorFactory:
@@ -86,19 +134,24 @@ def test_detect_language_uses_optional_langdetect(monkeypatch):
     class FakeLangDetectException(Exception):
         pass
 
+    class FakeLang:
+        lang = "pt"
+        prob = 0.91
+
     def detect_portuguese(sample):
-        return "pt"
+        return [FakeLang()]
 
     fake_module.DetectorFactory = FakeDetectorFactory
     fake_module.LangDetectException = FakeLangDetectException
-    fake_module.detect = detect_portuguese
+    fake_module.detect_langs = detect_portuguese
     monkeypatch.setitem(sys.modules, "langdetect", fake_module)
+    monkeypatch.setenv("ALCOVE_LANGUAGE_PROVIDER", "langdetect")
 
     assert detect_language("texto em portugues") == "pt"
     assert FakeDetectorFactory.seed == 0
 
 
-def test_detect_language_falls_back_on_langdetect_exception(monkeypatch):
+def test_langdetect_provider_returns_unknown_on_low_confidence(monkeypatch):
     fake_module = types.ModuleType("langdetect")
 
     class FakeDetectorFactory:
@@ -107,15 +160,121 @@ def test_detect_language_falls_back_on_langdetect_exception(monkeypatch):
     class FakeLangDetectException(Exception):
         pass
 
-    def fail_detect(sample):
-        raise FakeLangDetectException("not enough text")
+    class FakeLang:
+        lang = "es"
+        prob = 0.40
+
+    def detect_low_confidence(sample):
+        return [FakeLang()]
 
     fake_module.DetectorFactory = FakeDetectorFactory
     fake_module.LangDetectException = FakeLangDetectException
-    fake_module.detect = fail_detect
+    fake_module.detect_langs = detect_low_confidence
     monkeypatch.setitem(sys.modules, "langdetect", fake_module)
 
-    assert detect_language("The family history interview") == "en"
+    detector = LangdetectLanguageDetector(confidence_threshold=0.75)
+
+    assert detector.detect("La familia").language == "unknown"
+
+
+def test_transformers_provider_uses_configured_model(monkeypatch):
+    fake_module = types.ModuleType("transformers")
+    calls = {}
+
+    def fake_pipeline(task, model):
+        calls["task"] = task
+        calls["model"] = model
+
+        def classify(sample, truncation=True):
+            calls["sample"] = sample
+            calls["truncation"] = truncation
+            return [{"label": "es", "score": 0.97}]
+
+        return classify
+
+    fake_module.pipeline = fake_pipeline
+    monkeypatch.setitem(sys.modules, "transformers", fake_module)
+
+    detector = TransformersLanguageDetector(model_name="local-language-id")
+
+    assert detector.detect("La familia").language == "es"
+    assert calls == {
+        "task": "text-classification",
+        "model": "local-language-id",
+        "sample": "La familia",
+        "truncation": True,
+    }
+
+
+def test_ollama_provider_reads_json_language_response(monkeypatch):
+    calls = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return json.dumps({"response": json.dumps({"language": "fr"})}).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        calls["url"] = request.full_url
+        calls["timeout"] = timeout
+        calls["body"] = json.loads(request.data.decode("utf-8"))
+        return FakeResponse()
+
+    monkeypatch.setattr("alcove.index.language.urllib.request.urlopen", fake_urlopen)
+
+    detector = OllamaLanguageDetector(
+        model_name="llama3.2",
+        base_url="http://127.0.0.1:11434",
+        timeout=5,
+    )
+
+    assert detector.detect("Bonjour la famille").language == "fr"
+    assert calls["url"] == "http://127.0.0.1:11434/api/generate"
+    assert calls["timeout"] == 5
+    assert calls["body"]["model"] == "llama3.2"
+    assert calls["body"]["format"] == "json"
+
+
+def test_ollama_provider_returns_unknown_for_unparseable_response(monkeypatch):
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return json.dumps({"response": "not-json"}).encode("utf-8")
+
+    monkeypatch.setattr(
+        "alcove.index.language.urllib.request.urlopen",
+        lambda request, timeout: FakeResponse(),
+    )
+
+    detector = OllamaLanguageDetector()
+
+    assert detector.detect("Bonjour la famille").language == "unknown"
+
+
+def test_plugin_language_detector_can_be_selected(monkeypatch):
+    class CustomDetector:
+        provider = "custom"
+
+        def detect(self, text):
+            return LanguageDetection("tlh", 1.0, self.provider)
+
+    monkeypatch.setenv("ALCOVE_LANGUAGE_PROVIDER", "custom")
+    monkeypatch.setattr(
+        "alcove.plugins.discover_language_detectors",
+        lambda: {"custom": CustomDetector},
+    )
+
+    assert detect_language("nuqneH") == "tlh"
 
 
 def test_index_pipeline_writes_language_metadata(tmp_path, monkeypatch):
@@ -143,13 +302,43 @@ def test_index_pipeline_writes_language_metadata(tmp_path, monkeypatch):
         return backend
 
     monkeypatch.setattr(pipeline, "get_backend", get_backend)
+    detector = _FakeLanguageDetector()
+    monkeypatch.setattr(pipeline, "get_language_detector", lambda: detector)
 
     total = pipeline.run(chunks_file=str(chunks_file))
 
     assert total == 2
+    assert detector.seen == [row["chunk"] for row in rows]
     metadatas = backend.add_calls[0]["metadatas"]
     assert [meta["source"] for meta in metadatas] == ["english.txt", "spanish.txt"]
     assert [meta["language"] for meta in metadatas] == ["en", "es"]
+
+
+def test_index_pipeline_preserves_existing_language_without_detector(tmp_path, monkeypatch):
+    from alcove.index import pipeline
+
+    chunks_file = tmp_path / "chunks.jsonl"
+    chunks_file.write_text(
+        json.dumps({
+            "id": "a:0",
+            "source": "tagged.txt",
+            "chunk": "Already tagged.",
+            "language": "FR",
+        }),
+        encoding="utf-8",
+    )
+
+    backend = _CaptureBackend()
+    monkeypatch.setattr(pipeline, "get_embedder", _FakeEmbedder)
+    monkeypatch.setattr(pipeline, "get_backend", lambda _embedder: backend)
+    monkeypatch.setattr(
+        pipeline,
+        "get_language_detector",
+        lambda: (_ for _ in ()).throw(AssertionError("detector should not load")),
+    )
+
+    assert pipeline.run(chunks_file=str(chunks_file)) == 1
+    assert backend.add_calls[0]["metadatas"][0]["language"] == "fr"
 
 
 def test_retriever_passes_language_filter(monkeypatch):
@@ -241,6 +430,35 @@ def test_keyword_search_can_filter_by_collection_after_scoring(tmp_path):
 
     assert result["ids"] == [["minutes:0"]]
     assert result["metadatas"][0][0]["collection"] == "minutes"
+
+
+def test_keyword_search_uses_existing_language_without_detector(tmp_path, monkeypatch):
+    from alcove.index import keyword
+
+    chunks_file = tmp_path / "chunks.jsonl"
+    chunks_file.write_text(
+        json.dumps({
+            "id": "fr:0",
+            "source": "french.txt",
+            "language": "FR",
+            "chunk": "famille histoire communaute",
+        }),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        keyword,
+        "get_language_detector",
+        lambda: (_ for _ in ()).throw(AssertionError("detector should not load")),
+    )
+
+    result = keyword.KeywordIndex(str(chunks_file)).search(
+        "famille histoire",
+        k=1,
+        language_filter="fr",
+    )
+
+    assert result["ids"] == [["fr:0"]]
+    assert result["metadatas"][0][0]["language"] == "fr"
 
 
 def test_api_dispatch_keyword_passes_collection_and_language(monkeypatch):

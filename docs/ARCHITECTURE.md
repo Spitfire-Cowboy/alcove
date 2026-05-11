@@ -44,6 +44,22 @@ data/raw/*  →  data/processed/chunks.jsonl  →  vector store  →  query resp
 
 Set the embedder with the `EMBEDDER` environment variable. See [OPERATIONS.md](OPERATIONS.md#environment-variables) for how to configure it. Custom embedders can be installed as plugins.
 
+## Language metadata
+
+Language detection is an indexing concern, not a retrieval dependency. During indexing,
+Alcove writes a `language` metadata field for each chunk when the source chunk does not
+already provide one. Query-time language filters only use stored metadata.
+
+| Provider | Env value | Description |
+|----------|-----------|-------------|
+| None | `ALCOVE_LANGUAGE_PROVIDER=none` | Do not infer language metadata. Existing chunk metadata is still preserved. |
+| Heuristic (default) | `ALCOVE_LANGUAGE_PROVIDER=heuristic` | Deterministic local rules for common scripts and basic English, Spanish, and French text. |
+| langdetect | `ALCOVE_LANGUAGE_PROVIDER=langdetect` | Optional local library for probabilistic language ID. |
+| Hugging Face | `ALCOVE_LANGUAGE_PROVIDER=transformers` or `huggingface` | Optional local `transformers` text-classification model such as `papluca/xlm-roberta-base-language-detection`. |
+| Ollama | `ALCOVE_LANGUAGE_PROVIDER=ollama` | Optional local Ollama classifier. Sends sampled chunk text only to the configured Ollama base URL. |
+
+Custom detectors can be installed as plugins through `alcove.language_detectors`.
+
 ## Vector backends
 
 | Name | Env value | Dependency |
@@ -55,13 +71,14 @@ Set the backend with the `VECTOR_BACKEND` environment variable. See [OPERATIONS.
 
 ## Plugin system
 
-Custom extractors, embedders, and vector backends plug in via [Python entry points](https://packaging.python.org/en/latest/specifications/entry-points/). Three extension groups:
+Custom extractors, embedders, language detectors, and vector backends plug in via [Python entry points](https://packaging.python.org/en/latest/specifications/entry-points/). Four extension groups:
 
 | Group | Purpose | Example entry point |
 |-------|---------|---------------------|
 | `alcove.extractors` | Add file format support | `rtf = my_plugin:extract_rtf` |
 | `alcove.backends` | Add vector store backends | `pinecone = my_plugin:PineconeBackend` |
 | `alcove.embedders` | Add embedding models | `openai = my_plugin:OpenAIEmbedder` |
+| `alcove.language_detectors` | Add language metadata detectors | `custom = my_plugin:LanguageDetector` |
 
 To create a plugin, add an `[project.entry-points]` section in your package's `pyproject.toml`:
 
@@ -74,7 +91,7 @@ Plugins are merged with built-ins at startup. When a plugin and a built-in share
 
 ## Boundary
 
-The operator owns the host and the storage. Alcove makes no outbound network calls by default; the one exception is `sentence-transformers`, which downloads a model on first use and then runs locally. `EMBEDDER=ollama` sends chunk text only to the Ollama base URL the operator configures, defaulting to the local loopback interface. Telemetry is disabled, including ChromaDB's upstream telemetry. See [SECURITY.md](SECURITY.md#security-model) for the full security model.
+The operator owns the host and the storage. Alcove makes no outbound network calls by default; the one exception is `sentence-transformers`, which downloads a model on first use and then runs locally. `EMBEDDER=ollama` and `ALCOVE_LANGUAGE_PROVIDER=ollama` send chunk text only to the Ollama base URL the operator configures, defaulting to the local loopback interface. Hugging Face language detection may download the configured model on first use, then runs locally. Telemetry is disabled, including ChromaDB's upstream telemetry. See [SECURITY.md](SECURITY.md#security-model) for the full security model.
 
 This boundary is structural, not configurable. There is no flag to turn it off.
 
