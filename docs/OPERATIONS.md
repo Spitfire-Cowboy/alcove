@@ -80,6 +80,11 @@ Bind to a non-localhost address only after reviewing [Security: Operator Respons
 | `CHUNK_OVERLAP` | `150` | Overlap between chunks |
 | `RAW_DIR` | `data/raw` | Input directory for ingestion |
 
+`ALCOVE_LANGUAGE_OLLAMA_BASE_URL` deliberately falls back to `OLLAMA_BASE_URL`
+so embedding and language detection can share one local Ollama host. Set
+`ALCOVE_LANGUAGE_OLLAMA_BASE_URL` explicitly when the language detector should
+use a different Ollama instance than `EMBEDDER=ollama`.
+
 ## Docker
 
 ```bash

@@ -353,15 +353,17 @@ def _resolve_float(
     minimum: float,
     maximum: float | None = None,
 ) -> float:
+    def _clamp(value: float) -> float:
+        value = max(minimum, value)
+        return min(maximum, value) if maximum is not None else value
+
     env_value = os.getenv(env_name)
     if env_value is not None:
         parsed = _coerce_float(env_value)
-        value = default if parsed is None else max(minimum, parsed)
-        return min(maximum, value) if maximum is not None else value
+        return _clamp(default if parsed is None else parsed)
 
     parsed = _coerce_float(config_value)
-    value = default if parsed is None else max(minimum, parsed)
-    return min(maximum, value) if maximum is not None else value
+    return _clamp(default if parsed is None else parsed)
 
 
 def _coerce_bool(value: object) -> bool | None:

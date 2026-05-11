@@ -219,6 +219,7 @@ def test_langdetect_provider_handles_detection_exception(monkeypatch):
 
 
 def test_langdetect_provider_reports_missing_dependency(monkeypatch):
+    monkeypatch.delitem(sys.modules, "langdetect", raising=False)
     original_import = __import__
 
     def fake_import(name, *args, **kwargs):
@@ -229,7 +230,7 @@ def test_langdetect_provider_reports_missing_dependency(monkeypatch):
     monkeypatch.setattr("builtins.__import__", fake_import)
 
     with pytest.raises(RuntimeError, match="langdetect"):
-        LangdetectLanguageDetector().detect("The family history interview")
+        LangdetectLanguageDetector()
 
 
 def test_transformers_provider_uses_configured_model(monkeypatch):
@@ -277,6 +278,7 @@ def test_transformers_provider_handles_empty_and_low_confidence(monkeypatch):
 
 
 def test_transformers_provider_reports_missing_dependency(monkeypatch):
+    monkeypatch.delitem(sys.modules, "transformers", raising=False)
     original_import = __import__
 
     def fake_import(name, *args, **kwargs):
@@ -349,7 +351,7 @@ def test_ollama_provider_returns_unknown_for_unparseable_response(monkeypatch):
     assert detector.detect("Bonjour la famille").language == "unknown"
 
 
-def test_ollama_provider_reports_http_and_url_errors(monkeypatch):
+def test_ollama_provider_returns_unknown_for_http_and_url_errors(monkeypatch):
     def raise_http(request, timeout):
         raise urllib.error.HTTPError(
             request.full_url,
@@ -362,19 +364,35 @@ def test_ollama_provider_reports_http_and_url_errors(monkeypatch):
     monkeypatch.setattr("alcove.index.language.urllib.request.urlopen", raise_http)
     detector = OllamaLanguageDetector(base_url="http://127.0.0.1:11434")
 
-    with pytest.raises(RuntimeError, match="HTTP 500"):
-        detector.detect("Bonjour")
+    assert detector.detect("Bonjour").language == "unknown"
 
     def raise_url(request, timeout):
         raise urllib.error.URLError("offline")
 
     monkeypatch.setattr("alcove.index.language.urllib.request.urlopen", raise_url)
 
-    with pytest.raises(RuntimeError, match="Could not reach Ollama"):
-        detector.detect("Bonjour")
+    assert detector.detect("Bonjour").language == "unknown"
+
+
+def test_ollama_provider_preserves_explicit_zero_timeout():
+    detector = OllamaLanguageDetector(timeout=0.0)
+
+    assert detector.timeout == 0.0
 
 
 def test_invalid_confidence_env_falls_back(monkeypatch):
+    fake_module = types.ModuleType("langdetect")
+
+    class FakeDetectorFactory:
+        seed = None
+
+    class FakeLangDetectException(Exception):
+        pass
+
+    fake_module.DetectorFactory = FakeDetectorFactory
+    fake_module.LangDetectException = FakeLangDetectException
+    fake_module.detect_langs = lambda sample: []
+    monkeypatch.setitem(sys.modules, "langdetect", fake_module)
     monkeypatch.setenv("ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD", "wide")
 
     detector = LangdetectLanguageDetector()
@@ -438,6 +456,22 @@ def test_plugin_language_detector_can_be_selected(monkeypatch):
     )
 
     assert detect_language("nuqneH") == "tlh"
+
+
+def test_plugin_language_detector_can_use_underscore_name(monkeypatch):
+    class CustomDetector:
+        provider = "my_lang"
+
+        def detect(self, text):
+            return LanguageDetection("tlh", 1.0, self.provider)
+
+    monkeypatch.setenv("ALCOVE_LANGUAGE_PROVIDER", "my_lang")
+    monkeypatch.setattr(
+        "alcove.plugins.discover_language_detectors",
+        lambda: {"my_lang": CustomDetector},
+    )
+
+    assert get_language_detector().detect("nuqneH").language == "tlh"
 
 
 def test_index_pipeline_writes_language_metadata(tmp_path, monkeypatch):

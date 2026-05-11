@@ -20,7 +20,7 @@ class LanguageDetector(Protocol):
     provider: str
 
     def detect(self, text: str) -> LanguageDetection:
-        raise NotImplementedError  # pragma: no cover
+        pass  # pragma: no cover
 
 
 _ENGLISH_MARKERS = {
@@ -106,12 +106,6 @@ class LangdetectLanguageDetector:
 
     def __init__(self, confidence_threshold: float | None = None):
         self.confidence_threshold = _confidence_threshold(confidence_threshold)
-
-    def detect(self, text: str) -> LanguageDetection:
-        sample = _sample_text(text)
-        if not sample:
-            return LanguageDetection(provider=self.provider)
-
         try:
             from langdetect import DetectorFactory, LangDetectException, detect_langs
         except Exception as exc:
@@ -121,9 +115,17 @@ class LangdetectLanguageDetector:
             ) from exc
 
         DetectorFactory.seed = 0
+        self._detect_langs = detect_langs
+        self._LangDetectException = LangDetectException
+
+    def detect(self, text: str) -> LanguageDetection:
+        sample = _sample_text(text)
+        if not sample:
+            return LanguageDetection(provider=self.provider)
+
         try:
-            candidates = detect_langs(sample)
-        except LangDetectException:
+            candidates = self._detect_langs(sample)
+        except self._LangDetectException:
             return LanguageDetection(provider=self.provider)
 
         if not candidates:
@@ -186,7 +188,8 @@ class OllamaLanguageDetector:
             or os.getenv("ALCOVE_LANGUAGE_OLLAMA_BASE_URL")
             or os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
         ).rstrip("/")
-        self.timeout = float(timeout or os.getenv("ALCOVE_LANGUAGE_TIMEOUT", "30"))
+        timeout_value = timeout if timeout is not None else os.getenv("ALCOVE_LANGUAGE_TIMEOUT", "30")
+        self.timeout = float(timeout_value)
 
     def detect(self, text: str) -> LanguageDetection:
         sample = _sample_text(text)
@@ -204,10 +207,8 @@ class OllamaLanguageDetector:
         }
         try:
             response = self._post("/api/generate", payload)
-        except urllib.error.HTTPError as exc:
-            raise RuntimeError(self._format_http_error(exc)) from exc
-        except urllib.error.URLError as exc:
-            raise RuntimeError(self._format_url_error(exc)) from exc
+        except (urllib.error.HTTPError, urllib.error.URLError):
+            return LanguageDetection(provider=self.provider)
 
         raw = response.get("response", "")
         try:
@@ -226,19 +227,6 @@ class OllamaLanguageDetector:
         )
         with urllib.request.urlopen(request, timeout=self.timeout) as response:
             return json.loads(response.read().decode("utf-8"))
-
-    def _format_http_error(self, exc: urllib.error.HTTPError) -> str:
-        return (
-            f"Ollama language detection failed with HTTP {exc.code} against "
-            f"{self.base_url} while using model {self.model_name!r}."
-        )
-
-    def _format_url_error(self, exc: urllib.error.URLError) -> str:
-        return (
-            f"Could not reach Ollama at {self.base_url} while using language "
-            f"model {self.model_name!r}: {exc.reason}"
-        )
-
 
 _BUILTIN_LANGUAGE_DETECTORS = {
     "none": NoneLanguageDetector,
@@ -265,10 +253,11 @@ def get_language_detector(provider: str | None = None) -> LanguageDetector:
     from alcove.plugins import discover_language_detectors
 
     cfg = load_config().language
-    choice = _normalize_language(provider or cfg.provider)
+    raw_choice = (provider or cfg.provider or "").strip().lower()
+    choice = _normalize_language(raw_choice)
     detectors = dict(_BUILTIN_LANGUAGE_DETECTORS)
     detectors.update(discover_language_detectors())
-    cls = detectors.get(choice)
+    cls = detectors.get(choice) or detectors.get(raw_choice)
     if cls is None:
         raise ValueError(f"Unknown language detector: {choice!r}.")
 

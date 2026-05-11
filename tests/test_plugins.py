@@ -165,10 +165,10 @@ class TestLanguageDetectorUsesPlugins:
         fake_instance = MagicMock()
         fake_cls = MagicMock(return_value=fake_instance)
 
-        monkeypatch.setenv("ALCOVE_LANGUAGE_PROVIDER", "custom-lang")
+        monkeypatch.setenv("ALCOVE_LANGUAGE_PROVIDER", "custom_lang")
         with patch(
             "alcove.plugins.discover_language_detectors",
-            return_value={"custom-lang": fake_cls},
+            return_value={"custom_lang": fake_cls},
         ):
             from alcove.index.language import get_language_detector
             result = get_language_detector()
