@@ -25,6 +25,8 @@ dependencies = [
     "jinja2>=3.1,<4.0",
     "python-multipart>=0.0.6,<1.0",
     "rank-bm25>=0.2",
+    "cryptography>=41.0,<47.0",
+    "tomli>=2.0,<3.0; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
@@ -42,6 +44,7 @@ Repository = "https://github.com/Spitfire-Cowboy/alcove"
 
 [project.scripts]
 alcove = "alcove.cli:main"
+alcove-mcp = "alcove.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["alcove"]
