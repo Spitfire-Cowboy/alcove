@@ -22,6 +22,18 @@ EMBEDDER=sentence-transformers alcove serve
 
 This downloads `all-MiniLM-L6-v2` (~80 MB) on first use. See [Seed Corpus](SEED_CORPUS.md) for what `seed-demo` includes. The model is cached locally; subsequent runs are offline.
 
+## Local Ollama embeddings
+
+If you already run Ollama locally, Alcove can use an embedding model served from that local process:
+
+```bash
+ollama pull nomic-embed-text
+EMBEDDER=ollama OLLAMA_MODEL=nomic-embed-text alcove seed-demo
+EMBEDDER=ollama OLLAMA_MODEL=nomic-embed-text alcove serve
+```
+
+By default Alcove connects to `http://127.0.0.1:11434`. Set `OLLAMA_BASE_URL` to use another operator-managed local endpoint. When using the zvec backend with a non-default embedding model, set `OLLAMA_DIM` to that model's vector dimension before creating the index.
+
 ## Custom documents
 
 ```bash
@@ -50,7 +62,11 @@ Bind to a non-localhost address only after reviewing [Security: Operator Respons
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `EMBEDDER` | `hash` | Embedder to use (`hash` or `sentence-transformers`) |
+| `EMBEDDER` | `hash` | Embedder to use (`hash`, `sentence-transformers`, or `ollama`) |
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Local Ollama base URL when `EMBEDDER=ollama` |
+| `OLLAMA_MODEL` | `nomic-embed-text` | Ollama embedding model when `EMBEDDER=ollama` |
+| `OLLAMA_TIMEOUT` | `60` | Ollama request timeout in seconds |
+| `OLLAMA_DIM` | `768` | Ollama embedding dimension for backends that need it at initialization |
 | `VECTOR_BACKEND` | `chromadb` | Vector store (`chromadb` or `zvec`) |
 | `CHROMA_PATH` | `./data/chroma` | ChromaDB persistence directory |
 | `CHROMA_COLLECTION` | `alcove_docs` | Collection name |
