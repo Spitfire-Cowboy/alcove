@@ -80,10 +80,12 @@ Bind to a non-localhost address only after reviewing [Security: Operator Respons
 | `CHUNK_OVERLAP` | `150` | Overlap between chunks |
 | `RAW_DIR` | `data/raw` | Input directory for ingestion |
 
-`ALCOVE_LANGUAGE_OLLAMA_BASE_URL` deliberately falls back to `OLLAMA_BASE_URL`
-so embedding and language detection can share one local Ollama host. Set
-`ALCOVE_LANGUAGE_OLLAMA_BASE_URL` explicitly when the language detector should
-use a different Ollama instance than `EMBEDDER=ollama`.
+`Language.ollama_base_url` is resolved from `ALCOVE_LANGUAGE_OLLAMA_BASE_URL`.
+When that variable is unset, the config resolver uses `OLLAMA_BASE_URL` as the
+fallback before defaulting to `http://127.0.0.1:11434`. This deliberately lets
+`EMBEDDER=ollama` and `ALCOVE_LANGUAGE_PROVIDER=ollama` share one local Ollama
+host. Set `ALCOVE_LANGUAGE_OLLAMA_BASE_URL` explicitly when language detection
+should use a different Ollama instance than embeddings.
 
 ## Docker
 

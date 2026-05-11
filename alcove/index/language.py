@@ -208,7 +208,7 @@ class OllamaLanguageDetector:
         try:
             response = self._post("/api/generate", payload)
         except (urllib.error.HTTPError, urllib.error.URLError):
-            return LanguageDetection(provider=self.provider)
+            return LanguageDetection(_normalize_language(None), provider=self.provider)
 
         raw = response.get("response", "")
         try:
