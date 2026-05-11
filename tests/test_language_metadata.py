@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 import types
+import urllib.error
 
 import pytest
 from fastapi.testclient import TestClient
@@ -177,6 +178,60 @@ def test_langdetect_provider_returns_unknown_on_low_confidence(monkeypatch):
     assert detector.detect("La familia").language == "unknown"
 
 
+def test_langdetect_provider_handles_empty_and_no_candidates(monkeypatch):
+    fake_module = types.ModuleType("langdetect")
+
+    class FakeDetectorFactory:
+        seed = None
+
+    class FakeLangDetectException(Exception):
+        pass
+
+    fake_module.DetectorFactory = FakeDetectorFactory
+    fake_module.LangDetectException = FakeLangDetectException
+    fake_module.detect_langs = lambda sample: []
+    monkeypatch.setitem(sys.modules, "langdetect", fake_module)
+
+    detector = LangdetectLanguageDetector()
+
+    assert detector.detect("").language == "unknown"
+    assert detector.detect("???").language == "unknown"
+
+
+def test_langdetect_provider_handles_detection_exception(monkeypatch):
+    fake_module = types.ModuleType("langdetect")
+
+    class FakeDetectorFactory:
+        seed = None
+
+    class FakeLangDetectException(Exception):
+        pass
+
+    def fail_detect(sample):
+        raise FakeLangDetectException("not enough text")
+
+    fake_module.DetectorFactory = FakeDetectorFactory
+    fake_module.LangDetectException = FakeLangDetectException
+    fake_module.detect_langs = fail_detect
+    monkeypatch.setitem(sys.modules, "langdetect", fake_module)
+
+    assert LangdetectLanguageDetector().detect("???").language == "unknown"
+
+
+def test_langdetect_provider_reports_missing_dependency(monkeypatch):
+    original_import = __import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "langdetect":
+            raise ImportError("missing")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", fake_import)
+
+    with pytest.raises(RuntimeError, match="langdetect"):
+        LangdetectLanguageDetector().detect("The family history interview")
+
+
 def test_transformers_provider_uses_configured_model(monkeypatch):
     fake_module = types.ModuleType("transformers")
     calls = {}
@@ -204,6 +259,35 @@ def test_transformers_provider_uses_configured_model(monkeypatch):
         "sample": "La familia",
         "truncation": True,
     }
+
+
+def test_transformers_provider_handles_empty_and_low_confidence(monkeypatch):
+    fake_module = types.ModuleType("transformers")
+
+    def fake_pipeline(task, model):
+        return lambda sample, truncation=True: [{"label": "es", "score": 0.2}]
+
+    fake_module.pipeline = fake_pipeline
+    monkeypatch.setitem(sys.modules, "transformers", fake_module)
+
+    detector = TransformersLanguageDetector(confidence_threshold=0.8)
+
+    assert detector.detect("").language == "unknown"
+    assert detector.detect("La familia").language == "unknown"
+
+
+def test_transformers_provider_reports_missing_dependency(monkeypatch):
+    original_import = __import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "transformers":
+            raise ImportError("missing")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", fake_import)
+
+    with pytest.raises(RuntimeError, match="transformers"):
+        TransformersLanguageDetector()
 
 
 def test_ollama_provider_reads_json_language_response(monkeypatch):
@@ -240,6 +324,10 @@ def test_ollama_provider_reads_json_language_response(monkeypatch):
     assert calls["body"]["format"] == "json"
 
 
+def test_ollama_provider_handles_empty_text():
+    assert OllamaLanguageDetector().detect("").language == "unknown"
+
+
 def test_ollama_provider_returns_unknown_for_unparseable_response(monkeypatch):
     class FakeResponse:
         def __enter__(self):
@@ -259,6 +347,81 @@ def test_ollama_provider_returns_unknown_for_unparseable_response(monkeypatch):
     detector = OllamaLanguageDetector()
 
     assert detector.detect("Bonjour la famille").language == "unknown"
+
+
+def test_ollama_provider_reports_http_and_url_errors(monkeypatch):
+    def raise_http(request, timeout):
+        raise urllib.error.HTTPError(
+            request.full_url,
+            500,
+            "server error",
+            hdrs=None,
+            fp=None,
+        )
+
+    monkeypatch.setattr("alcove.index.language.urllib.request.urlopen", raise_http)
+    detector = OllamaLanguageDetector(base_url="http://127.0.0.1:11434")
+
+    with pytest.raises(RuntimeError, match="HTTP 500"):
+        detector.detect("Bonjour")
+
+    def raise_url(request, timeout):
+        raise urllib.error.URLError("offline")
+
+    monkeypatch.setattr("alcove.index.language.urllib.request.urlopen", raise_url)
+
+    with pytest.raises(RuntimeError, match="Could not reach Ollama"):
+        detector.detect("Bonjour")
+
+
+def test_invalid_confidence_env_falls_back(monkeypatch):
+    monkeypatch.setenv("ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD", "wide")
+
+    detector = LangdetectLanguageDetector()
+
+    assert detector.confidence_threshold == 0.0
+
+
+def test_get_language_detector_rejects_unknown_provider(monkeypatch):
+    monkeypatch.setenv("ALCOVE_LANGUAGE_PROVIDER", "does-not-exist")
+
+    with pytest.raises(ValueError, match="Unknown language detector"):
+        get_language_detector()
+
+
+def test_get_language_detector_configures_transformers_provider(monkeypatch):
+    fake_module = types.ModuleType("transformers")
+    calls = {}
+
+    def fake_pipeline(task, model):
+        calls["task"] = task
+        calls["model"] = model
+        return lambda sample, truncation=True: [{"label": "en", "score": 1.0}]
+
+    fake_module.pipeline = fake_pipeline
+    monkeypatch.setitem(sys.modules, "transformers", fake_module)
+    monkeypatch.setenv("ALCOVE_LANGUAGE_PROVIDER", "huggingface")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_MODEL", "local-detector")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD", "0.5")
+
+    detector = get_language_detector()
+
+    assert detector.model_name == "local-detector"
+    assert detector.confidence_threshold == 0.5
+    assert calls == {"task": "text-classification", "model": "local-detector"}
+
+
+def test_get_language_detector_configures_ollama_provider(monkeypatch):
+    monkeypatch.setenv("ALCOVE_LANGUAGE_PROVIDER", "ollama")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_MODEL", "llama3.2")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_OLLAMA_BASE_URL", "http://localhost:11435")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_TIMEOUT", "7")
+
+    detector = get_language_detector()
+
+    assert detector.model_name == "llama3.2"
+    assert detector.base_url == "http://localhost:11435"
+    assert detector.timeout == 7
 
 
 def test_plugin_language_detector_can_be_selected(monkeypatch):
@@ -725,6 +888,22 @@ def test_zvec_query_filters_by_language_and_returns_metadata():
 
     assert result["ids"] == [["doc-2"]]
     assert result["metadatas"][0][0]["language"] == "es"
+
+
+def test_zvec_query_filters_by_collection():
+    from alcove.index.backend import ZvecBackend
+
+    backend = ZvecBackend.__new__(ZvecBackend)
+    backend._zvec = _FakeZvec
+    backend._collection = _FakeZvecCollection([
+        _FakeZvecDoc(document="hello", source="a.txt", collection="letters", language="en"),
+        _FakeZvecDoc(doc_id="doc-2", document="hola", source="b.txt", collection="minutes", language="es"),
+    ])
+
+    result = backend.query([0.1], k=1, collections=["minutes"])
+
+    assert result["ids"] == [["doc-2"]]
+    assert result["metadatas"][0][0]["collection"] == "minutes"
 
 
 def test_zvec_query_handles_old_schema_without_language():

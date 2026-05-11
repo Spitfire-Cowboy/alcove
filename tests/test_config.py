@@ -129,20 +129,39 @@ def test_invalid_numeric_env_uses_defaults(monkeypatch):
     monkeypatch.delenv("ALCOVE_CONFIG_PATH", raising=False)
     monkeypatch.setenv("ALCOVE_RECENT_ACTIVITY_LIMIT", "many")
     monkeypatch.setenv("ALCOVE_EXCERPT_CHARS", "wide")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD", "maybe")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_TIMEOUT", "later")
 
     cfg = load_config()
     assert cfg.recent_activity_limit == 5
     assert cfg.excerpt_chars is None
+    assert cfg.language.confidence_threshold == 0.0
+    assert cfg.language.timeout == 30.0
 
 
 def test_numeric_env_clamps_to_minimum(monkeypatch):
     monkeypatch.delenv("ALCOVE_CONFIG_PATH", raising=False)
     monkeypatch.setenv("ALCOVE_RECENT_ACTIVITY_LIMIT", "0")
     monkeypatch.setenv("ALCOVE_EXCERPT_CHARS", "-100")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_CONFIDENCE_THRESHOLD", "2")
+    monkeypatch.setenv("ALCOVE_LANGUAGE_TIMEOUT", "0")
 
     cfg = load_config()
     assert cfg.recent_activity_limit == 1
     assert cfg.excerpt_chars == 1
+    assert cfg.language.confidence_threshold == 1.0
+    assert cfg.language.timeout == 0.1
+
+
+def test_float_config_values_can_be_booleans(tmp_path, monkeypatch):
+    config_file = tmp_path / "alcove.json"
+    config_file.write_text(
+        json.dumps({"language": {"confidence_threshold": True}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("ALCOVE_CONFIG_PATH", str(config_file))
+
+    assert load_config().language.confidence_threshold == 1.0
 
 
 def test_toml_feature_flags(tmp_path, monkeypatch):
