@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -161,6 +162,25 @@ def test_zvec_iter_metadata_records_returns_source_and_collection():
         {"source": "a.txt", "collection": "letters"},
         {"source": "b.txt", "collection": "default"},
     ]
+
+
+class TestChromaBatching:
+    def test_add_batches_large_chroma_upserts(self, monkeypatch):
+        monkeypatch.setenv("ALCOVE_CHROMA_UPSERT_BATCH_SIZE", "2")
+        from alcove.index.backend import _chroma_upsert_batches
+
+        collection = MagicMock()
+        ids = ["d1", "d2", "d3", "d4", "d5"]
+        docs = [f"doc {i}" for i in ids]
+        metas = [{"source": f"{i}.txt"} for i in ids]
+        embeddings = [[float(i)] for i in range(len(ids))]
+
+        _chroma_upsert_batches(collection, ids, docs, metas, embeddings)
+
+        assert collection.upsert.call_count == 3
+        assert collection.upsert.call_args_list[0].kwargs["ids"] == ["d1", "d2"]
+        assert collection.upsert.call_args_list[1].kwargs["ids"] == ["d3", "d4"]
+        assert collection.upsert.call_args_list[2].kwargs["ids"] == ["d5"]
 
 
 @_skip_zvec

@@ -9,6 +9,24 @@ from chromadb.config import Settings
 from .embedder import get_collection_name
 
 
+DEFAULT_CHROMA_UPSERT_BATCH_SIZE = 5000
+
+
+def _chroma_upsert_batches(collection, ids, documents, metadatas, embeddings) -> None:
+    batch_size = int(os.getenv("ALCOVE_CHROMA_UPSERT_BATCH_SIZE", DEFAULT_CHROMA_UPSERT_BATCH_SIZE))
+    if batch_size <= 0:
+        raise ValueError("ALCOVE_CHROMA_UPSERT_BATCH_SIZE must be greater than 0")
+
+    for start in range(0, len(ids), batch_size):
+        end = start + batch_size
+        collection.upsert(
+            ids=ids[start:end],
+            documents=documents[start:end],
+            metadatas=metadatas[start:end],
+            embeddings=embeddings[start:end],
+        )
+
+
 class MultiChromaBackend:
     """Vector backend that fans out across ALL ChromaDB collections in CHROMA_PATH.
 
@@ -77,7 +95,8 @@ class MultiChromaBackend:
         for logical, group in groups.items():
             physical = get_collection_name(logical)
             col = self._client.get_or_create_collection(name=physical)
-            col.upsert(
+            _chroma_upsert_batches(
+                col,
                 ids=group["ids"],
                 documents=group["documents"],
                 metadatas=group["metadatas"],
@@ -295,9 +314,7 @@ class ChromaBackend:
         # Ensure every metadata dict has a "collection" key.
         for meta in metadatas:
             meta.setdefault("collection", "default")
-        self._collection.upsert(
-            ids=ids, documents=documents, metadatas=metadatas, embeddings=embeddings,
-        )
+        _chroma_upsert_batches(self._collection, ids, documents, metadatas, embeddings)
 
     def query(self, embedding, k=3, collections: Optional[List[str]] = None):
         kwargs: dict = {"query_embeddings": [embedding], "n_results": k}
