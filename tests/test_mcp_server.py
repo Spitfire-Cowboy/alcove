@@ -102,6 +102,41 @@ def test_search_tool_missing_query_returns_invalid_params():
     assert resp["error"]["code"] == -32602
 
 
+@pytest.mark.parametrize(
+    "req",
+    [
+        [],
+        {"jsonrpc": "2.0", "id": 15, "method": "tools/call", "params": []},
+        {
+            "jsonrpc": "2.0",
+            "id": 16,
+            "method": "tools/call",
+            "params": {"name": "search", "arguments": []},
+        },
+    ],
+)
+def test_malformed_request_shapes_return_invalid_params(req):
+    resp = handle_request(req)
+
+    assert resp is not None
+    assert resp["error"]["code"] == -32602
+
+
+@pytest.mark.parametrize("query", [123, [], "", "   "])
+def test_search_tool_non_string_or_empty_query_returns_invalid_params(query):
+    req = {
+        "jsonrpc": "2.0",
+        "id": 17,
+        "method": "tools/call",
+        "params": {"name": "search", "arguments": {"query": query}},
+    }
+
+    resp = handle_request(req)
+
+    assert resp is not None
+    assert resp["error"]["code"] == -32602
+
+
 def test_search_alias_tool_routes_to_search_with_controls():
     with patch("alcove.mcp_server._do_search", return_value=[]) as mock_search:
         req = {
@@ -267,7 +302,7 @@ def test_list_collections_backend_error_returns_internal_error():
 
     assert resp is not None
     assert resp["error"]["code"] == -32603
-    assert "boom" in resp["error"]["message"]
+    assert resp["error"]["message"] == "list_collections failed"
 
 
 def test_search_backend_error_returns_internal_error():
@@ -282,7 +317,7 @@ def test_search_backend_error_returns_internal_error():
 
     assert resp is not None
     assert resp["error"]["code"] == -32603
-    assert "offline" in resp["error"]["message"]
+    assert resp["error"]["message"] == "Search failed"
 
 
 def test_unknown_method_returns_error():

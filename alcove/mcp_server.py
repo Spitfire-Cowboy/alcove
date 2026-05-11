@@ -192,9 +192,16 @@ def _parse_include_filters(meta: object) -> tuple[list[str] | None, list[str] | 
 
 
 def handle_request(req: dict) -> dict | None:
+    if not isinstance(req, dict):
+        return _err(None, -32602, "Request must be an object")
+
     method = req.get("method", "")
     id_ = req.get("id")
-    params = req.get("params") or {}
+    params = req.get("params")
+    if params is None:
+        params = {}
+    if not isinstance(params, dict):
+        return _err(id_, -32602, "params must be an object")
 
     if method == "initialize":
         return _ok(id_, {
@@ -211,11 +218,15 @@ def handle_request(req: dict) -> dict | None:
 
     if method == "tools/call":
         tool_name = params.get("name")
-        arguments = params.get("arguments") or {}
+        arguments = params.get("arguments")
+        if arguments is None:
+            arguments = {}
+        if not isinstance(arguments, dict):
+            return _err(id_, -32602, "arguments must be an object")
 
         if tool_name in {SEARCH_TOOL_NAME, SEARCH_ALIAS_TOOL_NAME}:
             query = arguments.get("query")
-            if not query:
+            if not isinstance(query, str) or not query.strip():
                 return _err(id_, -32602, "Missing required argument: query")
             try:
                 top_k = arguments.get("top_k")
@@ -236,8 +247,8 @@ def handle_request(req: dict) -> dict | None:
                 )
             except ValueError as exc:
                 return _err(id_, -32602, str(exc))
-            except Exception as exc:
-                return _err(id_, -32603, f"Search failed: {exc}")
+            except Exception:
+                return _err(id_, -32603, "Search failed")
             return _ok(id_, {
                 "content": [{"type": "text", "text": json.dumps(results, indent=2)}],
             })
@@ -245,8 +256,8 @@ def handle_request(req: dict) -> dict | None:
         if tool_name == "list_collections":
             try:
                 collections = _do_list_collections()
-            except Exception as exc:
-                return _err(id_, -32603, f"list_collections failed: {exc}")
+            except Exception:
+                return _err(id_, -32603, "list_collections failed")
             return _ok(id_, {
                 "content": [{"type": "text", "text": json.dumps(collections)}],
             })
