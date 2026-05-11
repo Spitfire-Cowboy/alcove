@@ -59,6 +59,15 @@ def test_detect_language_script_shortcuts():
     assert detect_language("تاريخ العائلة والمجتمع") == "ar"
 
 
+def test_detect_language_accent_shortcuts():
+    assert detect_language("niñez") == "es"
+    assert detect_language("garçon") == "fr"
+
+
+def test_detect_language_unknown_without_tokens():
+    assert detect_language("12345 !!!") == "unknown"
+
+
 def test_detect_language_french_heuristic():
     text = "L'histoire de la famille décrit la mémoire, le travail et la communauté."
     assert detect_language(text) == "fr"
@@ -202,6 +211,140 @@ def test_keyword_search_can_filter_by_language(tmp_path):
 
     assert result["ids"] == [["es:0"]]
     assert result["metadatas"][0][0]["language"] == "es"
+
+
+def test_keyword_search_can_filter_by_collection_after_scoring(tmp_path):
+    from alcove.index.keyword import KeywordIndex
+
+    chunks_file = tmp_path / "chunks.jsonl"
+    rows = [
+        {
+            "id": "letters:0",
+            "source": "letters.txt",
+            "collection": "letters",
+            "chunk": "The family interview covers community history.",
+        },
+        {
+            "id": "minutes:0",
+            "source": "minutes.txt",
+            "collection": "minutes",
+            "chunk": "The family interview covers community history.",
+        },
+    ]
+    chunks_file.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
+
+    result = KeywordIndex(str(chunks_file)).search(
+        "family community",
+        k=1,
+        collections=["minutes"],
+    )
+
+    assert result["ids"] == [["minutes:0"]]
+    assert result["metadatas"][0][0]["collection"] == "minutes"
+
+
+def test_api_dispatch_keyword_passes_collection_and_language(monkeypatch):
+    called = {}
+
+    def fake_query_keyword(query, **kwargs):
+        called["query"] = query
+        called.update(kwargs)
+        return {"ids": [[]], "documents": [[]], "distances": [[]], "metadatas": [[]]}
+
+    monkeypatch.setattr(api, "query_keyword", fake_query_keyword)
+
+    result = api._dispatch_query(
+        "familia",
+        4,
+        mode="keyword",
+        collections=["letters"],
+        language_filter="es",
+    )
+
+    assert result["ids"] == [[]]
+    assert called == {
+        "query": "familia",
+        "n_results": 4,
+        "collections": ["letters"],
+        "language_filter": "es",
+    }
+
+
+def test_api_dispatch_hybrid_passes_language(monkeypatch):
+    called = {}
+
+    def fake_query_hybrid(query, **kwargs):
+        called["query"] = query
+        called.update(kwargs)
+        return {"ids": [[]], "documents": [[]], "distances": [[]], "metadatas": [[]]}
+
+    monkeypatch.setattr(api, "query_hybrid", fake_query_hybrid)
+
+    result = api._dispatch_query("familia", 2, mode="hybrid", language_filter="es")
+
+    assert result["ids"] == [[]]
+    assert called == {
+        "query": "familia",
+        "n_results": 2,
+        "collections": None,
+        "language_filter": "es",
+    }
+
+
+def test_hybrid_query_passes_collection_and_language(monkeypatch):
+    from alcove.query import retriever
+
+    calls = []
+
+    def fake_query_text(query, **kwargs):
+        calls.append(("semantic", query, kwargs))
+        return {
+            "ids": [["doc-1"]],
+            "documents": [["semantic"]],
+            "distances": [[0.2]],
+            "metadatas": [[{"source": "a.txt"}]],
+        }
+
+    def fake_query_keyword(query, **kwargs):
+        calls.append(("keyword", query, kwargs))
+        return {
+            "ids": [["doc-1"]],
+            "documents": [["keyword"]],
+            "distances": [[0.4]],
+            "metadatas": [[{"source": "a.txt"}]],
+        }
+
+    monkeypatch.setattr(retriever, "query_text", fake_query_text)
+    monkeypatch.setattr(retriever, "query_keyword", fake_query_keyword)
+
+    result = retriever.query_hybrid(
+        "familia",
+        n_results=3,
+        collections=["letters"],
+        language_filter="es",
+    )
+
+    assert result["ids"] == [["doc-1"]]
+    assert calls == [
+        (
+            "semantic",
+            "familia",
+            {
+                "n_results": 3,
+                "collections": ["letters"],
+                "language_filter": "es",
+            },
+        ),
+        (
+            "keyword",
+            "familia",
+            {
+                "n_results": 3,
+                "collections": ["letters"],
+                "language_filter": "es",
+            },
+        ),
+    ]
 
 
 def test_chroma_query_where_combines_collection_and_language():
