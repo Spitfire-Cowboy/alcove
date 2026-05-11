@@ -10,7 +10,7 @@ This is the foundation. Everything below builds on it.
 
 ## Near-term
 
-**More formats.** RTF, ODT, PPTX, XLSX. The [extractor plugin API](ARCHITECTURE.md#plugin-system) already supports this; the work is writing and testing each one.
+**More formats.** RTF, ODT, XLSX. PPTX is now supported by the built-in ingest pipeline. The [extractor plugin API](ARCHITECTURE.md#plugin-system) already supports additional formats; the work is writing and testing each one.
 
 **Semantic search as default.** The hash embedder exists for zero-download offline bootstrapping and for operators who do not want ML in the pipeline. Once the onboarding experience is smooth enough, sentence-transformers (or a lighter alternative) becomes the default install. The hash embedder stays available: not a stepping stone, but a permanent option for people who want deterministic, inspectable results.
 
@@ -18,9 +18,13 @@ This is the foundation. Everything below builds on it.
 
 **Browse mode.** Alcove should be navigable, not just searchable. Directory-aware corpus browsing in the web UI: see what you have, not just what matches a query. Search and browse are complementary interfaces to the same index.
 
-**MCP endpoint.** This is the "share it with the universe" part. An MCP-compatible retrieval surface that lets AI tools, public-facing websites, or any other tool query your index. Your corpus stays local. Your index stays yours. The answers are available to whoever you choose to expose them to. Because Alcove is retrieval, not generation, those answers are what your documents actually say: no hallucinations, no editorializing, no slop. Alcove already runs a local API; exposing it as an MCP tool server is a natural extension. [MCP changes the security surface](SECURITY.md#security-model); review it before exposing the endpoint. Context7 compatibility is a goal.
+**MCP endpoint.** This is the "share it with the universe" part. An MCP-compatible retrieval surface lets AI tools, public-facing websites, or any other tool query your index. The first public step is a local STDIO MCP server that exposes search and collection-listing tools. Your corpus stays local. Your index stays yours. The answers are available to whoever you choose to expose them to. Because Alcove is retrieval, not generation, those answers are what your documents actually say: no hallucinations, no editorializing, no slop. [MCP changes the security surface](SECURITY.md#security-model); review it before exposing the endpoint. Context7 compatibility is a goal.
 
 **Streaming ingest.** Watch a directory and re-index on change. The current pipeline is batch-oriented: you run `alcove ingest`, it processes everything. Streaming mode keeps the index current without manual intervention.
+
+**Provenance and index signing.** Local signing should let operators publish or move index exports with tamper-evident metadata. The first step is Ed25519 signing and verification for document hashes and index export envelopes. Signature verification proves integrity against a public key; identity trust still depends on the operator pinning or verifying the key fingerprint out of band.
+
+**Runtime deployment controls.** Feature flags and deployment metadata should stay explicit, testable, and file-backed so public builds, local installs, and future hosted demos do not drift through ad hoc environment tweaks.
 
 ## Mid-term
 
@@ -50,7 +54,6 @@ Extractors receive a file path and return a list of text chunks. The entry point
 |-----------|---------|--------|
 | RTF | `striprtf` | `ep.name = "rtf"`, callable strips RTF markup → plain text, chunked by paragraph |
 | ODT / ODP / ODS | `odfpy` | `ep.name = "odt"` etc.; parse ODF XML, extract text nodes, chunk by heading or paragraph |
-| PPTX | `python-pptx` | `ep.name = "pptx"`; iterate slides, pull `shape.text_frame.text`, one chunk per slide |
 | XLSX | `openpyxl` | `ep.name = "xlsx"`; iterate sheets and rows, emit one chunk per sheet (column headers + row values as prose) |
 | HTML | `beautifulsoup4` | `ep.name = "html"`; strip tags, extract visible text, chunk by block element |
 | Audio transcription | `faster-whisper` | `ep.name = "mp3"` / `"wav"` / `"m4a"`; transcribe via local Whisper model, emit time-coded text chunks |
