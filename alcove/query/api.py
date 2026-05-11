@@ -15,6 +15,7 @@ from starlette.templating import Jinja2Templates
 import uvicorn
 
 from alcove.web import TEMPLATES_DIR, STATIC_DIR
+from .browse import browse_corpus_stats
 from .retriever import query_hybrid, query_keyword, query_text
 
 app = FastAPI(title="Alcove")
@@ -258,6 +259,18 @@ def list_collections():
         return backend.list_collections()
     except Exception:
         return []
+
+
+@app.get("/browse", response_class=HTMLResponse)
+def browse(request: Request):
+    """Render a read-only corpus browsing page."""
+    stats = browse_corpus_stats()
+    total_docs = sum(item["doc_count"] for item in stats["collections"])
+    return templates.TemplateResponse(
+        request,
+        "browse.html",
+        _tpl({"stats": stats, "total_docs": total_docs}),
+    )
 
 
 def _dispatch_query(

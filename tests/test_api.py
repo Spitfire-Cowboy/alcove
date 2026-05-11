@@ -146,6 +146,136 @@ def test_list_collections_backend_exception_returns_empty():
     assert r.json() == []
 
 
+def test_browse_empty_index_returns_html(monkeypatch):
+    """GET /browse renders an empty state when no backend metadata is available."""
+    from alcove.query import api as api_mod
+
+    monkeypatch.setattr(
+        api_mod,
+        "browse_corpus_stats",
+        lambda: {"collections": [], "filetypes": [], "authors": [], "years": [], "recent": []},
+    )
+    r = client.get("/browse")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+    assert "No documents indexed yet" in r.text
+
+
+def test_browse_corpus_stats_groups_source_documents(monkeypatch):
+    """Browse stats count source documents, not chunks, and avoid absolute path display."""
+    from alcove.query.browse import browse_corpus_stats
+
+    stats = browse_corpus_stats([
+        {
+            "source": "/tmp/alcove-corpus/science/einstein.pdf",
+            "collection": "science",
+            "authors": "Einstein, A.",
+            "year": "1905",
+        },
+        {
+            "source": "/tmp/alcove-corpus/science/einstein.pdf",
+            "collection": "science",
+        },
+        {
+            "source": "data/raw/history/founding.txt",
+            "collection": "history",
+            "year": "1787",
+        },
+    ])
+
+    assert {"name": "science", "doc_count": 1} in stats["collections"]
+    assert {"name": "history", "doc_count": 1} in stats["collections"]
+    assert {"ext": "PDF", "doc_count": 1} in stats["filetypes"]
+    assert {"ext": "TXT", "doc_count": 1} in stats["filetypes"]
+    assert stats["authors"] == [{"name": "Einstein, A.", "doc_count": 1}]
+    assert {"year": "1905", "doc_count": 1} in stats["years"]
+    assert all("/tmp/alcove-corpus" not in item["label"] for item in stats["recent"])
+
+
+def test_browse_corpus_stats_empty_records():
+    from alcove.query.browse import browse_corpus_stats
+
+    assert browse_corpus_stats([]) == {
+        "collections": [],
+        "filetypes": [],
+        "authors": [],
+        "years": [],
+        "recent": [],
+    }
+
+
+def test_browse_page_renders_facets(monkeypatch):
+    """GET /browse renders recent documents, collections, and facet chips."""
+    from alcove.query import api as api_mod
+    from alcove.query.browse import browse_corpus_stats
+
+    monkeypatch.setattr(
+        api_mod,
+        "browse_corpus_stats",
+        lambda: browse_corpus_stats([
+            {
+                "source": "data/raw/research/paper.md",
+                "collection": "research",
+                "authors": "Ada Lovelace",
+                "year": "1843",
+            }
+        ]),
+    )
+    r = client.get("/browse")
+    assert r.status_code == 200
+    assert "Recent Documents" in r.text
+    assert "paper.md" in r.text
+    assert "research" in r.text
+    assert "Ada Lovelace" in r.text
+
+
+def test_backend_metadata_records_uses_backend_public_interface(monkeypatch):
+    from alcove.query.browse import backend_metadata_records
+
+    class DummyBackend:
+        def iter_metadata_records(self):
+            return [{"source": "data/raw/a.md"}, None, {"source": "data/raw/b.md"}]
+
+    monkeypatch.setattr("alcove.index.embedder.get_embedder", object)
+    monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: DummyBackend())
+
+    assert backend_metadata_records() == [{"source": "data/raw/a.md"}, {"source": "data/raw/b.md"}]
+
+
+def test_backend_metadata_records_handles_backend_factory_error(monkeypatch):
+    from alcove.query.browse import backend_metadata_records
+
+    monkeypatch.setattr("alcove.index.embedder.get_embedder", object)
+    monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: (_ for _ in ()).throw(RuntimeError("no db")))
+
+    assert backend_metadata_records() == []
+
+
+def test_browse_helpers_handle_fallbacks(tmp_path, monkeypatch):
+    from alcove.query import browse as browse_mod
+
+    raw_dir = tmp_path / "raw"
+    source = raw_dir / "letters" / "note.txt"
+    root_source = raw_dir / "root.txt"
+    source.parent.mkdir(parents=True)
+    source.write_text("hello", encoding="utf-8")
+    root_source.write_text("root", encoding="utf-8")
+    monkeypatch.setenv("RAW_DIR", str(raw_dir))
+
+    assert browse_mod.source_key({"title": "Untitled"}) == "Untitled"
+    assert browse_mod.source_key({}) == "(unknown)"
+    assert browse_mod.source_label("(unknown)") == "Unknown source"
+    assert browse_mod.source_label(str(source)) == "letters/note.txt"
+    assert browse_mod.source_label("/external/archive/note.txt") == "archive/note.txt"
+    assert browse_mod.source_label("note.txt") == "note.txt"
+    assert browse_mod.source_label("") == "Unknown source"
+    assert browse_mod.collection_label({}, str(source)) == "letters"
+    assert browse_mod.collection_label({}, str(root_source)) == "default"
+    assert browse_mod.collection_label({}, "/external/note.txt") == "default"
+    assert browse_mod.document_sort_time("missing.txt", [{"uploaded_at": "not-a-date"}]) == 0.0
+    assert browse_mod.document_sort_time(str(source), [{}]) > 0
+
+
 def test_root_backend_exception_still_renders_html():
     """GET / renders the search page even when the backend raises (doc_count falls back to 0)."""
     from unittest.mock import patch

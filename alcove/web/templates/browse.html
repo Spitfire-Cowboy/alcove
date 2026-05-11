@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="browse-hero" aria-labelledby="browse-heading">
+    <div>
+      <p class="section-kicker">Browse mode</p>
+      <h2 id="browse-heading">Explore the local index</h2>
+      <p>
+        {% if total_docs == 1 %}
+        1 source document is represented in the index.
+        {% else %}
+        {{ total_docs }} source documents are represented in the index.
+        {% endif %}
+      </p>
+    </div>
+    <form class="browse-search" method="GET" action="{{ base_url }}/search" role="search">
+      <label class="sr-only" for="browse-search-input">Search your documents</label>
+      <input id="browse-search-input" type="text" name="q" placeholder="Search from browse mode">
+      <button class="search-btn" type="submit">Search</button>
+    </form>
+  </section>
+
+  {% if total_docs == 0 %}
+  <div class="welcome-banner" role="status">
+    <h2>No documents indexed yet</h2>
+    <p>Upload documents or run <code>alcove seed-demo</code>, then return here to browse the corpus.</p>
+  </div>
+  {% else %}
+  <div class="browse-grid">
+    <section class="browse-panel" aria-labelledby="recent-documents-heading">
+      <div class="browse-panel-heading">
+        <h3 id="recent-documents-heading">Recent Documents</h3>
+      </div>
+      <div class="browse-list">
+        {% for doc in stats.recent %}
+        <div class="browse-list-item">
+          <span class="browse-list-title" title="{{ doc.label | e }}">{{ doc.label | e }}</span>
+          <span class="browse-list-meta">{{ doc.collection | e }} &middot; {{ doc.chunk_count }} chunk{% if doc.chunk_count != 1 %}s{% endif %}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="browse-panel" aria-labelledby="collections-heading">
+      <div class="browse-panel-heading">
+        <h3 id="collections-heading">Collections</h3>
+      </div>
+      <div class="browse-chips">
+        {% for collection in stats.collections %}
+        <a class="browse-chip" href="{{ base_url }}/search?collections={{ collection.name | urlencode }}">
+          <span>{{ collection.name | e }}</span>
+          <span>{{ collection.doc_count }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+
+    {% if stats.filetypes %}
+    <section class="browse-panel" aria-labelledby="filetypes-heading">
+      <div class="browse-panel-heading">
+        <h3 id="filetypes-heading">File Types</h3>
+      </div>
+      <div class="browse-chips">
+        {% for filetype in stats.filetypes %}
+        <span class="browse-chip browse-chip-static">
+          <span>{{ filetype.ext | e }}</span>
+          <span>{{ filetype.doc_count }}</span>
+        </span>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if stats.years %}
+    <section class="browse-panel" aria-labelledby="years-heading">
+      <div class="browse-panel-heading">
+        <h3 id="years-heading">Years</h3>
+      </div>
+      <div class="browse-chips">
+        {% for year in stats.years %}
+        <a class="browse-chip" href="{{ base_url }}/search?q={{ year.year | urlencode }}">
+          <span>{{ year.year | e }}</span>
+          <span>{{ year.doc_count }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if stats.authors %}
+    <section class="browse-panel browse-panel-wide" aria-labelledby="authors-heading">
+      <div class="browse-panel-heading">
+        <h3 id="authors-heading">Authors</h3>
+      </div>
+      <div class="browse-chips">
+        {% for author in stats.authors %}
+        <a class="browse-chip" href="{{ base_url }}/search?q={{ author.name | urlencode }}">
+          <span>{{ author.name | e }}</span>
+          <span>{{ author.doc_count }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <a class="back-link" href="{{ base_url }}/">&#8592; Back to search</a>
+{% endblock %}

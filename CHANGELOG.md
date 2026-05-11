@@ -4,6 +4,7 @@ All notable changes to alcove-search.
 
 ## [Unreleased]
 
+- Add a read-only browse mode for recent indexed documents, collections, file types, authors, and years.
 - Add `EMBEDDER=ollama` for local Ollama embedding models.
 - Add built-in PPTX text extraction and pipeline dispatch.
 - Add local Ed25519 signing helpers and a standalone index signing tool for provenance checks.
