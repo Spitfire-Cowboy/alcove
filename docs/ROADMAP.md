@@ -2,7 +2,7 @@
 
 ## Current release (v0.3.0)
 
-Alcove ships a working three-stage pipeline: ingest, index, query. Eleven document formats. Two embedders (hash for offline determinism, sentence-transformers for real semantic search). Two vector backends (ChromaDB, zvec). A plugin system.
+Alcove ships a working three-stage pipeline: ingest, index, query. Eleven document formats. Three embedders (hash for offline determinism, sentence-transformers for local semantic search, Ollama for operator-managed local models). Two vector backends (ChromaDB, zvec). A plugin system.
 
 A web UI with upload and search. CI across Python 3.10, 3.11, 3.12. Docker deployment. Apache 2.0.
 
@@ -10,15 +10,21 @@ This is the foundation. Everything below builds on it.
 
 ## Near-term
 
-**More formats.** RTF, ODT, PPTX, XLSX. The [extractor plugin API](ARCHITECTURE.md#plugin-system) already supports this; the work is writing and testing each one.
+**More formats.** RTF, ODT, XLSX. PPTX is now supported by the built-in ingest pipeline. The [extractor plugin API](ARCHITECTURE.md#plugin-system) already supports additional formats; the work is writing and testing each one.
 
 **Semantic search as default.** The hash embedder exists for zero-download offline bootstrapping and for operators who do not want ML in the pipeline. Once the onboarding experience is smooth enough, sentence-transformers (or a lighter alternative) becomes the default install. The hash embedder stays available: not a stepping stone, but a permanent option for people who want deterministic, inspectable results.
 
 **Browse mode.** Alcove is now navigable, not just searchable: the web UI includes a read-only browse page for recent indexed documents, collections, file types, authors, and years. Next steps are deeper directory-aware browsing and document-level drill-down while keeping the surface retrieval-only.
 
-**MCP endpoint.** This is the "share it with the universe" part. An MCP-compatible retrieval surface that lets AI tools, public-facing websites, or any other tool query your index. Your corpus stays local. Your index stays yours. The answers are available to whoever you choose to expose them to. Because Alcove is retrieval, not generation, those answers are what your documents actually say: no hallucinations, no editorializing, no slop. Alcove already runs a local API; exposing it as an MCP tool server is a natural extension. [MCP changes the security surface](SECURITY.md#security-model); review it before exposing the endpoint. Context7 compatibility is a goal.
+**Local model hooks.** `EMBEDDER=ollama` now lets operators point Alcove at a local Ollama server for embeddings. Near-term work is documentation polish and model-specific guidance, not hosted inference or generated answers.
+
+**MCP endpoint.** This is the "share it with the universe" part. An MCP-compatible retrieval surface lets AI tools, public-facing websites, or any other tool query your index. The first public step is a local STDIO MCP server that exposes search and collection-listing tools. Your corpus stays local. Your index stays yours. The answers are available to whoever you choose to expose them to. Because Alcove is retrieval, not generation, those answers are what your documents actually say: no hallucinations, no editorializing, no slop. [MCP changes the security surface](SECURITY.md#security-model); review it before exposing the endpoint. Context7 compatibility is a goal.
 
 **Streaming ingest.** Watch a directory and re-index on change. The current pipeline is batch-oriented: you run `alcove ingest`, it processes everything. Streaming mode keeps the index current without manual intervention.
+
+**Provenance and index signing.** Local signing should let operators publish or move index exports with tamper-evident metadata. The first step is Ed25519 signing and verification for document hashes and index export envelopes. Signature verification proves integrity against a public key; identity trust still depends on the operator pinning or verifying the key fingerprint out of band.
+
+**Runtime deployment controls.** Feature flags and deployment metadata should stay explicit, testable, and file-backed so public builds, local installs, and future hosted demos do not drift through ad hoc environment tweaks.
 
 ## Mid-term
 
@@ -48,7 +54,6 @@ Extractors receive a file path and return a list of text chunks. The entry point
 |-----------|---------|--------|
 | RTF | `striprtf` | `ep.name = "rtf"`, callable strips RTF markup → plain text, chunked by paragraph |
 | ODT / ODP / ODS | `odfpy` | `ep.name = "odt"` etc.; parse ODF XML, extract text nodes, chunk by heading or paragraph |
-| PPTX | `python-pptx` | `ep.name = "pptx"`; iterate slides, pull `shape.text_frame.text`, one chunk per slide |
 | XLSX | `openpyxl` | `ep.name = "xlsx"`; iterate sheets and rows, emit one chunk per sheet (column headers + row values as prose) |
 | HTML | `beautifulsoup4` | `ep.name = "html"`; strip tags, extract visible text, chunk by block element |
 | Audio transcription | `faster-whisper` | `ep.name = "mp3"` / `"wav"` / `"m4a"`; transcribe via local Whisper model, emit time-coded text chunks |
@@ -62,7 +67,7 @@ Embedders receive a list of strings and return a list of float vectors. They reg
 | Candidate | Library | Wiring |
 |-----------|---------|--------|
 | OpenAI | `openai` | Calls `client.embeddings.create(model="text-embedding-3-small", input=texts)`; requires `OPENAI_API_KEY`. Breaks local-only boundary — document this clearly. |
-| Ollama | `ollama` | Calls local `ollama.embeddings(model=..., prompt=text)` per chunk; model configured via env var. Zero-download after first pull. |
+| Ollama | built-in | Calls a local Ollama server via `EMBEDDER=ollama`; model configured via env vars. Zero-download after first pull. |
 | MLX (Apple Silicon) | `mlx-lm` | Runs embedding model via MLX on M-series GPU; fastest local option for Apple hardware. |
 | Cohere | `cohere` | Calls `co.embed(texts=..., model=...)` via Cohere API; requires API key. Cloud boundary applies. |
 
