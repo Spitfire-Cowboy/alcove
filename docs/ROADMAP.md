@@ -10,7 +10,7 @@ This is the foundation. Everything below builds on it.
 
 ## Near-term
 
-**More formats.** RTF, ODT, PPTX, XLSX. The [extractor plugin API](ARCHITECTURE.md#plugin-system) already supports this; the work is writing and testing each one.
+**More formats.** RTF, ODT, XLSX. PPTX is now supported by the built-in ingest pipeline. The [extractor plugin API](ARCHITECTURE.md#plugin-system) already supports additional formats; the work is writing and testing each one.
 
 **Semantic search as default.** The hash embedder exists for zero-download offline bootstrapping and for operators who do not want ML in the pipeline. Once the onboarding experience is smooth enough, sentence-transformers (or a lighter alternative) becomes the default install. The hash embedder stays available: not a stepping stone, but a permanent option for people who want deterministic, inspectable results.
 
@@ -52,7 +52,6 @@ Extractors receive a file path and return a list of text chunks. The entry point
 |-----------|---------|--------|
 | RTF | `striprtf` | `ep.name = "rtf"`, callable strips RTF markup → plain text, chunked by paragraph |
 | ODT / ODP / ODS | `odfpy` | `ep.name = "odt"` etc.; parse ODF XML, extract text nodes, chunk by heading or paragraph |
-| PPTX | `python-pptx` | `ep.name = "pptx"`; iterate slides, pull `shape.text_frame.text`, one chunk per slide |
 | XLSX | `openpyxl` | `ep.name = "xlsx"`; iterate sheets and rows, emit one chunk per sheet (column headers + row values as prose) |
 | HTML | `beautifulsoup4` | `ep.name = "html"`; strip tags, extract visible text, chunk by block element |
 | Audio transcription | `faster-whisper` | `ep.name = "mp3"` / `"wav"` / `"m4a"`; transcribe via local Whisper model, emit time-coded text chunks |
