@@ -52,9 +52,7 @@ def query_hybrid(
     combined score (lower distance = better match).
     """
     semantic_kwargs = {"n_results": n_results, "collections": collections}
-    keyword_kwargs = {"n_results": n_results}
-    if collections is not None:
-        keyword_kwargs["collections"] = collections
+    keyword_kwargs = {"n_results": n_results, "collections": collections}
     if language_filter is not None:
         semantic_kwargs["language_filter"] = language_filter
         keyword_kwargs["language_filter"] = language_filter

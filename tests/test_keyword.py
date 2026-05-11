@@ -140,7 +140,7 @@ class TestHybridMerge:
         )
         monkeypatch.setattr(
             "alcove.query.retriever.query_keyword",
-            lambda q, n_results=3: kw_result,
+            lambda q, n_results=3, collections=None: kw_result,
         )
 
         from alcove.query.retriever import query_hybrid

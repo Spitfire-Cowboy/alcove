@@ -74,6 +74,89 @@ class TestChromaBackend:
 
         assert result["ids"] == [["es-doc"]]
 
+    def test_query_filters_by_language_no_matches(self, embedder, tmp_path, monkeypatch):
+        monkeypatch.setenv("CHROMA_PATH", str(tmp_path / "chroma"))
+        monkeypatch.setenv("CHROMA_COLLECTION", "test_col")
+        from alcove.index.backend import ChromaBackend
+
+        backend = ChromaBackend(embedder)
+        vecs = embedder.embed(["family history"])
+        backend.add(
+            ids=["en-doc"],
+            embeddings=vecs,
+            documents=["family history"],
+            metadatas=[{"source": "a.txt", "language": "en"}],
+        )
+
+        q_vec = embedder.embed(["historia"])[0]
+        result = backend.query(q_vec, k=2, language_filter="es")
+
+        assert result["ids"] == [[]]
+
+    def test_query_filters_by_language_and_collection(self, embedder, tmp_path, monkeypatch):
+        monkeypatch.setenv("CHROMA_PATH", str(tmp_path / "chroma"))
+        monkeypatch.setenv("CHROMA_COLLECTION", "test_col")
+        from alcove.index.backend import ChromaBackend
+
+        backend = ChromaBackend(embedder)
+        vecs = embedder.embed(["family history", "family history"])
+        backend.add(
+            ids=["letters-doc", "minutes-doc"],
+            embeddings=vecs,
+            documents=["family history", "family history"],
+            metadatas=[
+                {"source": "a.txt", "collection": "letters", "language": "en"},
+                {"source": "b.txt", "collection": "minutes", "language": "en"},
+            ],
+        )
+
+        q_vec = embedder.embed(["family"])[0]
+        result = backend.query(q_vec, k=2, collections=["minutes"], language_filter="en")
+
+        assert result["ids"] == [["minutes-doc"]]
+
+    def test_query_filters_by_language_case_insensitive(self, embedder, tmp_path, monkeypatch):
+        monkeypatch.setenv("CHROMA_PATH", str(tmp_path / "chroma"))
+        monkeypatch.setenv("CHROMA_COLLECTION", "test_col")
+        from alcove.index.backend import ChromaBackend
+
+        backend = ChromaBackend(embedder)
+        vecs = embedder.embed(["historia familiar"])
+        backend.add(
+            ids=["es-doc"],
+            embeddings=vecs,
+            documents=["historia familiar"],
+            metadatas=[{"source": "a.txt", "language": "es"}],
+        )
+
+        q_vec = embedder.embed(["historia"])[0]
+        result = backend.query(q_vec, k=2, language_filter="ES")
+
+        assert result["ids"] == [["es-doc"]]
+
+    def test_query_filters_multiple_docs_by_language(self, embedder, tmp_path, monkeypatch):
+        monkeypatch.setenv("CHROMA_PATH", str(tmp_path / "chroma"))
+        monkeypatch.setenv("CHROMA_COLLECTION", "test_col")
+        from alcove.index.backend import ChromaBackend
+
+        backend = ChromaBackend(embedder)
+        vecs = embedder.embed(["historia familiar", "memoria comunitaria", "family history"])
+        backend.add(
+            ids=["es-doc-1", "es-doc-2", "en-doc"],
+            embeddings=vecs,
+            documents=["historia familiar", "memoria comunitaria", "family history"],
+            metadatas=[
+                {"source": "a.txt", "language": "es"},
+                {"source": "b.txt", "language": "es"},
+                {"source": "c.txt", "language": "en"},
+            ],
+        )
+
+        q_vec = embedder.embed(["historia memoria"])[0]
+        result = backend.query(q_vec, k=3, language_filter="es")
+
+        assert set(result["ids"][0]) == {"es-doc-1", "es-doc-2"}
+
     def test_upsert_overwrites(self, embedder, tmp_path, monkeypatch):
         monkeypatch.setenv("CHROMA_PATH", str(tmp_path / "chroma"))
         monkeypatch.setenv("CHROMA_COLLECTION", "test_col")

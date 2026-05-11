@@ -23,7 +23,7 @@ _FRENCH_MARKERS = {
 
 def _detect_language_heuristic(sample: str) -> str:
     lowered = sample.lower()
-    if any(ch in lowered for ch in "ñ¿¡"):
+    if any(ch in lowered for ch in "ñ¿¡ü"):
         return "es"
     if any(ch in lowered for ch in "âêîôûœæç"):
         return "fr"

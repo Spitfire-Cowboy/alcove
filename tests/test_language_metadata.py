@@ -407,8 +407,8 @@ def test_multi_root_query_passes_language_filter():
 
 
 class _FakeZvecDoc:
-    def __init__(self, id="doc-1", score=-0.2, **fields):
-        self.id = id
+    def __init__(self, doc_id="doc-1", score=-0.2, **fields):
+        self.id = doc_id
         self.score = score
         self._fields = fields
 
@@ -447,8 +447,10 @@ class _FakeZvec:
             self.vector = vector
 
     class Doc:
-        def __init__(self, id, vectors, fields):
-            self.id = id
+        def __init__(self, doc_id=None, vectors=None, fields=None, **kwargs):
+            if doc_id is None:
+                doc_id = kwargs["id"]
+            self.id = doc_id
             self.vectors = vectors
             self.fields = fields
 
@@ -498,7 +500,7 @@ def test_zvec_query_filters_by_language_and_returns_metadata():
     backend._zvec = _FakeZvec
     backend._collection = _FakeZvecCollection([
         _FakeZvecDoc(document="hello", source="a.txt", collection="docs", language="en"),
-        _FakeZvecDoc(id="doc-2", document="hola", source="b.txt", collection="docs", language="es"),
+        _FakeZvecDoc(doc_id="doc-2", document="hola", source="b.txt", collection="docs", language="es"),
     ])
 
     result = backend.query([0.1], k=1, language_filter="es")
