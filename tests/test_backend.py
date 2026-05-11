@@ -74,6 +74,24 @@ class TestChromaBackend:
         )
         assert backend.count() == 1
 
+    def test_iter_metadata_records_returns_stored_metadata(self, embedder, tmp_path, monkeypatch):
+        monkeypatch.setenv("CHROMA_PATH", str(tmp_path / "chroma"))
+        monkeypatch.setenv("CHROMA_COLLECTION", "test_col")
+        from alcove.index.backend import ChromaBackend
+
+        backend = ChromaBackend(embedder)
+        vecs = embedder.embed(["hello world"])
+        backend.add(
+            ids=["doc1"],
+            embeddings=vecs,
+            documents=["hello world"],
+            metadatas=[{"source": "a.txt", "collection": "letters", "author": "Ada"}],
+        )
+
+        assert backend.iter_metadata_records() == [
+            {"source": "a.txt", "collection": "letters", "author": "Ada"}
+        ]
+
 
 @_skip_zvec
 class TestZvecBackend:

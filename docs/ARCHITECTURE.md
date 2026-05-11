@@ -52,6 +52,19 @@ Set the embedder with the `EMBEDDER` environment variable. See [OPERATIONS.md](O
 
 Set the backend with the `VECTOR_BACKEND` environment variable. See [OPERATIONS.md](OPERATIONS.md#environment-variables) for how to configure it.
 
+## Browse mode
+
+Browse mode is a core, read-only view over indexed metadata. It does not inspect
+raw corpus files directly and does not mutate the index. Backends expose stored
+metadata through `iter_metadata_records()`, and `alcove/query/browse.py`
+aggregates that metadata into source-document facets such as collection, file
+type, author, year, and recent documents.
+
+Backend plugins should implement `iter_metadata_records()` when they want the
+core web UI's `/browse` page to show corpus facets. If a backend cannot enumerate
+metadata records, browse mode falls back to an empty state while search remains
+available.
+
 ## Plugin system
 
 Custom extractors, embedders, and vector backends plug in via [Python entry points](https://packaging.python.org/en/latest/specifications/entry-points/). Three extension groups:

@@ -153,6 +153,13 @@ class MultiChromaBackend:
             result.append({"name": col.name, "doc_count": col.count()})
         return result
 
+    def iter_metadata_records(self) -> List[Dict[str, object]]:
+        """Return stored metadata records for read-only corpus browsing."""
+        records: List[Dict[str, object]] = []
+        for col in self._get_all_collections():
+            records.extend(_collection_metadata_records(col, collection_name=col.name))
+        return records
+
 
 class MultiRootBackend:
     """Vector backend that fans out across multiple ChromaDB directories.
@@ -263,6 +270,13 @@ class MultiRootBackend:
     def list_collections(self) -> List[Dict[str, object]]:
         return [{"name": name, "doc_count": col.count()} for name, _, col in self._cols]
 
+    def iter_metadata_records(self) -> List[Dict[str, object]]:
+        """Return stored metadata records for read-only corpus browsing."""
+        records: List[Dict[str, object]] = []
+        for name, _client, col in self._cols:
+            records.extend(_collection_metadata_records(col, collection_name=name))
+        return records
+
 
 class ChromaBackend:
     """Vector backend backed by local ChromaDB."""
@@ -302,6 +316,10 @@ class ChromaBackend:
             name = (meta or {}).get("collection", "default")
             counts[name] = counts.get(name, 0) + 1
         return [{"name": n, "doc_count": c} for n, c in sorted(counts.items())]
+
+    def iter_metadata_records(self) -> List[Dict[str, object]]:
+        """Return stored metadata records for read-only corpus browsing."""
+        return _collection_metadata_records(self._collection)
 
 
 class ZvecBackend:
@@ -393,6 +411,42 @@ class ZvecBackend:
             name = doc.field("collection") or "default"
             counts[name] = counts.get(name, 0) + 1
         return [{"name": n, "doc_count": c} for n, c in sorted(counts.items())]
+
+    def iter_metadata_records(self) -> List[Dict[str, object]]:
+        """Return stored metadata records for read-only corpus browsing."""
+        results = self._collection.query(
+            vectors=None,
+            topk=self.count() or 1,
+            output_fields=["source", "collection"],
+        )
+        records: List[Dict[str, object]] = []
+        for doc in results:
+            records.append({
+                "source": doc.field("source"),
+                "collection": doc.field("collection") or "default",
+            })
+        return records
+
+
+def _collection_metadata_records(
+    collection,
+    *,
+    collection_name: str | None = None,
+) -> List[Dict[str, object]]:
+    try:
+        raw = collection.get(include=["metadatas"])
+    except Exception:
+        return []
+
+    records: List[Dict[str, object]] = []
+    for meta in raw.get("metadatas") or []:
+        if not isinstance(meta, dict):
+            continue
+        record = dict(meta)
+        if collection_name:
+            record.setdefault("collection", collection_name)
+        records.append(record)
+    return records
 
 
 _BUILTIN_BACKENDS = {

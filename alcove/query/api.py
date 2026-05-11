@@ -4,10 +4,8 @@ import html
 import json
 import os
 import re
-from collections import Counter
-from datetime import datetime
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import List, Optional
 
 from fastapi import FastAPI, Query, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -17,6 +15,7 @@ from starlette.templating import Jinja2Templates
 import uvicorn
 
 from alcove.web import TEMPLATES_DIR, STATIC_DIR
+from .browse import browse_corpus_stats
 from .retriever import query_hybrid, query_keyword, query_text
 
 app = FastAPI(title="Alcove")
@@ -262,184 +261,10 @@ def list_collections():
         return []
 
 
-def _backend_metadata_records() -> list[dict[str, Any]]:
-    """Return indexed metadata records from supported local backends."""
-    from alcove.index.backend import get_backend
-    from alcove.index.embedder import get_embedder
-
-    try:
-        backend = get_backend(get_embedder())
-    except Exception:
-        return []
-
-    records: list[dict[str, Any]] = []
-
-    collection = getattr(backend, "_collection", None)
-    if collection is not None and hasattr(collection, "get"):
-        try:
-            raw = collection.get(include=["metadatas"])
-        except Exception:
-            raw = {}
-        records.extend(meta for meta in raw.get("metadatas") or [] if isinstance(meta, dict))
-        return records
-
-    get_all = getattr(backend, "_get_all_collections", None)
-    if callable(get_all):
-        for coll in get_all():
-            try:
-                raw = coll.get(include=["metadatas"])
-            except Exception:
-                continue
-            for meta in raw.get("metadatas") or []:
-                if isinstance(meta, dict):
-                    enriched = dict(meta)
-                    enriched.setdefault("collection", getattr(coll, "name", "default"))
-                    records.append(enriched)
-        return records
-
-    for name, _client, coll in getattr(backend, "_cols", []):
-        try:
-            raw = coll.get(include=["metadatas"])
-        except Exception:
-            continue
-        for meta in raw.get("metadatas") or []:
-            if isinstance(meta, dict):
-                enriched = dict(meta)
-                enriched.setdefault("collection", name)
-                records.append(enriched)
-
-    return records
-
-
-def _source_key(meta: dict[str, Any]) -> str:
-    source = str(meta.get("source") or meta.get("path") or meta.get("filename") or "").strip()
-    if source:
-        return source
-    title = str(meta.get("title") or "").strip()
-    return title or "(unknown)"
-
-
-def _source_label(source: str) -> str:
-    """Return a display label without exposing absolute local paths."""
-    if not source or source == "(unknown)":
-        return "Unknown source"
-
-    source_path = Path(source)
-    raw_dir = Path(os.getenv("RAW_DIR", "data/raw")).expanduser()
-    try:
-        return source_path.expanduser().resolve().relative_to(raw_dir.resolve()).as_posix()
-    except (OSError, ValueError):
-        pass
-
-    parts = [p for p in re.split(r"[\\/]+", source) if p]
-    if len(parts) >= 2 and parts[-2] not in {"raw", "data"}:
-        return f"{parts[-2]}/{parts[-1]}"
-    return parts[-1] if parts else source
-
-
-def _collection_label(meta: dict[str, Any], source: str) -> str:
-    collection = str(meta.get("collection") or "").strip()
-    if collection:
-        return collection
-
-    raw_dir = Path(os.getenv("RAW_DIR", "data/raw")).expanduser()
-    try:
-        rel = Path(source).expanduser().resolve().relative_to(raw_dir.resolve())
-        if len(rel.parts) > 1:
-            return rel.parts[0]
-    except (OSError, ValueError):
-        return "default"
-
-    return "default"
-
-
-def _document_sort_time(source: str, metas: list[dict[str, Any]]) -> float:
-    for key in ("uploaded_at", "indexed_at", "modified_at", "created_at"):
-        values = [str(meta.get(key) or "").strip() for meta in metas]
-        for value in values:
-            if not value:
-                continue
-            try:
-                return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
-            except ValueError:
-                continue
-
-    try:
-        return Path(source).expanduser().stat().st_mtime
-    except OSError:
-        return 0.0
-
-
-def _browse_corpus_stats() -> dict[str, list[dict[str, Any]]]:
-    """Aggregate read-only browse stats from local index metadata."""
-    records = _backend_metadata_records()
-    if not records:
-        return {"collections": [], "filetypes": [], "authors": [], "years": [], "recent": []}
-
-    grouped: dict[str, list[dict[str, Any]]] = {}
-    for meta in records:
-        grouped.setdefault(_source_key(meta), []).append(meta)
-
-    collections: Counter[str] = Counter()
-    filetypes: Counter[str] = Counter()
-    authors: Counter[str] = Counter()
-    years: Counter[str] = Counter()
-    recent: list[dict[str, Any]] = []
-
-    for source, metas in grouped.items():
-        first = metas[0]
-        label = _source_label(source)
-        collection = _collection_label(first, source)
-        collections[collection] += 1
-
-        ext = Path(label).suffix.lower().lstrip(".")
-        if ext:
-            filetypes[ext.upper()] += 1
-
-        authors_raw = str(first.get("authors") or first.get("author") or "").strip()
-        for author in re.split(r"[;|]+", authors_raw):
-            author = author.strip()
-            if author:
-                authors[author] += 1
-
-        year = str(first.get("year") or "").strip()
-        if re.fullmatch(r"\d{4}", year):
-            years[year] += 1
-
-        recent.append(
-            {
-                "label": label,
-                "collection": collection,
-                "chunk_count": len(metas),
-                "sort_time": _document_sort_time(source, metas),
-            }
-        )
-
-    return {
-        "collections": [
-            {"name": name, "doc_count": count}
-            for name, count in sorted(collections.items(), key=lambda item: (-item[1], item[0].lower()))
-        ],
-        "filetypes": [
-            {"ext": ext, "doc_count": count}
-            for ext, count in sorted(filetypes.items(), key=lambda item: (-item[1], item[0]))
-        ],
-        "authors": [
-            {"name": name, "doc_count": count}
-            for name, count in sorted(authors.items(), key=lambda item: (-item[1], item[0].lower()))[:50]
-        ],
-        "years": [
-            {"year": year, "doc_count": count}
-            for year, count in sorted(years.items(), key=lambda item: item[0], reverse=True)
-        ],
-        "recent": sorted(recent, key=lambda item: (-item["sort_time"], item["label"].lower()))[:12],
-    }
-
-
 @app.get("/browse", response_class=HTMLResponse)
 def browse(request: Request):
     """Render a read-only corpus browsing page."""
-    stats = _browse_corpus_stats()
+    stats = browse_corpus_stats()
     total_docs = sum(item["doc_count"] for item in stats["collections"])
     return templates.TemplateResponse(
         request,

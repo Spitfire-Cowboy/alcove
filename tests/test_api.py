@@ -150,7 +150,11 @@ def test_browse_empty_index_returns_html(monkeypatch):
     """GET /browse renders an empty state when no backend metadata is available."""
     from alcove.query import api as api_mod
 
-    monkeypatch.setattr(api_mod, "_backend_metadata_records", lambda: [])
+    monkeypatch.setattr(
+        api_mod,
+        "browse_corpus_stats",
+        lambda: {"collections": [], "filetypes": [], "authors": [], "years": [], "recent": []},
+    )
     r = client.get("/browse")
     assert r.status_code == 200
     assert "text/html" in r.headers["content-type"]
@@ -159,31 +163,25 @@ def test_browse_empty_index_returns_html(monkeypatch):
 
 def test_browse_corpus_stats_groups_source_documents(monkeypatch):
     """Browse stats count source documents, not chunks, and avoid absolute path display."""
-    from alcove.query import api as api_mod
+    from alcove.query.browse import browse_corpus_stats
 
-    monkeypatch.setattr(
-        api_mod,
-        "_backend_metadata_records",
-        lambda: [
-            {
-                "source": "/tmp/alcove-corpus/science/einstein.pdf",
-                "collection": "science",
-                "authors": "Einstein, A.",
-                "year": "1905",
-            },
-            {
-                "source": "/tmp/alcove-corpus/science/einstein.pdf",
-                "collection": "science",
-            },
-            {
-                "source": "data/raw/history/founding.txt",
-                "collection": "history",
-                "year": "1787",
-            },
-        ],
-    )
-
-    stats = api_mod._browse_corpus_stats()
+    stats = browse_corpus_stats([
+        {
+            "source": "/tmp/alcove-corpus/science/einstein.pdf",
+            "collection": "science",
+            "authors": "Einstein, A.",
+            "year": "1905",
+        },
+        {
+            "source": "/tmp/alcove-corpus/science/einstein.pdf",
+            "collection": "science",
+        },
+        {
+            "source": "data/raw/history/founding.txt",
+            "collection": "history",
+            "year": "1787",
+        },
+    ])
 
     assert {"name": "science", "doc_count": 1} in stats["collections"]
     assert {"name": "history", "doc_count": 1} in stats["collections"]
@@ -197,18 +195,19 @@ def test_browse_corpus_stats_groups_source_documents(monkeypatch):
 def test_browse_page_renders_facets(monkeypatch):
     """GET /browse renders recent documents, collections, and facet chips."""
     from alcove.query import api as api_mod
+    from alcove.query.browse import browse_corpus_stats
 
     monkeypatch.setattr(
         api_mod,
-        "_backend_metadata_records",
-        lambda: [
+        "browse_corpus_stats",
+        lambda: browse_corpus_stats([
             {
                 "source": "data/raw/research/paper.md",
                 "collection": "research",
                 "authors": "Ada Lovelace",
                 "year": "1843",
             }
-        ],
+        ]),
     )
     r = client.get("/browse")
     assert r.status_code == 200
@@ -218,95 +217,30 @@ def test_browse_page_renders_facets(monkeypatch):
     assert "Ada Lovelace" in r.text
 
 
-def test_backend_metadata_records_handles_collection_backend(monkeypatch):
-    from alcove.query import api as api_mod
-
-    class DummyCollection:
-        def get(self, include):
-            assert include == ["metadatas"]
-            return {"metadatas": [{"source": "data/raw/a.md"}, None, {"source": "data/raw/b.md"}]}
+def test_backend_metadata_records_uses_backend_public_interface(monkeypatch):
+    from alcove.query.browse import backend_metadata_records
 
     class DummyBackend:
-        _collection = DummyCollection()
+        def iter_metadata_records(self):
+            return [{"source": "data/raw/a.md"}, None, {"source": "data/raw/b.md"}]
 
     monkeypatch.setattr("alcove.index.embedder.get_embedder", object)
     monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: DummyBackend())
 
-    assert api_mod._backend_metadata_records() == [{"source": "data/raw/a.md"}, {"source": "data/raw/b.md"}]
-
-
-def test_backend_metadata_records_handles_collection_errors(monkeypatch):
-    from alcove.query import api as api_mod
-
-    class BrokenCollection:
-        def get(self, include):
-            raise RuntimeError("unavailable")
-
-    class DummyBackend:
-        _collection = BrokenCollection()
-
-    monkeypatch.setattr("alcove.index.embedder.get_embedder", object)
-    monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: DummyBackend())
-
-    assert api_mod._backend_metadata_records() == []
+    assert backend_metadata_records() == [{"source": "data/raw/a.md"}, {"source": "data/raw/b.md"}]
 
 
 def test_backend_metadata_records_handles_backend_factory_error(monkeypatch):
-    from alcove.query import api as api_mod
+    from alcove.query.browse import backend_metadata_records
 
     monkeypatch.setattr("alcove.index.embedder.get_embedder", object)
     monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: (_ for _ in ()).throw(RuntimeError("no db")))
 
-    assert api_mod._backend_metadata_records() == []
-
-
-def test_backend_metadata_records_handles_multi_collection_backend(monkeypatch):
-    from alcove.query import api as api_mod
-
-    class DummyCollection:
-        name = "science"
-
-        def get(self, include):
-            return {"metadatas": [{"source": "data/raw/paper.md"}]}
-
-    class BrokenCollection:
-        name = "broken"
-
-        def get(self, include):
-            raise RuntimeError("unavailable")
-
-    class DummyBackend:
-        def _get_all_collections(self):
-            return [DummyCollection(), BrokenCollection()]
-
-    monkeypatch.setattr("alcove.index.embedder.get_embedder", object)
-    monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: DummyBackend())
-
-    assert api_mod._backend_metadata_records() == [{"source": "data/raw/paper.md", "collection": "science"}]
-
-
-def test_backend_metadata_records_handles_zvec_collection_cache(monkeypatch):
-    from alcove.query import api as api_mod
-
-    class DummyCollection:
-        def get(self, include):
-            return {"metadatas": [{"source": "data/raw/cache.md"}]}
-
-    class BrokenCollection:
-        def get(self, include):
-            raise RuntimeError("unavailable")
-
-    class DummyBackend:
-        _cols = [("cache", object(), DummyCollection()), ("broken", object(), BrokenCollection())]
-
-    monkeypatch.setattr("alcove.index.embedder.get_embedder", object)
-    monkeypatch.setattr("alcove.index.backend.get_backend", lambda embedder: DummyBackend())
-
-    assert api_mod._backend_metadata_records() == [{"source": "data/raw/cache.md", "collection": "cache"}]
+    assert backend_metadata_records() == []
 
 
 def test_browse_helpers_handle_fallbacks(tmp_path, monkeypatch):
-    from alcove.query import api as api_mod
+    from alcove.query import browse as browse_mod
 
     raw_dir = tmp_path / "raw"
     source = raw_dir / "letters" / "note.txt"
@@ -314,16 +248,16 @@ def test_browse_helpers_handle_fallbacks(tmp_path, monkeypatch):
     source.write_text("hello", encoding="utf-8")
     monkeypatch.setenv("RAW_DIR", str(raw_dir))
 
-    assert api_mod._source_key({"title": "Untitled"}) == "Untitled"
-    assert api_mod._source_key({}) == "(unknown)"
-    assert api_mod._source_label("(unknown)") == "Unknown source"
-    assert api_mod._source_label(str(source)) == "letters/note.txt"
-    assert api_mod._source_label("/external/archive/note.txt") == "archive/note.txt"
-    assert api_mod._source_label("") == "Unknown source"
-    assert api_mod._collection_label({}, str(source)) == "letters"
-    assert api_mod._collection_label({}, "/external/note.txt") == "default"
-    assert api_mod._document_sort_time("missing.txt", [{"uploaded_at": "not-a-date"}]) == 0.0
-    assert api_mod._document_sort_time(str(source), [{}]) > 0
+    assert browse_mod.source_key({"title": "Untitled"}) == "Untitled"
+    assert browse_mod.source_key({}) == "(unknown)"
+    assert browse_mod.source_label("(unknown)") == "Unknown source"
+    assert browse_mod.source_label(str(source)) == "letters/note.txt"
+    assert browse_mod.source_label("/external/archive/note.txt") == "archive/note.txt"
+    assert browse_mod.source_label("") == "Unknown source"
+    assert browse_mod.collection_label({}, str(source)) == "letters"
+    assert browse_mod.collection_label({}, "/external/note.txt") == "default"
+    assert browse_mod.document_sort_time("missing.txt", [{"uploaded_at": "not-a-date"}]) == 0.0
+    assert browse_mod.document_sort_time(str(source), [{}]) > 0
 
 
 def test_root_backend_exception_still_renders_html():
