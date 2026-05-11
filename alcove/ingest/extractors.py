@@ -79,3 +79,22 @@ def extract_docx(path: Path) -> str:
 
     doc = docx.Document(str(path))
     return "\n".join(p.text for p in doc.paragraphs)
+
+
+def extract_pptx(path: Path) -> str:
+    try:
+        from pptx import Presentation
+    except ImportError as e:
+        raise ImportError("python-pptx is required for .pptx support: pip install python-pptx") from e
+
+    presentation = Presentation(str(path))
+    texts: List[str] = []
+    for slide in presentation.slides:
+        for shape in slide.shapes:
+            if not getattr(shape, "has_text_frame", False):
+                continue
+            for paragraph in shape.text_frame.paragraphs:
+                text = paragraph.text.strip()
+                if text:
+                    texts.append(text)
+    return "\n".join(texts)
