@@ -20,7 +20,7 @@ class LanguageDetector(Protocol):
     provider: str
 
     def detect(self, text: str) -> LanguageDetection:
-        ...  # pragma: no cover
+        raise NotImplementedError  # pragma: no cover
 
 
 _ENGLISH_MARKERS = {
