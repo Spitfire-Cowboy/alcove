@@ -42,6 +42,7 @@ class KeywordIndex:
                         "id": rec.get("id", ""),
                         "text": text,
                         "source": rec.get("source", ""),
+                        "metadata": rec.get("metadata") if isinstance(rec.get("metadata"), dict) else {},
                     })
                     tokenized.append(text.lower().split())
 
@@ -90,11 +91,20 @@ class KeywordIndex:
         ids: List[str] = []
         documents: List[str] = []
         distances: List[float] = []
+        metadatas: List[Dict] = []
 
         for idx, norm in top:
             chunk = self._chunks[idx]
             ids.append(chunk["id"])
             documents.append(chunk["text"])
             distances.append(round(1.0 - norm, 6))
+            meta = dict(chunk.get("metadata") or {})
+            meta.setdefault("source", chunk["source"])
+            metadatas.append(meta)
 
-        return {"ids": [ids], "documents": [documents], "distances": [distances]}
+        return {
+            "ids": [ids],
+            "documents": [documents],
+            "distances": [distances],
+            "metadatas": [metadatas],
+        }

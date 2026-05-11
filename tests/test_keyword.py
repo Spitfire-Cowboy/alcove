@@ -58,12 +58,20 @@ class TestKeywordIndex:
         assert "ids" in result
         assert "documents" in result
         assert "distances" in result
+        assert "metadatas" in result
         # Outer list wrapper (ChromaDB convention)
         assert len(result["ids"]) == 1
         assert len(result["documents"]) == 1
         assert len(result["distances"]) == 1
+        assert len(result["metadatas"]) == 1
         # Should return at most k results
         assert len(result["ids"][0]) <= 2
+
+    def test_search_returns_source_metadata(self, chunks_file):
+        idx = KeywordIndex(chunks_file=chunks_file)
+        result = idx.search("brown fox", k=1)
+
+        assert result["metadatas"][0][0]["source"] == "a.txt"
 
     def test_search_ranks_relevant_doc_first(self, chunks_file):
         idx = KeywordIndex(chunks_file=chunks_file)
@@ -132,6 +140,7 @@ class TestHybridMerge:
             "ids": [["doc1", "doc3"]],
             "documents": [["text1", "text3"]],
             "distances": [[0.3, 0.4]],
+            "metadatas": [[{"source": "text1.txt"}, {"source": "text3.txt"}]],
         }
 
         monkeypatch.setattr(
@@ -158,6 +167,7 @@ class TestHybridMerge:
         # Should have all 3 unique docs
         assert len(ids) == 3
         assert set(ids) == {"doc1", "doc2", "doc3"}
+        assert result["metadatas"][0][0]["source"] == "text1.txt"
 
 
 # ---------------------------------------------------------------------------

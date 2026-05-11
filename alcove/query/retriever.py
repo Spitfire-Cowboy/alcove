@@ -53,19 +53,26 @@ def query_hybrid(
     kw_ids = keyword.get("ids", [[]])[0]
     kw_docs = keyword.get("documents", [[]])[0]
     kw_dists = keyword.get("distances", [[]])[0]
+    kw_metas = keyword.get("metadatas", [[]])[0]
 
-    for doc_id, doc, dist in zip(kw_ids, kw_docs, kw_dists):
+    for i, (doc_id, doc, dist) in enumerate(zip(kw_ids, kw_docs, kw_dists)):
+        kw_meta = kw_metas[i] if i < len(kw_metas) else {}
+        if not isinstance(kw_meta, dict):
+            kw_meta = {}
         if doc_id in merged:
             merged[doc_id]["kw_dist"] = float(dist)
+            merged[doc_id]["metadata"].update(kw_meta)
         else:
             # Keyword-only result: synthesize metadata from doc_id
             # doc_id format is "collection:filename:chunk_idx"
             parts = doc_id.split(":", 1)
             source = parts[1].rsplit(":", 1)[0] if len(parts) > 1 else doc_id
             collection = parts[0] if len(parts) > 1 else "default"
+            metadata = {"source": source, "collection": collection}
+            metadata.update(kw_meta)
             merged[doc_id] = {
                 "document": doc,
-                "metadata": {"source": source, "collection": collection},
+                "metadata": metadata,
                 "sem_dist": None,
                 "kw_dist": float(dist),
             }
