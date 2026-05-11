@@ -2,6 +2,10 @@
 
 All notable changes to alcove-search.
 
+## [Unreleased]
+
+- Add runtime configuration feature flags for environment and config-file controlled deployments.
+
 ## [0.3.0] - 2026-03-07
 
 - Add theme toggle, fix WCAG AA contrast, update accessibility docs

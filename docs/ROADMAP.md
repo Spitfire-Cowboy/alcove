@@ -20,6 +20,8 @@ This is the foundation. Everything below builds on it.
 
 **Streaming ingest.** Watch a directory and re-index on change. The current pipeline is batch-oriented: you run `alcove ingest`, it processes everything. Streaming mode keeps the index current without manual intervention.
 
+**Runtime deployment controls.** Feature flags and deployment metadata should stay explicit, testable, and file-backed so public builds, local installs, and future hosted demos do not drift through ad hoc environment tweaks.
+
 ## Mid-term
 
 **Cross-modal indexing.** Audio transcription, image OCR, video keyframe extraction. The pipeline architecture already separates extraction from embedding; new modalities plug in as extractors that produce text chunks from non-text sources. Bioacoustics and field recordings are a motivating use case, not an afterthought.
