@@ -1,12 +1,16 @@
 # Roadmap
 
-## Current release (v0.3.0)
+## Current package release (v0.3.0)
 
-Alcove ships a working three-stage pipeline: ingest, index, query. Eleven document formats. Three embedders (hash for offline determinism, sentence-transformers for local semantic search, Ollama for operator-managed local models). Two vector backends (ChromaDB, zvec). A plugin system.
+The published 0.3.0 package ships a working three-stage pipeline: ingest, index, query. It includes the local hash embedder, optional sentence-transformers semantic search, ChromaDB and zvec vector backends, a plugin system, and a web UI with upload and search.
 
-A web UI with upload and search. CI across Python 3.10, 3.11, 3.12. Docker deployment. Apache 2.0.
+The project also has CI across Python 3.10, 3.11, 3.12, Docker deployment support, and Apache 2.0 licensing.
 
 This is the foundation. Everything below builds on it.
+
+## Merged on main for next release
+
+Current `main` includes additional unreleased work intended for the next package release: Ollama embeddings, PPTX extraction, browse mode, MCP STDIO retrieval, local signing helpers, runtime deployment controls, and release packaging checks. These should be treated as unreleased until 0.4.0 is cut, tagged, and published.
 
 ## Next release planning (0.4.0)
 
