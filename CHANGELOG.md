@@ -4,6 +4,7 @@ All notable changes to alcove-search.
 
 ## [Unreleased]
 
+- Add read-only browse document detail pages with stable IDs and chunk previews.
 - Add a read-only browse mode for recent indexed documents, collections, file types, authors, and years.
 - Add `EMBEDDER=ollama` for local Ollama embedding models.
 - Add built-in PPTX text extraction and pipeline dispatch.

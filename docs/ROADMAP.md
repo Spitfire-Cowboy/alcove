@@ -14,7 +14,7 @@ This is the foundation. Everything below builds on it.
 
 **Semantic search as default.** The hash embedder exists for zero-download offline bootstrapping and for operators who do not want ML in the pipeline. Once the onboarding experience is smooth enough, sentence-transformers (or a lighter alternative) becomes the default install. The hash embedder stays available: not a stepping stone, but a permanent option for people who want deterministic, inspectable results.
 
-**Browse mode.** Alcove is now navigable, not just searchable: the web UI includes a read-only browse page for recent indexed documents, collections, file types, authors, and years. Next steps are deeper directory-aware browsing and document-level drill-down while keeping the surface retrieval-only.
+**Browse mode.** Alcove is now navigable, not just searchable: the web UI includes read-only browse pages for recent indexed documents, document detail, collections, file types, authors, and years. Next steps are deeper directory-aware browsing while keeping the surface retrieval-only.
 
 **Local model hooks.** `EMBEDDER=ollama` now lets operators point Alcove at a local Ollama server for embeddings. Near-term work is documentation polish and model-specific guidance, not hosted inference or generated answers.
 

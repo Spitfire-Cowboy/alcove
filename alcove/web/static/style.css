@@ -778,11 +778,28 @@ button:focus-visible {
   white-space: nowrap;
 }
 
+a.browse-list-title {
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+a.browse-list-title:hover {
+  color: var(--gold);
+  text-decoration-thickness: 2px;
+}
+
 .browse-list-meta {
   display: block;
   color: var(--text-muted);
   font-size: 0.8rem;
   margin-top: 0.1rem;
+}
+
+.browse-chunk-preview p {
+  color: var(--text-excerpt);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin-top: 0.35rem;
 }
 
 .browse-chips {
