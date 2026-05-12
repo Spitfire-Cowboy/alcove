@@ -59,7 +59,9 @@ Browse mode is a core, read-only view over indexed metadata. It does not inspect
 raw corpus files directly and does not mutate the index. Backends expose stored
 metadata through `iter_metadata_records()`, and `alcove/query/browse.py`
 aggregates that metadata into source-document facets such as collection, file
-type, author, year, and recent documents.
+type, author, year, and recent documents. Backends may also include stored chunk
+text in internal `__document` fields and chunk IDs in `__chunk_id` fields so the
+web UI can show document drill-down previews without reading raw files.
 
 Backend plugins should implement `iter_metadata_records()` when they want the
 core web UI's `/browse` page to show corpus facets. If a backend cannot enumerate

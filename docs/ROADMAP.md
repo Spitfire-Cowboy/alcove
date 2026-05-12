@@ -14,11 +14,13 @@ This is the foundation. Everything below builds on it.
 
 **Semantic search as default.** The hash embedder exists for zero-download offline bootstrapping and for operators who do not want ML in the pipeline. Once the onboarding experience is smooth enough, sentence-transformers (or a lighter alternative) becomes the default install. The hash embedder stays available: not a stepping stone, but a permanent option for people who want deterministic, inspectable results.
 
-**Browse mode.** Alcove is now navigable, not just searchable: the web UI includes a read-only browse page for recent indexed documents, collections, file types, authors, and years. Next steps are deeper directory-aware browsing and document-level drill-down while keeping the surface retrieval-only.
+**Browse mode.** Alcove is now navigable, not just searchable: the web UI includes read-only browse pages for recent indexed documents, document detail, collections, file types, authors, and years. Next steps are deeper directory-aware browsing while keeping the surface retrieval-only.
 
 **Local model hooks.** `EMBEDDER=ollama` now lets operators point Alcove at a local Ollama server for embeddings. Near-term work is documentation polish and model-specific guidance, not hosted inference or generated answers.
 
 **MCP endpoint.** This is the "share it with the universe" part. An MCP-compatible retrieval surface lets AI tools, public-facing websites, or any other tool query your index. The first public step is a local STDIO MCP server that exposes search and collection-listing tools. Your corpus stays local. Your index stays yours. The answers are available to whoever you choose to expose them to. Because Alcove is retrieval, not generation, those answers are what your documents actually say: no hallucinations, no editorializing, no slop. [MCP changes the security surface](SECURITY.md#security-model); review it before exposing the endpoint. Context7 compatibility is a goal.
+
+**Release packaging hygiene.** Public releases now include checks for package metadata, release automation, and Homebrew formula safety. PyPI remains the supported public install channel; Homebrew packaging stays deferred until the formula can be generated with public URLs, Apache-2.0 metadata, real release hashes, and vendored Python resources.
 
 **Streaming ingest.** Watch a directory and re-index on change. The current pipeline is batch-oriented: you run `alcove ingest`, it processes everything. Streaming mode keeps the index current without manual intervention.
 
