@@ -14,6 +14,15 @@ All notable changes to alcove-search.
 - Add a STDIO Model Context Protocol server for querying local Alcove indexes.
 - Add runtime configuration feature flags for environment and config-file controlled deployments.
 
+## [0.4.0] - Planned
+
+Planning status: not released, not tagged, and not reflected in package metadata.
+
+- Prepare a public release plan for a 0.4.0 feature-batch release.
+- Review pending feature PRs in dependency order before deciding final scope.
+- Keep release notes limited to merged, verified behavior at release time.
+- Keep the package version at 0.3.0 until the actual release commit.
+
 ## [0.3.0] - 2026-03-07
 
 - Add theme toggle, fix WCAG AA contrast, update accessibility docs
