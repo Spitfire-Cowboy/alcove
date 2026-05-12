@@ -6,8 +6,8 @@ All notable changes to alcove-search.
 
 ## [0.4.0] - 2026-05-12
 
-- Consolidate public README, architecture, operations, and roadmap docs around the published package and current unreleased main-branch scope.
-- Add a pending-feature map so draft manifest, provenance, streaming ingest, multilingual, and cross-modal work is not presented as already shipped.
+- Consolidate public README, architecture, operations, and roadmap docs around the published 0.4.0 package scope.
+- Add a pending-feature map to indicate draft manifest, provenance, streaming ingest, multilingual, and cross-modal work are not part of this release.
 - Clarify install, trust-boundary, API, collection, backup, and docs hygiene guidance.
 - Document desktop packaging status and guardrails without claiming a supported app bundle.
 - Add focused checks for public-safe Briefcase metadata and local-first desktop packaging docs.
