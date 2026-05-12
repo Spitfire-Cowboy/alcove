@@ -1,6 +1,12 @@
 # Manifest Format & Registry Discovery
 
-Alcove uses an optional `alcove.json` file to declare which plugin and index registries the runtime should consult, and which plugins and indexes are configured for this instance.
+Status: draft design. The shipped v0.4.0 runtime discovers installed plugins through
+Python entry points. It does not yet read `alcove.json`, consult remote registries, or
+discover network indexes from a registry.
+
+This document describes a proposed `alcove.json` file that could declare which plugin
+and index registries a future runtime should consult, and which plugins and indexes are
+configured for an instance.
 
 This document defines the manifest schema, the registry JSON format, and the design rationale.
 
@@ -8,18 +14,20 @@ This document defines the manifest schema, the registry JSON format, and the des
 
 ## Overview
 
-Two primitives:
+Proposed primitives:
 
 - **Plugin registry** — a JSON list of installable Alcove plugins (extractors, backends, embedders). Served at a URL; default is `https://plugins.alcove.software/registry.json`.
 - **Index registry** — a JSON list of published Alcove search indexes (corpora accessible over a network). Served at a URL; default is `https://search.alcove.software/registry.json`.
 
-Pointing your runtime at a community fork is a single URL change in `alcove.json`.
+If this design ships, pointing a runtime at a community fork would be a single URL
+change in `alcove.json`.
 
 ---
 
 ## alcove.json schema
 
-Place `alcove.json` at the root of your Alcove deployment directory (next to `pyproject.toml` or `docker-compose.yml`).
+In the proposed design, `alcove.json` would live at the root of an Alcove deployment
+directory.
 
 ```json
 {

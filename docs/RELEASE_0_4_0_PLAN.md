@@ -1,65 +1,57 @@
-# Alcove 0.4.0 Release Plan
+# Alcove 0.4.0 Release Notes
 
-Status: planning only. This document does not ship features, merge feature PRs, bump package metadata, create a tag, or publish artifacts.
+Status: release-prep complete. This document records the public 0.4.0 package scope; tagging and publishing still happen after the release PR is merged.
 
-Target: 0.4.0 feature-batch release.
+Target tag: `v0.4.0`.
 
-Current package version: 0.3.0 until the release commit.
+Current package version: 0.4.0.
 
-## Scope Decision
+## Release Scope
 
-0.4.0 should be decided as a reviewed feature batch, not as a rolling collection of branch state. A feature belongs in 0.4.0 only after its PR has been reviewed, merged, tested on `main`, and documented as shipped behavior.
+0.4.0 is a feature-batch release made from reviewed and merged public work on `main`.
 
-Candidate areas to evaluate:
+Included behavior:
 
-- Retrieval surface improvements that preserve Alcove's retrieval-only contract.
-- Ingest and extractor improvements that keep data local by default.
-- Plugin-system improvements with clear entry-point compatibility notes.
-- Web or CLI usability improvements that are covered by focused tests.
-- Documentation updates that describe shipped behavior without promising unmerged work.
+- Browse mode and read-only document drill-down previews.
+- STDIO MCP retrieval tools for local search and collection listing.
+- Ollama embeddings through `EMBEDDER=ollama`.
+- PPTX text extraction.
+- Local Ed25519 signing helpers and index signing tooling.
+- Runtime deployment controls.
+- Release packaging checks for public metadata, release workflows, and Homebrew formula safety.
+- Desktop packaging preparation docs and guardrails; no desktop app bundle ships yet.
+- Public documentation cleanup that separates released behavior from draft designs.
 
-Explicitly out of scope for this planning branch:
+Deferred or still exploratory:
 
-- Version bump to 0.4.0 or 1.0.0.
-- Release tag creation.
-- Publishing to PyPI or package registries.
-- Private deployment notes, internal hostnames, private repository names, or operator-specific paths.
-
-## PR Review Sequence
-
-Use this sequence before cutting the release:
-
-1. Review dependency and maintenance PRs first so feature branches are evaluated against current dependencies.
-2. Review data-model, manifest, or plugin contract PRs before UI or documentation PRs that depend on those contracts.
-3. Review ingest and indexing changes before query/API changes that expose their output.
-4. Review user-facing CLI, API, and web changes after the underlying pipeline behavior is stable.
-5. Review documentation and changelog updates last, using only merged and verified behavior.
-
-Each accepted PR should leave behind enough evidence for release notes: tests run, public docs touched, and any compatibility notes. Deferred PRs should be listed as deferred follow-up work, not as 0.4.0 features.
+- Manifest and registry discovery.
+- Rich provenance manifests and compliance workflows.
+- Streaming ingest.
+- Cross-modal indexing.
+- Multilingual model-selection CLI flags and automatic multilingual-E5 prefix handling.
+- Federation.
 
 ## Release Checklist
 
-Before release scope is approved:
+Before tagging:
 
-- [ ] Confirm every candidate feature PR is merged or explicitly deferred.
 - [ ] Confirm `main` passes CI for supported Python versions.
 - [ ] Run focused local tests for changed surfaces.
-- [ ] Confirm package metadata still points to the public project URLs.
+- [ ] Confirm package metadata points to the public project URLs.
 - [ ] Confirm no release docs include private hostnames, private repository references, personal filesystem paths, or PII.
-- [ ] Rewrite this plan's candidate language into final release notes for only merged behavior.
+- [ ] Confirm `pyproject.toml`, `alcove/__init__.py`, `CHANGELOG.md`, and `docs/ROADMAP.md` all agree on 0.4.0.
 
 At release time:
 
-- [ ] Bump package metadata from 0.3.0 to 0.4.0 in the release commit.
-- [ ] Move the 0.4.0 changelog entry from planned scope to dated shipped scope.
+- [ ] Merge the release PR.
 - [ ] Tag `v0.4.0` only after tests and release notes are final.
+- [ ] Push the tag to trigger GitHub Release and PyPI publish workflows.
 - [ ] Verify the published artifact and public release notes.
 
 After release:
 
-- [ ] Update `docs/ROADMAP.md` so 0.4.0 is described as current shipped behavior.
-- [ ] Open follow-up issues for deferred PRs and incomplete roadmap items.
-- [ ] Remove or archive this planning checklist if it no longer reflects the public release state.
+- [ ] Sanity-check install from PyPI.
+- [ ] Open follow-up issues for deferred roadmap items.
 
 ## Public-Safety Notes
 

@@ -1,5 +1,9 @@
 # Provenance Layer
 
+Status: draft design. Alcove stores source and collection metadata on chunks today, but
+manifest-driven provenance and compliance workflows are roadmap work, not a shipped
+runtime contract.
+
 Alcove is a view layer, not a copy layer. The design principle: store where data came from
 alongside what it says. Every chunk in the vector index should be traceable back to its
 source document, and every source document should be traceable to its origin.
@@ -23,7 +27,8 @@ compliance applications, known provenance is a hard requirement.
 ## How Alcove represents provenance
 
 Every chunk stored in the vector index carries a `metadata` dict alongside its text
-and embedding vector. The built-in fields that support provenance:
+and embedding vector. The shipped fields that support provenance are `source` and
+`collection`; the other fields below are planned or custom-ingest fields.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -32,16 +37,15 @@ and embedding vector. The built-in fields that support provenance:
 | `chunk_index` | int | Position of this chunk within the source document |
 | `ingest_date` | string (ISO 8601) | Date the chunk was written to the index |
 
-These fields are written by the ingest pipeline automatically when a file is processed.
-Additional fields (e.g. `title`, `author`, `license`, `url`) can be added by the
-extractor or by a custom ingest script.
+Richer fields such as `title`, `author`, `license`, `url`, and `ingest_date` depend on
+extractor support or custom ingest code.
 
 ---
 
 ## Manifest-based provenance
 
-The `alcove.schema.json` manifest documents each collection at the collection level. An
-entry in the manifest looks like:
+Manifest-based provenance is planned work. A future manifest could document each
+collection at the collection level. An entry might look like:
 
 ```json
 {
@@ -55,8 +59,8 @@ entry in the manifest looks like:
 }
 ```
 
-The manifest lives at `docs/alcove.schema.json` and is updated after each ingest run.
-It is the authoritative record of what is in the index and where it came from.
+The checked-in schema is a design artifact. The shipped v0.4.0 runtime does not update a
+manifest after each ingest run.
 
 ---
 
@@ -93,9 +97,8 @@ collection.upsert(
 
 ## Provenance in search results
 
-The Alcove query API returns the full metadata dict with each result. The web UI
-renders `source` and `url` as links when present. A result card without a source URL
-displays the file path as plain text.
+The Alcove query API returns metadata with results. The shipped web UI displays source
+and collection information; richer provenance rendering is planned work.
 
 Custom result rendering can add provenance display by overriding the `result_card`
 block in `alcove/web/templates/results.html`.
@@ -121,4 +124,4 @@ displaying the `author` and `source_url` in the UI satisfies the typical require
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — ingest/index pipeline overview
 - [MANIFEST.md](MANIFEST.md) — corpus manifest format and update instructions
-- [docs/alcove.schema.json](alcove.schema.json) — live manifest
+- [docs/alcove.schema.json](alcove.schema.json) — draft schema artifact

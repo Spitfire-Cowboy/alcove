@@ -43,7 +43,7 @@ def test_unsafe_homebrew_formula_is_rejected(tmp_path: Path) -> None:
             [
                 '[project]',
                 'name = "alcove-search"',
-                'version = "0.3.0"',
+                'version = "0.4.0"',
                 'license = {text = "Apache-2.0"}',
                 '',
                 '[project.urls]',
