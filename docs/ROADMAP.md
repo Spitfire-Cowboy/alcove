@@ -20,6 +20,8 @@ This is the foundation. Everything below builds on it.
 
 **MCP endpoint.** This is the "share it with the universe" part. An MCP-compatible retrieval surface lets AI tools, public-facing websites, or any other tool query your index. The first public step is a local STDIO MCP server that exposes search and collection-listing tools. Your corpus stays local. Your index stays yours. The answers are available to whoever you choose to expose them to. Because Alcove is retrieval, not generation, those answers are what your documents actually say: no hallucinations, no editorializing, no slop. [MCP changes the security surface](SECURITY.md#security-model); review it before exposing the endpoint. Context7 compatibility is a goal.
 
+**Release packaging hygiene.** Public releases now include checks for package metadata, release automation, and Homebrew formula safety. PyPI remains the supported public install channel; Homebrew packaging stays deferred until the formula can be generated with public URLs, Apache-2.0 metadata, real release hashes, and vendored Python resources.
+
 **Streaming ingest.** Watch a directory and re-index on change. The current pipeline is batch-oriented: you run `alcove ingest`, it processes everything. Streaming mode keeps the index current without manual intervention.
 
 **Provenance and index signing.** Local signing should let operators publish or move index exports with tamper-evident metadata. The first step is Ed25519 signing and verification for document hashes and index export envelopes. Signature verification proves integrity against a public key; identity trust still depends on the operator pinning or verifying the key fingerprint out of band.
