@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 
@@ -18,6 +20,36 @@ def test_release_checklist_exists_and_has_core_sections() -> None:
         assert section in text
     assert ".github/workflows/release.yml" in text
     assert ".github/workflows/publish.yml" in text
+    assert "RELEASE_0_4_0_PLAN.md" in text
+
+
+def test_release_0_4_0_plan_is_planning_only() -> None:
+    plan = _read("docs/RELEASE_0_4_0_PLAN.md")
+    changelog = _read("CHANGELOG.md")
+    roadmap = _read("docs/ROADMAP.md")
+    pyproject = _read("pyproject.toml")
+
+    assert "Status: planning only." in plan
+    assert "Target: 0.4.0 feature-batch release." in plan
+    assert "## PR Review Sequence" in plan
+    assert "not as 0.4.0 features" in plan
+    assert "## [0.4.0] - Planned" in changelog
+    assert "not released, not tagged" in changelog
+    assert "Next release planning (0.4.0)" in roadmap
+    assert 'version = "0.3.0"' in pyproject
+    assert 'version = "1.0.0"' not in pyproject
+
+
+def test_release_plan_checker_passes() -> None:
+    result = subprocess.run(
+        [sys.executable, "scripts/check_release_plan.py"],
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "release plan checks passed" in result.stdout
 
 
 def test_canonical_public_repo_slug_in_metadata_and_docs() -> None:
@@ -50,8 +82,17 @@ def test_demo_links_use_current_pages_domain() -> None:
 
 
 def test_public_docs_avoid_private_operational_markers() -> None:
-    files = ["README.md", "docs/SECURITY.md", "docs/index.html", "docs/demo-cli.html"]
-    banned = ["alcove-private", "rowan-den", "/Users/"]
+    files = [
+        "README.md",
+        "CHANGELOG.md",
+        "docs/ROADMAP.md",
+        "docs/RELEASE_0_4_0_PLAN.md",
+        "docs/RELEASE_CHECKLIST.md",
+        "docs/SECURITY.md",
+        "docs/index.html",
+        "docs/demo-cli.html",
+    ]
+    banned = ["alcove-private", "rowan-den", "/Users/", "Pro777"]
     for rel in files:
         text = _read(rel)
         for marker in banned:
