@@ -14,7 +14,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
-from packaging.version import Version
+from packaging.version import InvalidVersion, Version
 
 
 _NATIVE_SUFFIXES = {".so", ".pyd", ".dylib", ".dll"}
@@ -120,7 +120,16 @@ def evaluate_requirement(requirement_line: str) -> ConstraintStatus:
             has_native_extensions=False,
         )
 
-    installed = Version(installed_version)
+    try:
+        installed = Version(installed_version)
+    except InvalidVersion:
+        return ConstraintStatus(
+            requirement=requirement_line,
+            name=requirement.name,
+            installed=installed_version,
+            status="invalid-installed-version",
+            has_native_extensions=distribution_has_native_extensions(requirement.name),
+        )
     status = "ok" if installed in requirement.specifier else "drift"
     return ConstraintStatus(
         requirement=requirement_line,
@@ -165,7 +174,7 @@ def print_report(report: dict[str, object]) -> None:
 def exit_code(report: dict[str, object]) -> int:
     if report["missing_from_constraints"] or report["extra_in_constraints"]:
         return 1
-    bad = {"missing", "drift", "invalid-requirement"}
+    bad = {"missing", "drift", "invalid-requirement", "invalid-installed-version"}
     if any(item["status"] in bad for item in report["requirements"]):
         return 1
     return 0

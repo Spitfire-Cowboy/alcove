@@ -65,6 +65,17 @@ def test_evaluate_requirement_reports_drift(monkeypatch):
     assert result.installed == "5.0.0"
 
 
+def test_evaluate_requirement_reports_invalid_installed_version(monkeypatch):
+    monkeypatch.setattr(_mod.importlib_metadata, "version", lambda name: "not-a-version")
+    monkeypatch.setattr(_mod, "distribution_has_native_extensions", lambda name: True)
+
+    result = _mod.evaluate_requirement("fastapi>=0.115.0,<1.0")
+
+    assert result.status == "invalid-installed-version"
+    assert result.installed == "not-a-version"
+    assert result.has_native_extensions is True
+
+
 def test_distribution_has_native_extensions(monkeypatch):
     class FakeDist:
         files = ["pkg/native.so", "pkg/__init__.py"]
