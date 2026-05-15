@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Iterable
 
-from alcove.plugins import discover_extractors
+from alcove.plugins import discover_enrichers, discover_extractors
 
 from .extractors import (
     extract_csv,
@@ -49,6 +49,27 @@ def _get_extractors() -> dict:
     return extractors
 
 
+def _get_enrichers() -> dict:
+    """Return installed enrichers keyed by entry-point name."""
+    return discover_enrichers()
+
+
+def _apply_enrichers(text: str, metadata: dict, enrichers: dict) -> dict:
+    """Run enrichers fail-open and merge any returned metadata."""
+    enriched = dict(metadata)
+    for name, enricher in enrichers.items():
+        try:
+            extra = enricher(text, dict(enriched))
+        except Exception as exc:
+            logger.warning("Enricher %s failed: %s", name, exc)
+            continue
+        if not isinstance(extra, dict):
+            logger.warning("Enricher %s returned non-dict metadata; ignoring result", name)
+            continue
+        enriched.update(extra)
+    return enriched
+
+
 def chunk_text(text: str, size: int, overlap: int) -> Iterable[str]:
     text = " ".join(text.split())
     if not text:
@@ -75,6 +96,7 @@ def run(raw_dir: str | None = None, out_file: str | None = None) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
 
     extractors = _get_extractors()
+    enrichers = _get_enrichers()
 
     total = 0
     with out.open("w", encoding="utf-8") as f:
@@ -93,8 +115,10 @@ def run(raw_dir: str | None = None, out_file: str | None = None) -> int:
             if not text.strip():
                 logger.warning("Skipping empty file: %s", p)
                 continue
+            base_metadata = {"source": str(p)}
+            enriched_metadata = _apply_enrichers(text, base_metadata, enrichers)
             for i, chunk in enumerate(chunk_text(text, chunk_size, overlap)):
-                rec = {"id": f"{p.name}:{i}", "source": str(p), "chunk": chunk}
+                rec = {"id": f"{p.name}:{i}", "chunk": chunk, **enriched_metadata}
                 f.write(json.dumps(rec) + "\n")
                 total += 1
     return total

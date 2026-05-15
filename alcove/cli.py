@@ -97,7 +97,8 @@ def cmd_plugins(_args):
         print("Install plugins via pip, e.g.: pip install alcove-docx")
         return
     for p in plugins:
-        print(f"  {p['type']:10s}  {p['name']:20s}  {p['module']}")
+        version = p.get("distribution_version") or "(version unknown)"
+        print(f"  {p['type']:10s}  {p['name']:20s}  {p['module']}  {version}")
 
 
 def cmd_collections(_args):
@@ -113,6 +114,19 @@ def cmd_collections(_args):
         return
     for c in colls:
         print(f"  {c['name']}  ({c['doc_count']} docs)")
+
+
+def cmd_doctor(args):
+    if not args.trust:
+        raise SystemExit("doctor currently requires --trust")
+
+    from alcove.trust import build_trust_report, print_trust_report
+
+    report = build_trust_report()
+    if args.json:
+        print(json.dumps(report, indent=2))
+    else:
+        print_trust_report(report)
 
 
 def cmd_seed_demo(_args):
@@ -183,6 +197,12 @@ def main():
     # status
     p_status = sub.add_parser("status", help="Show index and configuration status")
     p_status.set_defaults(func=cmd_status)
+
+    # doctor
+    p_doctor = sub.add_parser("doctor", help="Inspect local trust surface")
+    p_doctor.add_argument("--trust", action="store_true", help="Report runtime trust boundary details")
+    p_doctor.add_argument("--json", action="store_true", default=False, help="Output raw JSON instead of formatted report")
+    p_doctor.set_defaults(func=cmd_doctor)
 
     # seed-demo
     p_seed = sub.add_parser("seed-demo", help="Fetch and index demo corpus")

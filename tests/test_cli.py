@@ -13,6 +13,7 @@ def test_alcove_help_exits_zero():
     # search is the primary command; query is a hidden alias
     assert "search" in result.stdout
     assert "status" in result.stdout
+    assert "doctor" in result.stdout
 
 
 def test_alcove_query_alias_still_works():
