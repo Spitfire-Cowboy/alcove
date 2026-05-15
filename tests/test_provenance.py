@@ -134,3 +134,34 @@ def test_provenance_plugin_helpers(monkeypatch):
     assert provenance._plugin_target(provenance.EMBEDDERS_GROUP, "missing") is None
     assert provenance._plugin_package_name("custom") == "acme-plugin"
     assert provenance._plugin_package_name("missing") is None
+
+
+def test_provenance_helper_fallbacks(monkeypatch, tmp_path):
+    from alcove import provenance
+
+    monkeypatch.setattr(
+        provenance.importlib_metadata,
+        "version",
+        lambda name: (_ for _ in ()).throw(provenance.importlib_metadata.PackageNotFoundError(name)),
+    )
+    assert provenance._package_version("missing-package") is None
+
+    monkeypatch.delenv("HUGGINGFACE_HUB_CACHE", raising=False)
+    hf_home = tmp_path / "hf-home"
+    monkeypatch.setenv("HF_HOME", str(hf_home))
+    assert provenance._huggingface_model_cache("sentence-transformers/missing-model") == {
+        "local_path": None,
+        "revision": None,
+    }
+
+    repo_dir = hf_home / "hub" / "models--sentence-transformers--custom-model"
+    (repo_dir / "snapshots").mkdir(parents=True)
+    cache = provenance._huggingface_model_cache("sentence-transformers/custom-model")
+    assert cache["local_path"] == str(repo_dir)
+    assert cache["revision"] is None
+
+    monkeypatch.setenv("EMBEDDER", "hash")
+    monkeypatch.setenv("VECTOR_BACKEND", "chromadb")
+    monkeypatch.setattr(provenance.importlib_metadata, "version", lambda name: "1.0.0")
+    record = provenance.record_index_provenance(collection="docs", chunk_count=1, embedding_dimension=32)
+    assert "model" not in record["embedder"]

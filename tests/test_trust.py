@@ -199,6 +199,110 @@ def test_print_trust_report_includes_core_sections(capsys):
     assert "Not installed" in out
 
 
+def test_print_trust_report_includes_provenance_and_empty_plugin_sections(capsys):
+    from alcove.trust import print_trust_report
+
+    report = {
+        "python": {
+            "executable": "/usr/bin/python3",
+            "version": "3.12.1",
+            "platform": "macOS",
+            "in_virtualenv": False,
+            "prefix": "/usr",
+        },
+        "alcove": {
+            "version": "0.4.0",
+            "install_source": "installed package",
+            "module_path": "/tmp/alcove",
+        },
+        "runtime": {
+            "config_path": "alcove.toml",
+            "private_mode": True,
+        },
+        "backend": {
+            "name": "zvec",
+            "implementation": "alcove.index.backend.ZvecBackend",
+            "storage_path": "./data/zvec",
+            "telemetry_posture": "unknown",
+            "network_posture": "local disk only by default",
+        },
+        "embedder": {
+            "name": "hash",
+            "implementation": "alcove.index.embedder.HashEmbedder",
+            "source": "builtin",
+            "network_posture": "offline",
+        },
+        "index_provenance": {
+            "collections": {
+                "docs": {
+                    "indexed_at": "2026-05-15T10:00:00+00:00",
+                    "chunk_count": 4,
+                    "embedder": {"embedding_dimension": 384, "model": {}},
+                }
+            }
+        },
+        "packages": {"native": [], "pure_python": [], "missing": []},
+        "plugins": {"allowlist": "", "installed": []},
+    }
+
+    print_trust_report(report)
+    out = capsys.readouterr().out
+    assert "Index provenance" in out
+    assert "collection:          docs" in out
+    assert "installed:           none" in out
+    assert "  (none)" in out
+
+
+def test_print_trust_report_includes_model_receipt(capsys):
+    from alcove.trust import print_trust_report
+
+    report = {
+        "python": {
+            "executable": "/usr/bin/python3",
+            "version": "3.12.1",
+            "platform": "macOS",
+            "in_virtualenv": False,
+            "prefix": "/usr",
+        },
+        "alcove": {
+            "version": "0.4.0",
+            "install_source": "installed package",
+            "module_path": "/tmp/alcove",
+        },
+        "runtime": {"config_path": "alcove.toml", "private_mode": True},
+        "backend": {
+            "name": "chromadb",
+            "implementation": "alcove.index.backend.ChromaBackend",
+            "storage_path": "./data/chroma",
+            "telemetry_posture": "disabled",
+            "network_posture": "local disk only by default",
+        },
+        "embedder": {
+            "name": "sentence-transformers",
+            "implementation": "alcove.index.embedder.SentenceTransformerEmbedder",
+            "source": "builtin",
+            "network_posture": "offline after optional one-time model download",
+        },
+        "index_provenance": {
+            "collections": {
+                "docs": {
+                    "indexed_at": "2026-05-15T10:00:00+00:00",
+                    "chunk_count": 4,
+                    "embedder": {
+                        "embedding_dimension": 384,
+                        "model": {"identifier": "all-MiniLM-L6-v2", "revision": "abc123"},
+                    },
+                }
+            }
+        },
+        "packages": {"native": [], "pure_python": [], "missing": []},
+        "plugins": {"allowlist": "", "installed": []},
+    }
+
+    print_trust_report(report)
+    assert "model receipt:       all-MiniLM-L6-v2 @ abc123" in capsys.readouterr().out
+
+
 def test_helper_functions_cover_edge_cases(monkeypatch, tmp_path):
     from alcove import trust
 
@@ -228,3 +332,88 @@ def test_helper_functions_cover_edge_cases(monkeypatch, tmp_path):
             return "/workspace/project"
 
     assert trust._detect_install_source(FakeDist("{bad json")) == "local source tree"
+
+
+def test_trust_helpers_cover_remaining_install_and_cache_paths(monkeypatch, tmp_path):
+    from alcove import trust
+
+    class RaisingDist:
+        def read_text(self, name):
+            raise OSError("boom")
+
+        def locate_file(self, path):
+            return "/tmp/site-packages/pkg"
+
+    class DirectUrlDist:
+        def __init__(self, payload, root="/tmp/project"):
+            self._payload = payload
+            self._root = root
+
+        def read_text(self, name):
+            return self._payload
+
+        def locate_file(self, path):
+            return self._root
+
+    assert trust._detect_install_source(RaisingDist()) == "installed package"
+    assert (
+        trust._detect_install_source(
+            DirectUrlDist('{"url":"https://github.com/acme/repo","vcs_info":{"vcs":"git"}}')
+        )
+        == "git checkout (https://github.com/acme/repo)"
+    )
+    assert trust._detect_install_source(DirectUrlDist('{"url":"file:///tmp/pkg.whl"}')) == "local file install"
+    assert trust._detect_install_source(DirectUrlDist('{"url":"https://example.com/pkg.whl"}')) == "https://example.com/pkg.whl"
+
+    monkeypatch.setattr(
+        trust,
+        "entry_points",
+        lambda *, group: [SimpleNamespace(name="demo", value="demo.plugin:Impl")] if group == trust.EMBEDDERS_GROUP else [],
+    )
+    assert trust._plugin_target(trust.EMBEDDERS_GROUP, "demo") == "demo.plugin:Impl"
+    assert trust._plugin_target(trust.EMBEDDERS_GROUP, "missing") is None
+    assert trust._embedder_network_posture("hash") == "offline"
+    assert trust._embedder_network_posture("sentence-transformers") == "offline after optional one-time model download"
+    assert (
+        trust._embedder_network_posture("ollama")
+        == "local HTTP to Ollama by default; remote if OLLAMA_BASE_URL points elsewhere"
+    )
+
+    hf_home = tmp_path / "hf-home"
+    monkeypatch.delenv("HUGGINGFACE_HUB_CACHE", raising=False)
+    monkeypatch.setenv("HF_HOME", str(hf_home))
+    repo_dir = hf_home / "hub" / "models--sentence-transformers--custom-model"
+    (repo_dir / "snapshots").mkdir(parents=True)
+    cache = trust._huggingface_model_cache("sentence-transformers/custom-model")
+    assert cache["local_path"] == str(repo_dir)
+    assert cache["revision"] is None
+
+    assert trust._huggingface_model_cache("sentence-transformers/missing-model") == {
+        "local_path": None,
+        "revision": None,
+    }
+
+    monkeypatch.setenv("SENTENCE_TRANSFORMERS_MODEL", "acme/custom-model")
+    model = trust._embedder_model_info("sentence-transformers")
+    assert model["identifier"] == "acme/custom-model"
+    assert model["source"] == "huggingface:acme/custom-model"
+
+    assert trust._embedder_model_info("missing-plugin") is None
+
+
+def test_collect_package_details_skips_duplicates(monkeypatch):
+    from alcove import trust
+
+    monkeypatch.setattr(trust, "_PACKAGE_GROUPS", [("fastapi", "web"), ("FASTAPI", "duplicate"), ("uvicorn", "web")])
+    monkeypatch.setattr(
+        trust,
+        "_package_detail",
+        lambda package_name, role: {"name": package_name, "role": role, "installed": True, "version": "1.0.0"},
+    )
+
+    details = trust._collect_package_details()
+
+    assert details == [
+        {"name": "fastapi", "role": "web", "installed": True, "version": "1.0.0"},
+        {"name": "uvicorn", "role": "web", "installed": True, "version": "1.0.0"},
+    ]
