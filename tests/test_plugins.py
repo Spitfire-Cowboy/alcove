@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib import metadata as importlib_metadata
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -110,6 +111,18 @@ class TestListPlugins:
                 plugins = list_plugins()
 
         assert plugins[0]["distribution_version"] == "1.0.0"
+
+    def test_list_plugins_missing_distribution_version(self):
+        ext_ep = _make_entry_point("docx", "alcove_docx:extract_docx")
+
+        with patch("alcove.plugins.entry_points", return_value=[ext_ep]):
+            with patch(
+                "alcove.plugins.importlib_metadata.version",
+                side_effect=importlib_metadata.PackageNotFoundError,
+            ):
+                plugins = list_plugins()
+
+        assert plugins[0]["distribution_version"] is None
 
 
 class TestDiscoverEnrichers:

@@ -79,3 +79,58 @@ def test_index_pipeline_writes_hash_provenance_manifest(tmp_path, monkeypatch):
     assert record["embedder"]["name"] == "hash"
     assert record["embedder"]["embedding_dimension"] == 4
     assert record["backend"]["name"] == "chromadb"
+
+
+def test_load_index_provenance_handles_missing_and_invalid_files(tmp_path, monkeypatch):
+    from alcove import provenance
+
+    monkeypatch.setenv("CHROMA_PATH", str(tmp_path / "chroma"))
+    assert provenance.load_index_provenance() == {"version": 1, "collections": {}}
+
+    manifest = tmp_path / "chroma" / "alcove_provenance.json"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text("{not-json", encoding="utf-8")
+    assert provenance.load_index_provenance() == {"version": 1, "collections": {}}
+
+
+def test_provenance_for_zvec_and_ollama(tmp_path, monkeypatch):
+    from alcove import provenance
+
+    versions = {"zvec": "0.3.1"}
+    monkeypatch.setenv("VECTOR_BACKEND", "zvec")
+    monkeypatch.setenv("ZVEC_PATH", str(tmp_path / "zvec"))
+    monkeypatch.setenv("EMBEDDER", "ollama")
+    monkeypatch.setenv("OLLAMA_MODEL", "custom-embed")
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    monkeypatch.setattr(provenance.importlib_metadata, "version", lambda name: versions[name])
+    monkeypatch.setattr(provenance, "entry_points", lambda *, group: [])
+
+    record = provenance.record_index_provenance(
+        collection="docs",
+        chunk_count=2,
+        embedding_dimension=768,
+    )
+
+    assert record["backend"]["name"] == "zvec"
+    assert record["backend"]["package_version"] == "0.3.1"
+    assert record["embedder"]["model"]["identifier"] == "custom-embed"
+    assert record["runtime"]["library_versions"]["ollama_base_url"] == "http://localhost:11434"
+
+
+def test_provenance_plugin_helpers(monkeypatch):
+    from alcove import provenance
+
+    class DummyEp:
+        name = "custom"
+        value = "acme_plugin.embedder:CustomEmbedder"
+
+    monkeypatch.setattr(
+        provenance,
+        "entry_points",
+        lambda *, group: [DummyEp()] if group == provenance.EMBEDDERS_GROUP else [],
+    )
+
+    assert provenance._plugin_target(provenance.EMBEDDERS_GROUP, "custom") == "acme_plugin.embedder:CustomEmbedder"
+    assert provenance._plugin_target(provenance.EMBEDDERS_GROUP, "missing") is None
+    assert provenance._plugin_package_name("custom") == "acme-plugin"
+    assert provenance._plugin_package_name("missing") is None

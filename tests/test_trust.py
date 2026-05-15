@@ -101,6 +101,45 @@ def test_build_trust_report_uses_offline_metadata(monkeypatch, tmp_path):
     assert report["plugins"]["installed"][0]["name"] == "demo"
 
 
+def test_build_trust_report_with_allowlist_and_zvec(monkeypatch):
+    from alcove import trust
+
+    monkeypatch.setattr(trust, "_collect_package_details", lambda: [])
+    monkeypatch.setattr(trust, "_alcove_info", lambda: {"version": "0.4.0"})
+    monkeypatch.setattr(trust, "_python_info", lambda: {"version": "3.12.0"})
+    monkeypatch.setattr(trust, "_runtime_info", lambda: {"config_path": "alcove.toml", "private_mode": True})
+    monkeypatch.setattr(
+        trust,
+        "_backend_info",
+        lambda: {
+            "name": "zvec",
+            "implementation": "alcove.index.backend.ZvecBackend",
+            "storage_path": "./data/zvec",
+            "telemetry_posture": "unknown",
+            "network_posture": "local disk only by default",
+        },
+    )
+    monkeypatch.setattr(
+        trust,
+        "_embedder_info",
+        lambda: {
+            "name": "custom",
+            "implementation": "acme.Custom",
+            "source": "plugin",
+            "network_posture": "depends on plugin implementation",
+        },
+    )
+    monkeypatch.setattr(trust, "load_index_provenance", lambda: {"version": 1, "collections": {}})
+    monkeypatch.setattr(trust, "list_plugins", lambda: [])
+    monkeypatch.setenv("ALCOVE_PLUGIN_ALLOWLIST", "safe-plugin")
+
+    report = trust.build_trust_report()
+
+    assert report["plugins"]["allowlist"] == "safe-plugin"
+    assert report["backend"]["name"] == "zvec"
+    assert report["embedder"]["source"] == "plugin"
+
+
 def test_print_trust_report_includes_core_sections(capsys):
     from alcove.trust import print_trust_report
 
@@ -158,3 +197,34 @@ def test_print_trust_report_includes_core_sections(capsys):
     assert "Native extension packages" in out
     assert "Pure Python packages" in out
     assert "Not installed" in out
+
+
+def test_helper_functions_cover_edge_cases(monkeypatch, tmp_path):
+    from alcove import trust
+
+    assert trust._format_virtualenv({"in_virtualenv": False}) == "no"
+    assert trust._format_virtualenv({"in_virtualenv": True, "prefix": None}) == "yes ((unknown))"
+
+    monkeypatch.setenv("VECTOR_BACKEND", "zvec")
+    monkeypatch.setenv("ZVEC_PATH", str(tmp_path / "zvec"))
+    backend = trust._backend_info()
+    assert backend["storage_path"] == str(tmp_path / "zvec")
+
+    monkeypatch.setenv("EMBEDDER", "ollama")
+    monkeypatch.setenv("OLLAMA_MODEL", "custom-model")
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    embedder = trust._embedder_info()
+    assert embedder["model"]["identifier"] == "custom-model"
+    assert trust._embedder_network_posture("unknown-plugin") == "depends on plugin implementation"
+
+    class FakeDist:
+        def __init__(self, text):
+            self._text = text
+
+        def read_text(self, name):
+            return self._text
+
+        def locate_file(self, path):
+            return "/workspace/project"
+
+    assert trust._detect_install_source(FakeDist("{bad json")) == "local source tree"

@@ -72,3 +72,24 @@ def test_ingest_pipeline_enricher_failures_are_fail_open(tmp_path, caplog):
     assert "Enricher boom failed" in caplog.text
     records = _read_records(out)
     assert records[0]["source"].endswith("story.txt")
+
+
+def test_apply_enrichers_merges_multiple_results():
+    from alcove.ingest.pipeline import _apply_enrichers
+
+    enrichers = {
+        "doctype": lambda text, metadata: {"doc_type": "memo"},
+        "counts": lambda text, metadata: {"word_count": len(text.split())},
+    }
+
+    result = _apply_enrichers("hello there world", {"source": "note.txt"}, enrichers)
+
+    assert result["source"] == "note.txt"
+    assert result["doc_type"] == "memo"
+    assert result["word_count"] == 3
+
+
+def test_chunk_text_returns_empty_for_whitespace():
+    from alcove.ingest.pipeline import chunk_text
+
+    assert chunk_text("   \n\t  ", size=100, overlap=10) == []
