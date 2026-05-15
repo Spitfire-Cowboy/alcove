@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI, Query, Request, UploadFile, File
+from fastapi import FastAPI, Query, Request, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -15,7 +15,7 @@ from starlette.templating import Jinja2Templates
 import uvicorn
 
 from alcove.web import TEMPLATES_DIR, STATIC_DIR
-from .browse import browse_corpus_stats
+from .browse import browse_corpus_stats, browse_document_detail
 from .retriever import query_hybrid, query_keyword, query_text
 
 app = FastAPI(title="Alcove")
@@ -270,6 +270,19 @@ def browse(request: Request):
         request,
         "browse.html",
         _tpl({"stats": stats, "total_docs": total_docs}),
+    )
+
+
+@app.get("/browse/document/{document_id}", response_class=HTMLResponse)
+def browse_document(request: Request, document_id: str):
+    """Render read-only details for one indexed source document."""
+    document = browse_document_detail(document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return templates.TemplateResponse(
+        request,
+        "browse_document.html",
+        _tpl({"document": document}),
     )
 
 

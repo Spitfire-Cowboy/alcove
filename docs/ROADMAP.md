@@ -1,99 +1,108 @@
 # Roadmap
 
-## Current release (v0.3.0)
+This roadmap separates the published package from planned design work. Public docs should not describe roadmap items as available in a package release until they are tagged and published.
 
-Alcove ships a working three-stage pipeline: ingest, index, query. Eleven document formats. Three embedders (hash for offline determinism, sentence-transformers for local semantic search, Ollama for operator-managed local models). Two vector backends (ChromaDB, zvec). A plugin system.
+## Current package release (v0.4.0)
 
-A web UI with upload and search. CI across Python 3.10, 3.11, 3.12. Docker deployment. Apache 2.0.
+The published 0.4.0 package ships a working local retrieval pipeline:
 
-This is the foundation. Everything below builds on it.
+- Ingest, index, and query stages over local disk.
+- Twelve document formats: PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, PPTX, RST, TSV, and plain text.
+- Hash, sentence-transformers, and Ollama embedders.
+- ChromaDB and zvec vector backends.
+- CLI search, status, collection listing, plugin listing, and seed-demo commands.
+- FastAPI web UI/API with search, upload ingest, health, collection, and browse endpoints.
+- Semantic, keyword, and hybrid search modes.
+- Named collection metadata and collection filtering.
+- STDIO MCP retrieval tools for local search and collection listing.
+- Local signing helpers and index signing tooling.
+- Runtime deployment controls.
+- Release packaging checks.
+- Desktop packaging preparation docs and guardrails; no supported desktop bundle ships yet.
+- Python entry-point plugins for extractors, embedders, and vector backends.
+- Docker runtime, CI, accessibility improvements, and Apache 2.0 licensing.
+
+See [the 0.4.0 release notes](RELEASE_0_4_0_PLAN.md) for scope details and release verification.
+
+## Pending feature map
+
+These buckets track design and future work without tying public docs to private branch names, hostnames, or PR numbers.
+
+| Area | Status | Public wording until shipped |
+|------|--------|------------------------------|
+| Manifest and registry discovery | Draft design | Entry-point plugins ship today. `alcove.json`, remote registries, and index registry discovery are design notes. |
+| Provenance layer | Partial foundation | Source and collection metadata ship today. Rich provenance manifests and compliance workflows are planned. |
+| Streaming ingest | Planned | Ingest is batch-oriented today. Watch/re-index loops are roadmap work. |
+| Cross-modal indexing | Plugin candidate | Text document extraction ships today. Audio, image, video, OCR, and transcription belong in plugins or future releases. |
+| Multilingual model selection | Exploratory | Operators can choose sentence-transformers through `EMBEDDER`. Per-model multilingual CLI flags and automatic prefix handling are not a shipped public contract. |
+| Richer plugin lifecycle | Planned | Extractor, embedder, and backend entry points ship today. Lifecycle hooks, query transforms, and custom ranking are roadmap work. |
+| Federation | Research | A single local instance ships today. Multi-instance query surfaces without raw-data sharing remain long-term work. |
 
 ## Near-term
 
-**More formats.** RTF, ODT, XLSX. PPTX is now supported by the built-in ingest pipeline. The [extractor plugin API](ARCHITECTURE.md#plugin-system) already supports additional formats; the work is writing and testing each one.
+**Desktop packaging preparation.** Keep Briefcase metadata public and minimal, document that no desktop app bundle ships yet, and add checks that prevent accidental private paths, hostnames, or release claims from entering packaging files. The first milestone is packaging readiness, not an app-shaped wrapper around an unfinished experience.
 
-**Semantic search as default.** The hash embedder exists for zero-download offline bootstrapping and for operators who do not want ML in the pipeline. Once the onboarding experience is smooth enough, sentence-transformers (or a lighter alternative) becomes the default install. The hash embedder stays available: not a stepping stone, but a permanent option for people who want deterministic, inspectable results.
+**More file formats.** RTF, ODT, and XLSX are good extractor-plugin candidates. PPTX support ships in 0.4.0. The current plugin API already supports third-party extractors.
 
-**Browse mode.** Alcove is now navigable, not just searchable: the web UI includes a read-only browse page for recent indexed documents, collections, file types, authors, and years. Next steps are deeper directory-aware browsing and document-level drill-down while keeping the surface retrieval-only.
+**Browse mode.** Browse mode ships in 0.4.0. Next steps are deeper directory-aware browsing while keeping the surface retrieval-only.
 
-**Local model hooks.** `EMBEDDER=ollama` now lets operators point Alcove at a local Ollama server for embeddings. Near-term work is documentation polish and model-specific guidance, not hosted inference or generated answers.
+**Local model hooks.** Ollama embedding support ships in 0.4.0. Near-term work is documentation polish and model-specific guidance, not hosted inference or generated answers.
 
-**MCP endpoint.** This is the "share it with the universe" part. An MCP-compatible retrieval surface lets AI tools, public-facing websites, or any other tool query your index. The first public step is a local STDIO MCP server that exposes search and collection-listing tools. Your corpus stays local. Your index stays yours. The answers are available to whoever you choose to expose them to. Because Alcove is retrieval, not generation, those answers are what your documents actually say: no hallucinations, no editorializing, no slop. [MCP changes the security surface](SECURITY.md#security-model); review it before exposing the endpoint. Context7 compatibility is a goal.
+**MCP endpoint.** The STDIO MCP retrieval server ships in 0.4.0. Exposing any endpoint changes the security surface; authentication remains the operator's responsibility.
 
-**Streaming ingest.** Watch a directory and re-index on change. The current pipeline is batch-oriented: you run `alcove ingest`, it processes everything. Streaming mode keeps the index current without manual intervention.
+**Release packaging hygiene.** Public releases now include checks for package metadata, release automation, and Homebrew formula safety. PyPI remains the supported public install channel; Homebrew packaging stays deferred until the formula can be generated with public URLs, Apache-2.0 metadata, real release hashes, and vendored Python resources.
 
-**Provenance and index signing.** Local signing should let operators publish or move index exports with tamper-evident metadata. The first step is Ed25519 signing and verification for document hashes and index export envelopes. Signature verification proves integrity against a public key; identity trust still depends on the operator pinning or verifying the key fingerprint out of band.
+**Streaming ingest.** The shipped pipeline is batch-oriented: run ingest, then index. A watcher can keep the index current without manual reruns.
 
-**Runtime deployment controls.** Feature flags and deployment metadata should stay explicit, testable, and file-backed so public builds, local installs, and future hosted demos do not drift through ad hoc environment tweaks.
+**Provenance improvements.** Source and collection metadata and local signing helpers ship in 0.4.0; richer provenance manifests and compliance workflows remain planned work.
+
+**Runtime deployment controls.** Feature flags and deployment metadata ship in 0.4.0. They should stay explicit, testable, and file-backed so public builds, local installs, and future demos do not drift through ad hoc environment tweaks.
 
 ## Mid-term
 
-**Cross-modal indexing.** Audio transcription, image OCR, video keyframe extraction. The pipeline architecture already separates extraction from embedding; new modalities plug in as extractors that produce text chunks from non-text sources. Bioacoustics and field recordings are a motivating use case, not an afterthought.
+**Cross-modal indexing.** Audio transcription, image OCR, and video keyframe extraction fit the same architecture: extractors produce text chunks, embedders index those chunks, and query returns matching source excerpts.
 
-**Relevance as memory, not just distance.** Vector similarity is a starting point. A more useful index would treat recency, frequency of access, and familiarity as first-class relevance signals: things you work with often should surface faster; things you have not touched in years should fade gracefully. This is the Dreyfus-inspired layer: an index that behaves more like memory than search.
+**Relevance as memory, not just distance.** Vector similarity is a starting point. Future ranking can consider recency, frequency of access, and corpus familiarity while preserving the retrieval-only boundary.
 
-**Richer plugin API.** Lifecycle hooks, query-time transformations, custom ranking. The current plugin surface covers extractors, embedders, and backends. Mid-term work expands it to cover more of the pipeline.
+**Richer plugin API.** Lifecycle hooks, query-time transformations, custom ranking, and plugin metadata can extend the current entry-point surface.
 
 ## Long-term
 
-**Federation.** Multiple Alcove instances sharing a query surface without sharing raw data. A research group, a neighborhood archive, a distributed records system: each node owns its corpus, but queries can span the constellation. [Sovereignty is preserved; reach is expanded.](../WHY.md#the-tension-is-the-product)
+**Federation.** Multiple Alcove instances could share a query surface without sharing raw data. Each node would still own its corpus and decide what to expose.
 
-**Desktop application.** A native app for people who should not need a terminal to search their own files. This is packaging and distribution work, not architecture work; the core stays the same.
+**Desktop application.** A native app for people who should not need a terminal to search their own files. This is packaging and distribution work, not architecture work; the core stays the same. Current status is documented in [Desktop Packaging](DESKTOP.md): Alcove has preparation docs and checks, but no supported desktop bundle yet.
 
 ## Plugin candidates
 
-The [plugin API](ARCHITECTURE.md#plugin-system) exposes three extension points: extractors (`alcove.extractors`), vector backends (`alcove.backends`), and embedders (`alcove.embedders`). Below are concrete candidates for each, with the libraries that would implement them and how they wire into the pipeline.
+The shipped plugin API exposes three extension points: extractors (`alcove.extractors`), embedders (`alcove.embedders`), and vector backends (`alcove.backends`). Candidate plugins should document whether they preserve Alcove's local-first boundary.
 
-**Offline by default.** Alcove makes no outbound network calls unless the operator explicitly selects a cloud plugin. All built-in extractors, embedders, and backends run entirely on the operator's hardware. Selecting a cloud embedder (OpenAI, Cohere) or a cloud backend (Pinecone) changes that: data leaves the machine. This is an operator decision, not a default. Each cloud candidate in the tables below calls this out explicitly.
+### Extractor candidates
 
-### Extractor plugins
+| Candidate | Library | Notes |
+|-----------|---------|-------|
+| RTF | `striprtf` | Legacy text documents. |
+| ODT / ODP / ODS | `odfpy` | OpenDocument text, slides, and sheets. |
+| XLSX | `openpyxl` | Spreadsheet text and tabular metadata. |
+| Audio transcription | `faster-whisper` | Local transcription when models are installed locally. |
+| Image OCR | `pytesseract` or local vision models | Extract searchable text from images. |
 
-Extractors receive a file path and return a list of text chunks. The entry point maps a file extension to a callable: `rtf = my_plugin:extract_rtf`. Plugins override built-ins on name collision.
+### Embedder candidates
 
-| Candidate | Library | Wiring |
-|-----------|---------|--------|
-| RTF | `striprtf` | `ep.name = "rtf"`, callable strips RTF markup → plain text, chunked by paragraph |
-| ODT / ODP / ODS | `odfpy` | `ep.name = "odt"` etc.; parse ODF XML, extract text nodes, chunk by heading or paragraph |
-| XLSX | `openpyxl` | `ep.name = "xlsx"`; iterate sheets and rows, emit one chunk per sheet (column headers + row values as prose) |
-| HTML | `beautifulsoup4` | `ep.name = "html"`; strip tags, extract visible text, chunk by block element |
-| Audio transcription | `faster-whisper` | `ep.name = "mp3"` / `"wav"` / `"m4a"`; transcribe via local Whisper model, emit time-coded text chunks |
-| Image (vision) | `ollama` + LLaVA | `ep.name = "png"` / `"jpg"`; send image to local vision model, return description as a single chunk |
-| Markdown | `markdown` / `mistletoe` | `ep.name = "md"`; parse AST, chunk by heading level |
+| Candidate | Boundary |
+|-----------|----------|
+| Local sentence-transformers variants | Local after first model download. |
+| Ollama or other local model servers | Local if the model server is local. |
+| MLX on Apple Silicon | Local hardware acceleration. |
+| Cloud embedding APIs | Break the default local-only boundary; must be opt-in and documented by the plugin. |
 
-### Embedder plugins
+### Backend candidates
 
-Embedders receive a list of strings and return a list of float vectors. They register on the `alcove.embedders` group and are selected via the `EMBEDDER` env var.
-
-| Candidate | Library | Wiring |
-|-----------|---------|--------|
-| OpenAI | `openai` | Calls `client.embeddings.create(model="text-embedding-3-small", input=texts)`; requires `OPENAI_API_KEY`. Breaks local-only boundary — document this clearly. |
-| Ollama | built-in | Calls a local Ollama server via `EMBEDDER=ollama`; model configured via env vars. Zero-download after first pull. |
-| MLX (Apple Silicon) | `mlx-lm` | Runs embedding model via MLX on M-series GPU; fastest local option for Apple hardware. |
-| Cohere | `cohere` | Calls `co.embed(texts=..., model=...)` via Cohere API; requires API key. Cloud boundary applies. |
-
-### Backend plugins
-
-Backends store and query embedded chunks. They register on the `alcove.backends` group and expose a class that inherits from `VectorBackend`. Selected via `VECTOR_BACKEND` env var.
-
-| Candidate | Library | Wiring |
-|-----------|---------|--------|
-| Qdrant | `qdrant-client` | `QdrantBackend` wraps `QdrantClient`; supports local file mode and remote server. Lighter than ChromaDB for large corpora. |
-| Weaviate | `weaviate-client` | `WeaviateBackend` wraps v4 client; hybrid BM25 + vector search built in. |
-| Pinecone | `pinecone` | `PineconeBackend` is cloud-only; breaks local-first posture. Useful for operators who need managed scale — document the tradeoff. |
-| SQLite-vec | `sqlite-vec` | Embeds vector search directly in a SQLite file; zero external dependencies, single-file corpus portability. Strong fit for the desktop app goal. |
-
-### Plugin interface contract
-
-All three extension points use Python entry points — no framework dependency, no runtime coupling. The contract per type:
-
-- **Extractor**: `(path: str | Path) -> list[str]` — return plain-text chunks. Raise on unreadable files.
-- **Embedder**: class with `embed(texts: list[str]) -> list[list[float]]` — must be deterministic per input if possible; document non-determinism.
-- **Backend**: class with `add(chunks, embeddings, metadatas)`, `query(embedding, k, **filters) -> list[dict]`, `count() -> int`. Match the existing `VectorBackend` ABC in `alcove/index/backend.py`.
-
-**Authentication is out of scope for the plugin system.** The plugin interfaces handle data flow only — extraction, embedding, storage. They provide no authentication mechanism and make no trust decisions. When exposing Alcove endpoints (e.g., the local API or a future MCP surface), authentication must be enforced at the deployment boundary: a reverse proxy, network policy, or OS-level access control. This applies to all three extension types; no plugin implementation should assume the caller is authenticated.
-
-Mid-term roadmap work (lifecycle hooks, query-time transformations) will expand this surface. New groups will follow the same entry-point pattern.
+| Candidate | Boundary |
+|-----------|----------|
+| SQLite-vec | Local single-file index. |
+| Qdrant local mode | Local if configured for local storage. |
+| Remote vector databases | Break the default local-only boundary; must be opt-in and documented by the plugin. |
 
 ## Out of scope
 
-Alcove will not become a hosted service. There is no plan for cloud storage integrations, SaaS features, or a managed offering. The architecture assumes the operator owns the hardware. If that assumption does not hold, Alcove is the wrong tool.
+Alcove will not become a hosted service. There is no plan for mandatory cloud storage, account creation, telemetry, or a managed SaaS offering. If an operator chooses cloud plugins or exposes a local API, that is a deployment decision outside the default Alcove runtime.

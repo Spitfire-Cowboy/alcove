@@ -171,6 +171,8 @@ def test_browse_corpus_stats_groups_source_documents(monkeypatch):
             "collection": "science",
             "authors": "Einstein, A.",
             "year": "1905",
+            "__document": "Relativity chunk one.",
+            "__chunk_id": "chunk-1",
         },
         {
             "source": "/tmp/alcove-corpus/science/einstein.pdf",
@@ -190,6 +192,9 @@ def test_browse_corpus_stats_groups_source_documents(monkeypatch):
     assert stats["authors"] == [{"name": "Einstein, A.", "doc_count": 1}]
     assert {"year": "1905", "doc_count": 1} in stats["years"]
     assert all("/tmp/alcove-corpus" not in item["label"] for item in stats["recent"])
+    science_doc = next(item for item in stats["recent"] if item["collection"] == "science")
+    assert science_doc["id"]
+    assert science_doc["chunks"] == [{"id": "chunk-1", "text": "Relativity chunk one."}]
 
 
 def test_browse_corpus_stats_empty_records():
@@ -218,6 +223,7 @@ def test_browse_page_renders_facets(monkeypatch):
                 "collection": "research",
                 "authors": "Ada Lovelace",
                 "year": "1843",
+                "__document": "Analytical engine notes.",
             }
         ]),
     )
@@ -225,8 +231,49 @@ def test_browse_page_renders_facets(monkeypatch):
     assert r.status_code == 200
     assert "Recent Documents" in r.text
     assert "paper.md" in r.text
+    assert "/browse/document/" in r.text
     assert "research" in r.text
     assert "Ada Lovelace" in r.text
+
+
+def test_browse_document_detail_renders_chunk_previews(monkeypatch):
+    from alcove.query import browse as browse_mod
+
+    records = [
+        {
+            "source": "/tmp/private/path/research/paper.md",
+            "collection": "research",
+            "__chunk_id": "chunk-1",
+            "__document": "First chunk with enough text to preview.",
+        },
+        {
+            "source": "/tmp/private/path/research/paper.md",
+            "collection": "research",
+            "__chunk_id": "chunk-2",
+            "__document": "Second chunk preview.",
+        },
+    ]
+    monkeypatch.setattr(browse_mod, "backend_metadata_records", lambda: records)
+    doc_id = browse_mod.browse_corpus_stats(records)["recent"][0]["id"]
+    assert browse_mod.browse_document_detail("not-found", records) is None
+
+    r = client.get(f"/browse/document/{doc_id}")
+
+    assert r.status_code == 200
+    assert "Document detail" in r.text
+    assert "research/paper.md" in r.text
+    assert "/tmp/private/path" not in r.text
+    assert "First chunk with enough text to preview." in r.text
+    assert "chunk-2" in r.text
+
+
+def test_browse_document_detail_404(monkeypatch):
+    from alcove.query import api as api_mod
+
+    monkeypatch.setattr(api_mod, "browse_document_detail", lambda _: None)
+    r = client.get("/browse/document/not-found")
+
+    assert r.status_code == 404
 
 
 def test_backend_metadata_records_uses_backend_public_interface(monkeypatch):
@@ -272,6 +319,9 @@ def test_browse_helpers_handle_fallbacks(tmp_path, monkeypatch):
     assert browse_mod.collection_label({}, str(source)) == "letters"
     assert browse_mod.collection_label({}, str(root_source)) == "default"
     assert browse_mod.collection_label({}, "/external/note.txt") == "default"
+    assert browse_mod.chunk_preview("hello\n\n  world") == "hello world"
+    assert browse_mod.chunk_preview("a" * 370).endswith("...")
+    assert browse_mod.browse_document_id("source.txt") == browse_mod.browse_document_id("source.txt")
     assert browse_mod.document_sort_time("missing.txt", [{"uploaded_at": "not-a-date"}]) == 0.0
     assert browse_mod.document_sort_time(str(source), [{}]) > 0
 

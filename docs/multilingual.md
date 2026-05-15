@@ -1,8 +1,12 @@
 # Multilingual Support
 
-Alcove supports multilingual and cross-lingual search out of the box when a multilingual
-embedding model is configured. No per-language tokenizers, stop-word lists, or query
-parsers are required.
+Status: exploratory guidance. Alcove can use the shipped sentence-transformers embedder
+when `EMBEDDER=sentence-transformers` is set, but v0.4.0 does not expose public CLI flags
+for selecting arbitrary model names or automatic multilingual-E5 prefix handling.
+
+Multilingual and cross-lingual search is possible when an operator configures a suitable
+embedding model through code or a plugin. No per-language tokenizers, stop-word lists, or
+query parsers are required when the chosen model handles those languages.
 
 ---
 
@@ -22,8 +26,8 @@ The asymmetric prefix convention matters:
 | Document at ingest time | `"passage: "` |
 | Query at search time | `"query: "` |
 
-The public alcove codebase applies these prefixes automatically in
-`alcove/index/embedder.py` when a multilingual-e5 model is detected.
+Automatic prefix handling for multilingual-E5 models is planned work, not a shipped
+public contract.
 
 ---
 
@@ -33,11 +37,10 @@ The public alcove codebase applies these prefixes automatically in
 # Install sentence-transformers
 pip install sentence-transformers
 
-# Run with the small multilingual model (384-dim, fast)
-alcove serve --embedder sentence-transformers --model intfloat/multilingual-e5-small
+# Shipped public configuration selects the sentence-transformers embedder.
+EMBEDDER=sentence-transformers alcove serve
 
-# Or the larger model for better cross-lingual precision
-alcove serve --embedder sentence-transformers --model intfloat/multilingual-e5-large
+# Selecting alternate multilingual models requires custom code or a plugin today.
 ```
 
 Model sizes at a glance:

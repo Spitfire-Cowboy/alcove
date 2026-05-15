@@ -34,7 +34,11 @@
       <div class="browse-list">
         {% for doc in stats.recent %}
         <div class="browse-list-item">
+          {% if doc.id %}
+          <a class="browse-list-title" href="{{ base_url }}/browse/document/{{ doc.id | e }}" title="{{ doc.label | e }}">{{ doc.label | e }}</a>
+          {% else %}
           <span class="browse-list-title" title="{{ doc.label | e }}">{{ doc.label | e }}</span>
+          {% endif %}
           <span class="browse-list-meta">{{ doc.collection | e }} &middot; {{ doc.chunk_count }} chunk{% if doc.chunk_count != 1 %}s{% endif %}</span>
         </div>
         {% endfor %}
