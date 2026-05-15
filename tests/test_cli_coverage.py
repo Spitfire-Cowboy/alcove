@@ -125,9 +125,11 @@ class TestCmdStatus:
         cmd_status(argparse.Namespace())
         out = capsys.readouterr().out
         assert "index path:" in out
+        assert "index target:" in out
         assert "backend:" in out
         assert "embedder:" in out
         assert "vectors:" in out
+        assert "network:" in out
 
     def test_status_unavailable_backend(self, capsys, monkeypatch):
         monkeypatch.setenv("VECTOR_BACKEND", "nonexistent")
@@ -135,6 +137,15 @@ class TestCmdStatus:
         cmd_status(argparse.Namespace())
         out = capsys.readouterr().out
         assert "unavailable" in out
+
+    def test_status_remote_target(self, capsys, monkeypatch):
+        monkeypatch.setenv("CHROMA_HOST", "127.0.0.1")
+        monkeypatch.setenv("CHROMA_PORT", "18080")
+        from alcove.cli import cmd_status
+        cmd_status(argparse.Namespace())
+        out = capsys.readouterr().out
+        assert "index target:   127.0.0.1:18080" in out
+        assert "network:        remote" in out
 
 
 class TestCmdPlugins:
