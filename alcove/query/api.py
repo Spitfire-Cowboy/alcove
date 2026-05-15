@@ -15,6 +15,7 @@ from starlette.templating import Jinja2Templates
 import uvicorn
 
 from alcove.web import TEMPLATES_DIR, STATIC_DIR
+from alcove.plugins import list_plugins
 from .browse import browse_corpus_stats, browse_document_detail
 from .retriever import query_hybrid, query_keyword, query_text
 
@@ -165,6 +166,23 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = "", mod
 @app.post("/query")
 def query(inp: QueryIn):
     return _dispatch_query(inp.query, inp.k, mode=inp.mode, collections=inp.collections)
+
+
+@app.get("/api/plugins")
+def plugins_list(
+    type: str | None = Query(default=None, description="Filter by plugin type: extractor, backend, embedder"),
+    q: str | None = Query(default=None, description="Search term matched against plugin name and module path"),
+):
+    plugins = list_plugins()
+    if type is not None:
+        plugins = [p for p in plugins if p["type"] == type]
+    if q:
+        needle = q.lower()
+        plugins = [
+            p for p in plugins
+            if needle in p["name"].lower() or needle in p["module"].lower()
+        ]
+    return {"plugins": plugins, "total": len(plugins)}
 
 
 @app.post("/ingest")

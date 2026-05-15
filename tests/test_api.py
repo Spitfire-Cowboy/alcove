@@ -373,3 +373,71 @@ def test_demos_index_backend_exception_still_renders():
         r = client.get("/demos")
     assert r.status_code == 200
     assert "text/html" in r.headers["content-type"]
+
+
+class TestPluginsListEndpoint:
+    def _fake_plugins(self):
+        return [
+            {"name": "pdf", "type": "extractor", "module": "alcove_pdf:extract", "group": "alcove.extractors"},
+            {"name": "chroma", "type": "backend", "module": "alcove_chroma:Backend", "group": "alcove.backends"},
+            {"name": "openai", "type": "embedder", "module": "alcove_openai:Embedder", "group": "alcove.embedders"},
+        ]
+
+    def test_returns_all_plugins(self, monkeypatch):
+        import alcove.query.api as api_mod
+
+        monkeypatch.setattr(api_mod, "list_plugins", self._fake_plugins)
+        response = client.get("/api/plugins")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 3
+        assert len(data["plugins"]) == 3
+
+    def test_returns_empty_when_no_plugins_installed(self, monkeypatch):
+        import alcove.query.api as api_mod
+
+        monkeypatch.setattr(api_mod, "list_plugins", lambda: [])
+        response = client.get("/api/plugins")
+
+        assert response.status_code == 200
+        assert response.json() == {"plugins": [], "total": 0}
+
+    def test_type_filter_returns_only_matching_type(self, monkeypatch):
+        import alcove.query.api as api_mod
+
+        monkeypatch.setattr(api_mod, "list_plugins", self._fake_plugins)
+        response = client.get("/api/plugins?type=extractor")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["plugins"][0]["name"] == "pdf"
+
+    def test_q_filter_matches_name_and_module_case_insensitively(self, monkeypatch):
+        import alcove.query.api as api_mod
+
+        monkeypatch.setattr(api_mod, "list_plugins", self._fake_plugins)
+
+        by_name = client.get("/api/plugins?q=OPENAI")
+        by_module = client.get("/api/plugins?q=alcove_chroma")
+
+        assert by_name.status_code == 200
+        assert by_name.json()["total"] == 1
+        assert by_name.json()["plugins"][0]["name"] == "openai"
+        assert by_module.status_code == 200
+        assert by_module.json()["total"] == 1
+        assert by_module.json()["plugins"][0]["name"] == "chroma"
+
+    def test_type_and_q_filters_combine(self, monkeypatch):
+        import alcove.query.api as api_mod
+
+        monkeypatch.setattr(api_mod, "list_plugins", self._fake_plugins)
+
+        response = client.get("/api/plugins?type=embedder&q=openai")
+        empty = client.get("/api/plugins?type=extractor&q=openai")
+
+        assert response.status_code == 200
+        assert response.json()["total"] == 1
+        assert empty.status_code == 200
+        assert empty.json()["total"] == 0
