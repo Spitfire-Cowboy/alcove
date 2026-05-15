@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from starlette.templating import Jinja2Templates
 import uvicorn
 
+from alcove.plugins import get_plugin_detail, list_plugins
 from alcove.web import TEMPLATES_DIR, STATIC_DIR
 from .browse import browse_corpus_stats, browse_document_detail
 from .retriever import query_hybrid, query_keyword, query_text
@@ -165,6 +166,64 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = "", mod
 @app.post("/query")
 def query(inp: QueryIn):
     return _dispatch_query(inp.query, inp.k, mode=inp.mode, collections=inp.collections)
+
+
+@app.get("/api/plugins")
+def plugins_list(
+    type: str | None = Query(default=None, description="Filter by plugin type: extractor, backend, embedder"),
+    q: str | None = Query(default=None, description="Search term matched against plugin name and module path"),
+):
+    plugins = list_plugins()
+    if type is not None:
+        plugins = [p for p in plugins if p["type"] == type]
+    if q:
+        needle = q.lower()
+        plugins = [
+            p for p in plugins
+            if needle in p["name"].lower() or needle in p["module"].lower()
+        ]
+    return {"plugins": plugins, "total": len(plugins)}
+
+
+@app.get("/api/plugins/{name}")
+def plugin_detail_api(name: str):
+    plugin = get_plugin_detail(name)
+    if plugin is None:
+        return JSONResponse(status_code=404, content={"error": f"Plugin '{name}' not found"})
+    return plugin
+
+
+@app.get("/plugins", response_class=HTMLResponse)
+def plugins_page(request: Request, type: str = "", q: str = ""):
+    plugins = list_plugins()
+    if type:
+        plugins = [p for p in plugins if p["type"] == type]
+    if q:
+        needle = q.lower()
+        plugins = [p for p in plugins if needle in p["name"].lower() or needle in p["module"].lower()]
+    return templates.TemplateResponse(
+        request,
+        "plugins.html",
+        _tpl({"plugins": plugins, "total": len(plugins), "type_filter": type, "query": q}),
+    )
+
+
+@app.get("/plugins/{name}", response_class=HTMLResponse)
+def plugin_detail_page(request: Request, name: str):
+    plugin = get_plugin_detail(name)
+    if plugin is None:
+        installed = list_plugins()
+        return templates.TemplateResponse(
+            request,
+            "plugins.html",
+            _tpl({"plugins": installed, "total": len(installed), "type_filter": "", "query": "", "error": f"Plugin '{name}' not found."}),
+            status_code=404,
+        )
+    return templates.TemplateResponse(
+        request,
+        "plugin_detail.html",
+        _tpl({"plugin": plugin}),
+    )
 
 
 @app.post("/ingest")
