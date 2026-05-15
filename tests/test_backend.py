@@ -98,6 +98,56 @@ class TestChromaBackend:
             }
         ]
 
+    def test_add_batches_large_upserts(self):
+        from alcove.index.backend import ChromaBackend, _UPSERT_BATCH
+
+        class FakeCollection:
+            def __init__(self):
+                self.calls = []
+
+            def upsert(self, *, ids, documents, metadatas, embeddings):
+                self.calls.append(
+                    {
+                        "ids": ids,
+                        "documents": documents,
+                        "metadatas": metadatas,
+                        "embeddings": embeddings,
+                    }
+                )
+
+        backend = ChromaBackend.__new__(ChromaBackend)
+        backend._collection = FakeCollection()
+        total = _UPSERT_BATCH + 25
+        ids = [f"doc-{i}" for i in range(total)]
+        docs = [f"doc text {i}" for i in range(total)]
+        metas = [{"source": f"{i}.txt"} for i in range(total)]
+        vecs = [[float(i)] for i in range(total)]
+
+        backend.add(ids=ids, embeddings=vecs, documents=docs, metadatas=metas)
+
+        assert len(backend._collection.calls) == 2
+        assert len(backend._collection.calls[0]["ids"]) == _UPSERT_BATCH
+        assert len(backend._collection.calls[1]["ids"]) == 25
+        assert backend._collection.calls[0]["metadatas"][0]["collection"] == "default"
+
+    def test_add_rejects_mismatched_lengths(self):
+        from alcove.index.backend import ChromaBackend
+
+        class FakeCollection:
+            def upsert(self, **kwargs):
+                raise AssertionError("upsert should not be called for invalid input")
+
+        backend = ChromaBackend.__new__(ChromaBackend)
+        backend._collection = FakeCollection()
+
+        with pytest.raises(ValueError, match="same length"):
+            backend.add(
+                ids=["a", "b"],
+                embeddings=[[0.1]],
+                documents=["doc a", "doc b"],
+                metadatas=[{"source": "a.txt"}, {"source": "b.txt"}],
+            )
+
 
 class _MetadataCollection:
     def __init__(self, name="docs", metadatas=None, documents=None, ids=None, *, raises=False):
@@ -126,6 +176,48 @@ def test_multi_chroma_iter_metadata_records_enriches_collection():
     assert backend.iter_metadata_records() == [
         {"source": "paper.md", "collection": "science", "__document": "body", "__chunk_id": "chunk-1"}
     ]
+
+
+def test_multi_chroma_add_batches_large_group(monkeypatch):
+    from alcove.index.backend import MultiChromaBackend, _UPSERT_BATCH
+
+    class FakeCollection:
+        def __init__(self):
+            self.calls = []
+
+        def upsert(self, *, ids, documents, metadatas, embeddings):
+            self.calls.append(
+                {
+                    "ids": ids,
+                    "documents": documents,
+                    "metadatas": metadatas,
+                    "embeddings": embeddings,
+                }
+            )
+
+    class FakeClient:
+        def __init__(self, collection):
+            self.collection = collection
+
+        def get_or_create_collection(self, name):
+            return self.collection
+
+    fake_collection = FakeCollection()
+    backend = MultiChromaBackend.__new__(MultiChromaBackend)
+    backend._client = FakeClient(fake_collection)
+    monkeypatch.setenv("CHROMA_COLLECTION", "fallback")
+
+    total = _UPSERT_BATCH + 10
+    ids = [f"doc-{i}" for i in range(total)]
+    docs = [f"doc text {i}" for i in range(total)]
+    metas = [{"source": f"{i}.txt", "collection": "letters"} for i in range(total)]
+    vecs = [[float(i)] for i in range(total)]
+
+    backend.add(ids=ids, embeddings=vecs, documents=docs, metadatas=metas)
+
+    assert len(fake_collection.calls) == 2
+    assert len(fake_collection.calls[0]["ids"]) == _UPSERT_BATCH
+    assert len(fake_collection.calls[1]["ids"]) == 10
 
 
 def test_multi_root_iter_metadata_records_enriches_collection():

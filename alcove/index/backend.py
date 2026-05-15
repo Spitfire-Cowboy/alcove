@@ -8,6 +8,28 @@ from chromadb.config import Settings
 
 from .embedder import get_collection_name
 
+_UPSERT_BATCH = 1000
+
+
+def _batched_upsert_inputs(ids, embeddings, documents, metadatas):
+    inputs = {
+        "ids": ids,
+        "embeddings": embeddings,
+        "documents": documents,
+        "metadatas": metadatas,
+    }
+    lengths = {name: len(values) for name, values in inputs.items()}
+    if len(set(lengths.values())) != 1:
+        raise ValueError(f"All inputs must have the same length, got: {lengths}")
+    for start in range(0, len(ids), _UPSERT_BATCH):
+        stop = start + _UPSERT_BATCH
+        yield {
+            "ids": ids[start:stop],
+            "embeddings": embeddings[start:stop],
+            "documents": documents[start:stop],
+            "metadatas": metadatas[start:stop],
+        }
+
 
 class MultiChromaBackend:
     """Vector backend that fans out across ALL ChromaDB collections in CHROMA_PATH.
@@ -77,12 +99,18 @@ class MultiChromaBackend:
         for logical, group in groups.items():
             physical = get_collection_name(logical)
             col = self._client.get_or_create_collection(name=physical)
-            col.upsert(
-                ids=group["ids"],
-                documents=group["documents"],
-                metadatas=group["metadatas"],
-                embeddings=group["embeddings"],
-            )
+            for batch in _batched_upsert_inputs(
+                group["ids"],
+                group["embeddings"],
+                group["documents"],
+                group["metadatas"],
+            ):
+                col.upsert(
+                    ids=batch["ids"],
+                    documents=batch["documents"],
+                    metadatas=batch["metadatas"],
+                    embeddings=batch["embeddings"],
+                )
 
     def query(self, embedding, k=3, collections: Optional[List[str]] = None):
         """Fan out query to all (or filtered) collections and merge by distance."""
@@ -295,9 +323,13 @@ class ChromaBackend:
         # Ensure every metadata dict has a "collection" key.
         for meta in metadatas:
             meta.setdefault("collection", "default")
-        self._collection.upsert(
-            ids=ids, documents=documents, metadatas=metadatas, embeddings=embeddings,
-        )
+        for batch in _batched_upsert_inputs(ids, embeddings, documents, metadatas):
+            self._collection.upsert(
+                ids=batch["ids"],
+                documents=batch["documents"],
+                metadatas=batch["metadatas"],
+                embeddings=batch["embeddings"],
+            )
 
     def query(self, embedding, k=3, collections: Optional[List[str]] = None):
         kwargs: dict = {"query_embeddings": [embedding], "n_results": k}
