@@ -87,6 +87,30 @@ def test_extract_docx_returns_paragraph_text(tmp_path):
     assert "Alcove document extraction test." in result
 
 
+def test_extract_odt_returns_paragraph_text(tmp_path):
+    pytest.importorskip("odf.opendocument", reason="odfpy not installed")
+    from odf import teletype
+    from odf.opendocument import OpenDocumentText
+    from odf.text import H, P
+
+    from alcove.ingest.extractors import extract_odt
+
+    doc = OpenDocumentText()
+    heading = H(outlinelevel=1)
+    teletype.addTextToElement(heading, "Alcove ODT Heading")
+    doc.text.addElement(heading)
+    paragraph = P()
+    teletype.addTextToElement(paragraph, "ODT extraction body text.")
+    doc.text.addElement(paragraph)
+
+    f = tmp_path / "sample.odt"
+    doc.save(str(f))
+
+    result = extract_odt(f)
+    assert "Alcove ODT Heading" in result
+    assert "ODT extraction body text." in result
+
+
 def _write_sample_pptx(path: Path, lines: list[str]) -> None:
     pptx = pytest.importorskip("pptx", reason="python-pptx not installed")
     from pptx.util import Inches
@@ -129,6 +153,24 @@ def test_extract_pptx_raises_helpful_import_error(tmp_path, monkeypatch):
         extractors.extract_pptx(f)
 
 
+def test_extract_odt_requires_odfpy(tmp_path, monkeypatch):
+    from alcove.ingest import extractors
+
+    f = tmp_path / "sample.odt"
+    f.write_bytes(b"not-a-real-odt")
+
+    real_import = __import__
+
+    def blocked_import(name, *args, **kwargs):
+        if name in {"odf", "odf.opendocument", "odf.text"}:
+            raise ImportError("missing")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", blocked_import)
+    with pytest.raises(ImportError, match=r"odfpy is required.*alcove-search\[odt\]"):
+        extractors.extract_odt(f)
+
+
 def test_pipeline_dispatch_includes_html(tmp_path):
     """Pipeline routes .html files through the extractor without error."""
     from alcove.ingest.pipeline import run
@@ -166,6 +208,30 @@ def test_pipeline_dispatch_includes_pptx(tmp_path):
     assert n >= 1
     records = [json.loads(line) for line in out.read_text().splitlines()]
     assert any("Deck heading" in r["chunk"] for r in records)
+
+
+def test_pipeline_dispatch_includes_odt(tmp_path):
+    pytest.importorskip("odf.opendocument", reason="odfpy not installed")
+    from odf import teletype
+    from odf.opendocument import OpenDocumentText
+    from odf.text import P
+
+    from alcove.ingest.pipeline import run
+
+    doc = OpenDocumentText()
+    paragraph = P()
+    teletype.addTextToElement(paragraph, "Pipeline ODT content.")
+    doc.text.addElement(paragraph)
+
+    f = tmp_path / "sample.odt"
+    doc.save(str(f))
+    out = tmp_path / "chunks.jsonl"
+
+    n = run(raw_dir=str(tmp_path), out_file=str(out))
+
+    assert n >= 1
+    records = [json.loads(line) for line in out.read_text().splitlines()]
+    assert any("Pipeline ODT content." in r["chunk"] for r in records)
 
 
 def test_extract_tsv_tab_separated(tmp_path):

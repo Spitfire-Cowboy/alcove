@@ -98,3 +98,21 @@ def extract_pptx(path: Path) -> str:
                 if text:
                     texts.append(text)
     return "\n".join(texts)
+
+
+def extract_odt(path: Path) -> str:
+    try:
+        from odf import teletype
+        from odf.opendocument import load
+        from odf.text import H, P
+    except ImportError as e:
+        raise ImportError("odfpy is required for .odt support: pip install 'alcove-search[odt]'") from e
+
+    doc = load(str(path))
+    elements = doc.getElementsByType(H) + doc.getElementsByType(P)
+    texts = []
+    for element in elements:
+        text = teletype.extractText(element).strip()
+        if text:
+            texts.append(text)
+    return "\n".join(texts)
