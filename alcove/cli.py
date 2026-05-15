@@ -71,8 +71,12 @@ def cmd_status(_args):
     from alcove.index.backend import get_backend
 
     index_path = os.getenv("CHROMA_PATH", "./data/chroma")
+    chroma_host = os.getenv("CHROMA_HOST", "").strip()
+    chroma_port = os.getenv("CHROMA_PORT", "8000").strip()
     embedder_name = os.getenv("EMBEDDER", "hash")
     backend_name = os.getenv("VECTOR_BACKEND", "chromadb")
+    index_target = f"{chroma_host}:{chroma_port}" if chroma_host else index_path
+    network_mode = "remote" if chroma_host else "none required"
 
     try:
         embedder = get_embedder()
@@ -83,10 +87,11 @@ def cmd_status(_args):
         count_str = f"(unavailable: {exc})"
 
     print(f"  index path:     {index_path}")
+    print(f"  index target:   {index_target}")
     print(f"  backend:        {backend_name}")
     print(f"  embedder:       {embedder_name}")
     print(f"  vectors:        {count_str}")
-    print(f"  network:        none required")
+    print(f"  network:        {network_mode}")
 
 
 def cmd_plugins(_args):
