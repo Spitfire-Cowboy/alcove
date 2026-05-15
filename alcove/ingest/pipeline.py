@@ -21,6 +21,7 @@ from .extractors import (
     extract_rst,
     extract_tsv,
     extract_txt,
+    extract_xlsx,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ _BUILTIN_EXTRACTORS = {
     ".jsonl": extract_jsonl,
     ".docx": extract_docx,
     ".pptx": extract_pptx,
+    ".xlsx": extract_xlsx,
 }
 
 
