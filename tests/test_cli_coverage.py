@@ -155,6 +155,38 @@ class TestCmdPlugins:
         out = capsys.readouterr().out
         assert "test-ext" in out
 
+    def test_type_filter(self, capsys):
+        from alcove.cli import cmd_plugins
+        fake = [
+            {"type": "extractor", "name": "pdf", "module": "alcove_pdf:extract"},
+            {"type": "backend", "name": "chroma", "module": "alcove_chroma:Backend"},
+        ]
+        with patch("alcove.plugins.list_plugins", return_value=fake):
+            cmd_plugins(argparse.Namespace(type="extractor", search=None))
+        out = capsys.readouterr().out
+        assert "pdf" in out
+        assert "chroma" not in out
+
+    def test_search_filter_is_case_insensitive(self, capsys):
+        from alcove.cli import cmd_plugins
+        fake = [
+            {"type": "embedder", "name": "OpenAI", "module": "alcove_openai:Embedder"},
+            {"type": "extractor", "name": "pdf", "module": "alcove_pdf:extract"},
+        ]
+        with patch("alcove.plugins.list_plugins", return_value=fake):
+            cmd_plugins(argparse.Namespace(type=None, search="openai"))
+        out = capsys.readouterr().out
+        assert "OpenAI" in out
+        assert "pdf" not in out
+
+    def test_empty_after_filter_shows_no_plugins_message(self, capsys):
+        from alcove.cli import cmd_plugins
+        fake = [{"type": "extractor", "name": "pdf", "module": "alcove_pdf:extract"}]
+        with patch("alcove.plugins.list_plugins", return_value=fake):
+            cmd_plugins(argparse.Namespace(type="backend", search=None))
+        out = capsys.readouterr().out
+        assert "No plugins installed" in out
+
 
 class TestCmdIngest:
     """Tests for cmd_ingest."""
@@ -184,6 +216,16 @@ class TestMainEntrypoint:
             with pytest.raises(SystemExit) as exc_info:
                 main()
             assert exc_info.value.code == 1
+
+    def test_plugins_help_mentions_filters(self, capsys):
+        from alcove.cli import main
+        with patch("sys.argv", ["alcove", "plugins", "--help"]):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            assert exc_info.value.code == 0
+        out = capsys.readouterr().out
+        assert "--type" in out
+        assert "--search" in out
 
     def test_search_command(self, capsys):
         from alcove.cli import main

@@ -89,9 +89,16 @@ def cmd_status(_args):
     print(f"  network:        none required")
 
 
-def cmd_plugins(_args):
+def cmd_plugins(args):
     from alcove.plugins import list_plugins
     plugins = list_plugins()
+    type_filter = getattr(args, "type", None)
+    search_filter = getattr(args, "search", None)
+    if type_filter:
+        plugins = [p for p in plugins if p["type"] == type_filter]
+    if search_filter:
+        needle = search_filter.lower()
+        plugins = [p for p in plugins if needle in p["name"].lower() or needle in p["module"].lower()]
     if not plugins:
         print("No plugins installed.")
         print("Install plugins via pip, e.g.: pip install alcove-docx")
@@ -190,6 +197,18 @@ def main():
 
     # plugins
     p_plugins = sub.add_parser("plugins", help="List installed plugins")
+    p_plugins.add_argument(
+        "--type",
+        default=None,
+        choices=["extractor", "backend", "embedder"],
+        help="Filter by plugin type",
+    )
+    p_plugins.add_argument(
+        "--search",
+        default=None,
+        metavar="TERM",
+        help="Search plugins by name or module path (case-insensitive substring match)",
+    )
     p_plugins.set_defaults(func=cmd_plugins)
 
     args = parser.parse_args()
