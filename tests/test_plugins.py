@@ -10,6 +10,7 @@ from alcove.plugins import (
     discover_extractors,
     discover_backends,
     discover_embedders,
+    discover_enrichers,
     list_plugins,
 )
 
@@ -70,6 +71,13 @@ class TestDiscoverEmbedders:
             assert "cohere" in result
             assert result["cohere"] is fake_cls
 
+    def test_allowlist_filters_embedder_plugins(self, monkeypatch):
+        fake_cls = type("CohereEmbedder", (), {})
+        ep = _make_entry_point("cohere", "alcove_cohere:CohereEmbedder", fake_cls)
+        monkeypatch.setenv("ALCOVE_PLUGIN_ALLOWLIST", "other-plugin")
+        with patch("alcove.plugins.entry_points", return_value=[ep]):
+            assert discover_embedders() == {}
+
 
 class TestListPlugins:
     def test_empty_when_no_plugins(self):
@@ -93,6 +101,29 @@ class TestListPlugins:
             assert len(plugins) == 3
             types = {p["type"] for p in plugins}
             assert types == {"extractor", "backend", "embedder"}
+
+    def test_list_plugins_includes_distribution_version(self):
+        ext_ep = _make_entry_point("docx", "alcove_docx:extract_docx")
+
+        with patch("alcove.plugins.entry_points", return_value=[ext_ep]):
+            with patch("alcove.plugins.importlib_metadata.version", return_value="1.0.0"):
+                plugins = list_plugins()
+
+        assert plugins[0]["distribution_version"] == "1.0.0"
+
+
+class TestDiscoverEnrichers:
+    def test_returns_empty_when_no_plugins(self):
+        with patch("alcove.plugins.entry_points", return_value=[]):
+            assert discover_enrichers() == {}
+
+    def test_discovers_enricher_plugin(self):
+        fake_fn = lambda text, metadata: {"category": "memo"}
+        ep = _make_entry_point("doctype", "alcove_doctype:enrich", fake_fn)
+        with patch("alcove.plugins.entry_points", return_value=[ep]):
+            result = discover_enrichers()
+            assert "doctype" in result
+            assert result["doctype"] is fake_fn
 
 
 class TestPipelineUsesPlugins:

@@ -11,6 +11,10 @@ Two system boundaries that apply to every plugin:
 - **Retrieval only.** Plugins index and return documents. They do not perform generative transformations on content.
 - **Offline by default.** Alcove makes no outbound network calls unless a plugin explicitly requires one (e.g., an API fetch at ingest time). Plugins must not send corpus data to external services.
 
+Plugins are trusted code. Installing a plugin is closer to installing a Python package with execution privileges than to enabling a harmless data filter. Plugins can parse local files, influence index contents, and, if written to do so, access the network or alternate storage systems.
+
+If you want to narrow what Alcove can load at runtime, set `ALCOVE_PLUGIN_ALLOWLIST` to a comma-separated list of approved plugin names or package roots. Unlisted plugins will not be loaded.
+
 See [ARCHITECTURE.md](ARCHITECTURE.md#plugin-system) for the plugin interface contract.
 
 ---

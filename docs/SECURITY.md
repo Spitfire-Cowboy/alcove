@@ -28,6 +28,10 @@ We do not want your data. Alcove only retrieves and returns matching documents (
 
 Stores documents and vectors on local disk only. Runs a local web server bound to the configured host and port. Makes no outbound network calls unless using `sentence-transformers`, which downloads a model on first use and then runs locally.
 
+The default hash-mode runtime is regression-tested as an offline path: ingest, index, query, `alcove status`, and `alcove doctor --trust` are exercised under a test harness that fails on outbound HTTP or socket connections.
+
+Plugin entry points are trusted local code. If you install a plugin, treat it like any other Python package with access to your process, your configured storage paths, and any network or system capabilities the plugin chooses to use.
+
 ### What Alcove does not do
 
 Authentication or authorization. The API is open to anyone who can reach the port.
@@ -48,7 +52,7 @@ Input sanitization beyond the documented attack surface below.
 
 ### Operator responsibilities
 
-Bind `alcove serve` to `127.0.0.1` if not behind a reverse proxy (see [operations guide](OPERATIONS.md#web-ui-and-api) for details). Use OS-level disk encryption for data at rest. Keep dependencies updated. Do not expose the API to the public internet without adding authentication.
+Bind `alcove serve` to `127.0.0.1` if not behind a reverse proxy (see [operations guide](OPERATIONS.md#web-ui-and-api) for details). Use OS-level disk encryption for data at rest. Keep dependencies updated. Do not expose the API to the public internet without adding authentication. If you rely on plugins, consider setting `ALCOVE_PLUGIN_ALLOWLIST` so only approved plugin names or package roots load at startup.
 
 [Alcove handles search. You handle custody.](../WHY.md)
 

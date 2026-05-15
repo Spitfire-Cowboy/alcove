@@ -156,6 +156,37 @@ class TestCmdPlugins:
         assert "test-ext" in out
 
 
+class TestCmdDoctor:
+    """Tests for cmd_doctor."""
+
+    def test_json_output(self, capsys):
+        from alcove.cli import cmd_doctor
+
+        args = argparse.Namespace(trust=True, json=True)
+        with patch("alcove.trust.build_trust_report", return_value={"ok": True}):
+            cmd_doctor(args)
+
+        parsed = json.loads(capsys.readouterr().out)
+        assert parsed == {"ok": True}
+
+    def test_human_output(self):
+        from alcove.cli import cmd_doctor
+
+        args = argparse.Namespace(trust=True, json=False)
+        with patch("alcove.trust.build_trust_report", return_value={"ok": True}):
+            with patch("alcove.trust.print_trust_report") as mock_print:
+                cmd_doctor(args)
+
+        mock_print.assert_called_once_with({"ok": True})
+
+    def test_requires_trust_flag(self):
+        from alcove.cli import cmd_doctor
+
+        args = argparse.Namespace(trust=False, json=False)
+        with pytest.raises(SystemExit):
+            cmd_doctor(args)
+
+
 class TestCmdIngest:
     """Tests for cmd_ingest."""
 
@@ -220,6 +251,16 @@ class TestMainEntrypoint:
             with patch("alcove.cli._dispatch_search", return_value=mock_result) as m:
                 main()
         m.assert_called_once_with("hello", k=3, mode="keyword")
+
+    def test_doctor_trust_json(self, capsys):
+        from alcove.cli import main
+
+        with patch("sys.argv", ["alcove", "doctor", "--trust", "--json"]):
+            with patch("alcove.trust.build_trust_report", return_value={"trust": "ok"}):
+                main()
+
+        parsed = json.loads(capsys.readouterr().out)
+        assert parsed == {"trust": "ok"}
 
 
 # -----------------------------------------------------------------------
