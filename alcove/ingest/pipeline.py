@@ -18,6 +18,7 @@ from .extractors import (
     extract_md,
     extract_pdf,
     extract_pptx,
+    extract_rtf,
     extract_rst,
     extract_tsv,
     extract_txt,
@@ -39,6 +40,7 @@ _BUILTIN_EXTRACTORS = {
     ".jsonl": extract_jsonl,
     ".docx": extract_docx,
     ".pptx": extract_pptx,
+    ".rtf": extract_rtf,
 }
 
 

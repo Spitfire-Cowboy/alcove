@@ -95,6 +95,15 @@ def extract_pptx(path: Path) -> str:
                 continue
             for paragraph in shape.text_frame.paragraphs:
                 text = paragraph.text.strip()
-                if text:
-                    texts.append(text)
+            if text:
+                texts.append(text)
     return "\n".join(texts)
+
+
+def extract_rtf(path: Path) -> str:
+    try:
+        from striprtf.striprtf import rtf_to_text
+    except ImportError as e:
+        raise ImportError("striprtf is required for .rtf support: pip install 'alcove-search[rtf]'") from e
+
+    return rtf_to_text(path.read_text(encoding="utf-8", errors="ignore"))
