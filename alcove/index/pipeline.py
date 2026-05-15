@@ -8,6 +8,16 @@ from .backend import get_backend
 from .embedder import get_embedder
 
 
+def _metadata_value(value):
+    if isinstance(value, list):
+        return json.dumps(value, ensure_ascii=False)
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return json.dumps(value, ensure_ascii=False)
+
+
 def run(chunks_file: str | None = None, collection: str = "default") -> int:
     chunks_file = chunks_file or os.getenv("CHUNKS_FILE", "data/processed/chunks.jsonl")
 
@@ -20,7 +30,14 @@ def run(chunks_file: str | None = None, collection: str = "default") -> int:
             rec = json.loads(line)
             ids.append(rec["id"])
             docs.append(rec["chunk"])
-            metas.append({"source": rec["source"], "collection": collection})
+            meta = {
+                key: _metadata_value(value)
+                for key, value in rec.items()
+                if key not in {"id", "chunk"}
+            }
+            meta.setdefault("source", "")
+            meta.setdefault("collection", collection)
+            metas.append(meta)
 
     if not ids:
         return 0
