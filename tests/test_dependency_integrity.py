@@ -28,6 +28,20 @@ def test_load_constraints_ignores_comments_and_blanks(tmp_path):
     assert _mod.load_constraints(path) == ["fastapi>=0.115.0,<1.0"]
 
 
+def test_normalize_requirement_equates_reordered_specifiers():
+    left = "FastAPI <1.0, >=0.115.0"
+    right = "fastapi>=0.115.0,<1.0"
+
+    assert _mod.normalize_requirement(left) == _mod.normalize_requirement(right)
+
+
+def test_evaluate_requirement_reports_invalid_requirement():
+    result = _mod.evaluate_requirement("not a valid requirement >>>")
+
+    assert result.status == "invalid-requirement"
+    assert result.installed is None
+
+
 def test_evaluate_requirement_reports_missing_package(monkeypatch):
     monkeypatch.setattr(
         _mod.importlib_metadata,
@@ -85,6 +99,29 @@ dependencies = [
     assert report["requirements"][0]["status"] == "ok"
 
 
+def test_check_constraints_normalizes_equivalent_requirement_strings(tmp_path, monkeypatch):
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[project]
+dependencies = [
+  "fastapi <1.0, >=0.115.0",
+]
+""".strip(),
+        encoding="utf-8",
+    )
+    constraints = tmp_path / "constraints.txt"
+    constraints.write_text("fastapi>=0.115.0,<1.0\n", encoding="utf-8")
+
+    monkeypatch.setattr(_mod.importlib_metadata, "version", lambda name: "0.135.1")
+    monkeypatch.setattr(_mod, "distribution_has_native_extensions", lambda name: False)
+
+    report = _mod.check_constraints(pyproject_path=pyproject, constraints_path=constraints)
+
+    assert report["missing_from_constraints"] == []
+    assert report["extra_in_constraints"] == []
+
+
 def test_main_json_output_and_exit_code(tmp_path, monkeypatch, capsys):
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text(
@@ -109,3 +146,26 @@ dependencies = [
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["requirements"][0]["status"] == "ok"
+
+
+def test_main_returns_failure_for_invalid_requirement_in_constraints(tmp_path, capsys):
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[project]
+dependencies = [
+  "fastapi>=0.115.0,<1.0",
+]
+""".strip(),
+        encoding="utf-8",
+    )
+    constraints = tmp_path / "constraints.txt"
+    constraints.write_text("not a valid requirement >>>\n", encoding="utf-8")
+
+    rc = _mod.main(
+        ["--pyproject", str(pyproject), "--constraints", str(constraints), "--json"]
+    )
+
+    assert rc == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["requirements"][0]["status"] == "invalid-requirement"

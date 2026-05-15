@@ -12,7 +12,8 @@ try:
 except ModuleNotFoundError:  # pragma: no cover
     import tomli as tomllib
 
-from packaging.requirements import Requirement
+from packaging.requirements import InvalidRequirement, Requirement
+from packaging.utils import canonicalize_name
 from packaging.version import Version
 
 
@@ -44,6 +45,26 @@ def load_constraints(constraints_path: Path) -> list[str]:
     return requirements
 
 
+def normalize_requirement(requirement_line: str) -> str:
+    try:
+        requirement = Requirement(requirement_line)
+    except InvalidRequirement:
+        return f"INVALID::{requirement_line.strip()}"
+
+    parts = [canonicalize_name(requirement.name)]
+    if requirement.extras:
+        extras = ",".join(sorted(requirement.extras))
+        parts[0] = f"{parts[0]}[{extras}]"
+    if requirement.specifier:
+        specifiers = ",".join(sorted(str(item) for item in requirement.specifier))
+        parts.append(specifiers)
+    if requirement.marker is not None:
+        parts.append(f"; {requirement.marker}")
+    if requirement.url:
+        parts.append(f" @ {requirement.url}")
+    return "".join(parts)
+
+
 def check_constraints(
     *,
     pyproject_path: Path,
@@ -52,21 +73,33 @@ def check_constraints(
     pyproject_reqs = load_pyproject_requirements(pyproject_path)
     constraint_reqs = load_constraints(constraints_path)
 
-    pyproject_set = set(pyproject_reqs)
-    constraints_set = set(constraint_reqs)
+    pyproject_map = {normalize_requirement(req): req for req in pyproject_reqs}
+    constraints_map = {normalize_requirement(req): req for req in constraint_reqs}
+
+    pyproject_set = set(pyproject_map)
+    constraints_set = set(constraints_map)
 
     statuses = [evaluate_requirement(req) for req in constraint_reqs]
     return {
         "constraints_path": str(constraints_path),
         "pyproject_path": str(pyproject_path),
-        "missing_from_constraints": sorted(pyproject_set - constraints_set),
-        "extra_in_constraints": sorted(constraints_set - pyproject_set),
+        "missing_from_constraints": sorted(pyproject_map[key] for key in pyproject_set - constraints_set),
+        "extra_in_constraints": sorted(constraints_map[key] for key in constraints_set - pyproject_set),
         "requirements": [status.__dict__ for status in statuses],
     }
 
 
 def evaluate_requirement(requirement_line: str) -> ConstraintStatus:
-    requirement = Requirement(requirement_line)
+    try:
+        requirement = Requirement(requirement_line)
+    except InvalidRequirement:
+        return ConstraintStatus(
+            requirement=requirement_line,
+            name=requirement_line,
+            installed=None,
+            status="invalid-requirement",
+            has_native_extensions=False,
+        )
     if requirement.marker is not None and not requirement.marker.evaluate():
         return ConstraintStatus(
             requirement=requirement_line,
@@ -132,7 +165,7 @@ def print_report(report: dict[str, object]) -> None:
 def exit_code(report: dict[str, object]) -> int:
     if report["missing_from_constraints"] or report["extra_in_constraints"]:
         return 1
-    bad = {"missing", "drift"}
+    bad = {"missing", "drift", "invalid-requirement"}
     if any(item["status"] in bad for item in report["requirements"]):
         return 1
     return 0
