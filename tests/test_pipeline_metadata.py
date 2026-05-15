@@ -5,6 +5,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 
+def test_metadata_value_serializes_fallback_types():
+    from alcove.index.pipeline import _metadata_value
+
+    assert json.loads(_metadata_value((1, 2, 3))) == [1, 2, 3]
+
+
 def _make_chunks_jsonl(tmp_path: Path, records: list[dict]) -> Path:
     path = tmp_path / "chunks.jsonl"
     path.write_text("\n".join(json.dumps(record) for record in records), encoding="utf-8")
@@ -92,6 +98,25 @@ def test_pipeline_serializes_complex_metadata_fields(tmp_path):
 
     assert json.loads(meta["authors"]) == ["Alice Smith", "Bob Jones"]
     assert json.loads(meta["context"]) == {"journal": "Alcove Studies", "issue": 4}
+
+
+def test_pipeline_serializes_other_json_compatible_metadata_fields(tmp_path):
+    chunks_file = _make_chunks_jsonl(
+        tmp_path,
+        [
+            {
+                "id": "doc-1:0",
+                "chunk": "example text",
+                "source": "paper.pdf",
+                "coordinates": (41.8781, -87.6298),
+            }
+        ],
+    )
+
+    _, captured = _run_pipeline(chunks_file)
+    meta = captured["metadatas"][0]
+
+    assert json.loads(meta["coordinates"]) == [41.8781, -87.6298]
 
 
 def test_pipeline_omits_id_and_chunk_from_metadata(tmp_path):
