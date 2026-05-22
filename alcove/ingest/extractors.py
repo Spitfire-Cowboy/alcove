@@ -136,3 +136,12 @@ def extract_xlsx(path: Path) -> str:
     finally:
         wb.close()
     return " ".join(tokens)
+
+def extract_rtf(path: Path) -> str:
+    try:
+        from striprtf.striprtf import rtf_to_text
+    except ImportError as e:
+        raise ImportError("striprtf is required for .rtf support: pip install 'alcove-search[rtf]'") from e
+
+    return rtf_to_text(path.read_text(encoding="utf-8", errors="ignore"))
+
