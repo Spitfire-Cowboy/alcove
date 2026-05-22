@@ -24,6 +24,22 @@ alcove serve
 
 The base install uses the hash embedder. It is deterministic and offline, but it is not a semantic model.
 
+## Dependency verification
+
+For low-trust or release-verification environments, keep installs aligned with the public base-runtime constraints:
+
+```bash
+pip install -c constraints/base-runtime.txt .
+python3 scripts/check_dependency_integrity.py
+```
+
+The verifier reports three things:
+- whether `constraints/base-runtime.txt` still matches `[project.dependencies]` in `pyproject.toml`
+- whether installed package versions satisfy the public base-runtime constraints
+- which installed packages include native extensions, which are the highest-trust dependency artifacts to review first
+
+For development, install the extras you need on top of the same base constraints. The public repo does not ship a full hash-pinned lockfile; the maintained contract today is the checked-in constraints file plus the drift report.
+
 ## Local Ollama embeddings
 
 If you already run Ollama locally, Alcove can use an embedding model served from that local process:
