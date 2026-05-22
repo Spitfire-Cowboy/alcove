@@ -106,6 +106,38 @@ def test_extract_pptx_raises_helpful_import_error(tmp_path, monkeypatch):
         extractors.extract_pptx(f)
 
 
+def test_extract_rtf_returns_plain_text(tmp_path):
+    pytest.importorskip("striprtf.striprtf", reason="striprtf not installed")
+    from alcove.ingest.extractors import extract_rtf
+
+    f = tmp_path / "sample.rtf"
+    f.write_text(r"{\rtf1\ansi Alcove {\b RTF} extractor test.\par Second paragraph.}")
+
+    result = extract_rtf(f)
+    assert "Alcove" in result
+    assert "RTF" in result
+    assert "Second paragraph." in result
+    assert "\\b" not in result
+
+
+def test_extract_rtf_requires_striprtf(tmp_path, monkeypatch):
+    from alcove.ingest import extractors
+
+    f = tmp_path / "sample.rtf"
+    f.write_text(r"{\rtf1\ansi missing dependency test}")
+
+    real_import = __import__
+
+    def blocked_import(name, *args, **kwargs):
+        if name in {"striprtf", "striprtf.striprtf"}:
+            raise ImportError("missing")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", blocked_import)
+    with pytest.raises(ImportError, match=r"striprtf is required.*alcove-search\[rtf\]"):
+        extractors.extract_rtf(f)
+
+
 def test_extract_xlsx_returns_cell_text(tmp_path):
     openpyxl = pytest.importorskip("openpyxl", reason="openpyxl not installed")
     from alcove.ingest.extractors import extract_xlsx
@@ -278,6 +310,20 @@ def test_pipeline_dispatch_includes_xlsx(tmp_path):
     records = [json.loads(line) for line in out.read_text().splitlines()]
     assert any("spreadsheet content for search" in r["chunk"] for r in records)
 
+
+
+def test_pipeline_dispatch_includes_rtf(tmp_path):
+    pytest.importorskip("striprtf.striprtf", reason="striprtf not installed")
+    from alcove.ingest.pipeline import run
+
+    f = tmp_path / "sample.rtf"
+    f.write_text(r"{\rtf1\ansi Pipeline {\b RTF} content.}")
+    out = tmp_path / "chunks.jsonl"
+    n = run(raw_dir=str(tmp_path), out_file=str(out))
+
+    assert n >= 1
+    records = [json.loads(line) for line in out.read_text().splitlines()]
+    assert any("Pipeline RTF content." in r["chunk"] for r in records)
 
 def test_extract_tsv_tab_separated(tmp_path):
     """extract_tsv correctly parses tab-delimited files."""
