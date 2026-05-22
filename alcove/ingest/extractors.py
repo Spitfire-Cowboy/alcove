@@ -98,3 +98,23 @@ def extract_pptx(path: Path) -> str:
                 if text:
                     texts.append(text)
     return "\n".join(texts)
+
+
+def extract_xlsx(path: Path) -> str:
+    try:
+        import openpyxl
+    except ImportError as e:
+        raise ImportError("openpyxl is required for .xlsx support: pip install 'alcove-search[xlsx]'") from e
+
+    wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
+    try:
+        tokens: List[str] = []
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            for row in ws.iter_rows():
+                for cell in row:
+                    if cell.value is not None:
+                        tokens.append(str(cell.value))
+    finally:
+        wb.close()
+    return " ".join(tokens)

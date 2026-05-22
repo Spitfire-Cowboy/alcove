@@ -129,6 +129,80 @@ def test_extract_pptx_raises_helpful_import_error(tmp_path, monkeypatch):
         extractors.extract_pptx(f)
 
 
+def test_extract_xlsx_returns_cell_text(tmp_path):
+    openpyxl = pytest.importorskip("openpyxl", reason="openpyxl not installed")
+    from alcove.ingest.extractors import extract_xlsx
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+    ws["A1"] = "Name"
+    ws["B1"] = "Score"
+    ws["A2"] = "Alice"
+    ws["B2"] = 42
+    f = tmp_path / "sample.xlsx"
+    wb.save(str(f))
+
+    result = extract_xlsx(f)
+    assert "Name" in result
+    assert "Alice" in result
+    assert "42" in result
+    assert "Score" in result
+
+
+def test_extract_xlsx_multiple_sheets(tmp_path):
+    openpyxl = pytest.importorskip("openpyxl", reason="openpyxl not installed")
+    from alcove.ingest.extractors import extract_xlsx
+
+    wb = openpyxl.Workbook()
+    ws1 = wb.active
+    ws1.title = "Sheet1"
+    ws1["A1"] = "hello"
+    ws2 = wb.create_sheet("Sheet2")
+    ws2["A1"] = "world"
+    f = tmp_path / "multi.xlsx"
+    wb.save(str(f))
+
+    result = extract_xlsx(f)
+    assert "hello" in result
+    assert "world" in result
+
+
+def test_extract_xlsx_skips_none_cells(tmp_path):
+    openpyxl = pytest.importorskip("openpyxl", reason="openpyxl not installed")
+    from alcove.ingest.extractors import extract_xlsx
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws["A1"] = "alpha"
+    ws["B1"] = None
+    ws["C1"] = "omega"
+    f = tmp_path / "sparse.xlsx"
+    wb.save(str(f))
+
+    result = extract_xlsx(f)
+    assert "alpha" in result
+    assert "omega" in result
+
+
+def test_extract_xlsx_requires_openpyxl(tmp_path, monkeypatch):
+    from alcove.ingest import extractors
+
+    f = tmp_path / "sample.xlsx"
+    f.write_bytes(b"not-a-real-xlsx")
+
+    real_import = __import__
+
+    def blocked_import(name, *args, **kwargs):
+        if name == "openpyxl":
+            raise ImportError("missing")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", blocked_import)
+    with pytest.raises(ImportError, match=r"openpyxl is required.*alcove-search\[xlsx\]"):
+        extractors.extract_xlsx(f)
+
+
 def test_pipeline_dispatch_includes_html(tmp_path):
     """Pipeline routes .html files through the extractor without error."""
     from alcove.ingest.pipeline import run
@@ -166,6 +240,24 @@ def test_pipeline_dispatch_includes_pptx(tmp_path):
     assert n >= 1
     records = [json.loads(line) for line in out.read_text().splitlines()]
     assert any("Deck heading" in r["chunk"] for r in records)
+
+
+def test_pipeline_dispatch_includes_xlsx(tmp_path):
+    openpyxl = pytest.importorskip("openpyxl", reason="openpyxl not installed")
+    from alcove.ingest.pipeline import run
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws["A1"] = "spreadsheet content for search"
+    f = tmp_path / "sheet.xlsx"
+    wb.save(str(f))
+    out = tmp_path / "chunks.jsonl"
+
+    n = run(raw_dir=str(tmp_path), out_file=str(out))
+
+    assert n >= 1
+    records = [json.loads(line) for line in out.read_text().splitlines()]
+    assert any("spreadsheet content for search" in r["chunk"] for r in records)
 
 
 def test_extract_tsv_tab_separated(tmp_path):
