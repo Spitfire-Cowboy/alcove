@@ -25,6 +25,17 @@ else:
 EXTRACTORS_GROUP = "alcove.extractors"
 BACKENDS_GROUP = "alcove.backends"
 EMBEDDERS_GROUP = "alcove.embedders"
+_PLUGIN_GROUPS = [
+    (EXTRACTORS_GROUP, "extractor"),
+    (BACKENDS_GROUP, "backend"),
+    (EMBEDDERS_GROUP, "embedder"),
+]
+
+_ACTIVATION_INSTRUCTIONS: Dict[str, str] = {
+    "extractor": "Install the package and restart Alcove. Supported files are processed automatically during ingest.",
+    "backend": "Set VECTOR_BACKEND to this plugin name, then restart Alcove to use this backend.",
+    "embedder": "Set EMBEDDER to this plugin name, then restart Alcove to use this embedder.",
+}
 
 
 def discover_extractors() -> Dict[str, callable]:
@@ -49,11 +60,7 @@ def discover_embedders() -> Dict[str, type]:
 def list_plugins() -> List[dict]:
     """List all discovered Alcove plugins across all groups."""
     plugins = []
-    for group, label in [
-        (EXTRACTORS_GROUP, "extractor"),
-        (BACKENDS_GROUP, "backend"),
-        (EMBEDDERS_GROUP, "embedder"),
-    ]:
+    for group, label in _PLUGIN_GROUPS:
         for ep in entry_points(group=group):
             plugins.append({
                 "name": ep.name,
@@ -62,3 +69,37 @@ def list_plugins() -> List[dict]:
                 "group": group,
             })
     return plugins
+
+
+def _plugin_package_meta(ep) -> dict:
+    result = {"description": "", "version": "", "package": ""}
+    try:
+        dist = getattr(ep, "dist", None)
+        if dist is None:
+            return result
+        meta = dist.metadata
+        result["description"] = meta.get("Summary", "") or ""
+        result["version"] = meta.get("Version", "") or ""
+        result["package"] = meta.get("Name", "") or ""
+    except Exception:
+        return result
+    return result
+
+
+def get_plugin_detail(name: str) -> dict | None:
+    for group, label in _PLUGIN_GROUPS:
+        for ep in entry_points(group=group):
+            if ep.name != name:
+                continue
+            pkg = _plugin_package_meta(ep)
+            return {
+                "name": ep.name,
+                "type": label,
+                "module": ep.value,
+                "group": group,
+                "description": pkg["description"],
+                "version": pkg["version"],
+                "package": pkg["package"],
+                "activation": _ACTIVATION_INSTRUCTIONS.get(label, ""),
+            }
+    return None

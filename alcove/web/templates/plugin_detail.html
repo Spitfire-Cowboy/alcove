@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="browse-hero" aria-labelledby="plugin-heading">
+    <div>
+      <p class="section-kicker">Plugin &rsaquo; {{ plugin.type | e }}</p>
+      <h2 id="plugin-heading">{{ plugin.name | e }}</h2>
+      {% if plugin.description %}
+      <p>{{ plugin.description | e }}</p>
+      {% else %}
+      <p>No description is available for this plugin.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="browse-panel" aria-labelledby="plugin-details-heading">
+    <div class="browse-panel-heading">
+      <h3 id="plugin-details-heading">Details</h3>
+    </div>
+    <div class="browse-list">
+      <div class="browse-list-item">
+        <span class="browse-list-title">Entry point</span>
+        <span class="browse-list-meta">{{ plugin.module | e }}</span>
+      </div>
+      <div class="browse-list-item">
+        <span class="browse-list-title">Group</span>
+        <span class="browse-list-meta">{{ plugin.group | e }}</span>
+      </div>
+      {% if plugin.package %}
+      <div class="browse-list-item">
+        <span class="browse-list-title">Package</span>
+        <span class="browse-list-meta">{{ plugin.package | e }}</span>
+      </div>
+      {% endif %}
+      {% if plugin.version %}
+      <div class="browse-list-item">
+        <span class="browse-list-title">Version</span>
+        <span class="browse-list-meta">{{ plugin.version | e }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if plugin.activation %}
+  <section class="browse-panel" aria-labelledby="plugin-activation-heading">
+    <div class="browse-panel-heading">
+      <h3 id="plugin-activation-heading">Activation</h3>
+    </div>
+    <p>{{ plugin.activation | e }}</p>
+  </section>
+  {% endif %}
+
+  <a class="back-link" href="{{ base_url }}/plugins">&#8592; All plugins</a>
+{% endblock %}
