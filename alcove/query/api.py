@@ -170,12 +170,12 @@ def query(inp: QueryIn):
 
 @app.get("/api/plugins")
 def plugins_list(
-    type: str | None = Query(default=None, description="Filter by plugin type: extractor, backend, embedder"),
+    type_: str | None = Query(default=None, alias="type", description="Filter by plugin type: extractor, backend, embedder"),
     q: str | None = Query(default=None, description="Search term matched against plugin name and module path"),
 ):
     plugins = list_plugins()
-    if type is not None:
-        plugins = [p for p in plugins if p["type"] == type]
+    if type_ is not None:
+        plugins = [p for p in plugins if p["type"] == type_]
     if q:
         needle = q.lower()
         plugins = [
