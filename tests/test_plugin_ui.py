@@ -24,6 +24,7 @@ _FAKE_DETAIL = {
 def _make_client(monkeypatch, *, plugins=None, detail=None):
     import alcove.query.api as api_mod
 
+    monkeypatch.delenv("ALCOVE_ROOT_PATH", raising=False)
     monkeypatch.setattr(api_mod, "list_plugins", lambda: _FAKE_PLUGINS if plugins is None else plugins)
     monkeypatch.setattr(api_mod, "get_plugin_detail", lambda name: _FAKE_DETAIL if detail and name == detail["name"] else None)
     return TestClient(api_mod.app)
