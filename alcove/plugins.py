@@ -28,19 +28,24 @@ EXTRACTORS_GROUP = "alcove.extractors"
 BACKENDS_GROUP = "alcove.backends"
 EMBEDDERS_GROUP = "alcove.embedders"
 ENRICHERS_GROUP = "alcove.enrichers"
+_PLUGIN_GROUPS = [
+    (EXTRACTORS_GROUP, "extractor"),
+    (BACKENDS_GROUP, "backend"),
+    (EMBEDDERS_GROUP, "embedder"),
+    (ENRICHERS_GROUP, "enricher"),
+]
+
+_ACTIVATION_INSTRUCTIONS: Dict[str, str] = {
+    "extractor": "Install the package and restart Alcove. Supported files are processed automatically during ingest.",
+    "backend": "Set VECTOR_BACKEND to this plugin name, then restart Alcove to use this backend.",
+    "embedder": "Set EMBEDDER to this plugin name, then restart Alcove to use this embedder.",
+    "enricher": "Install the package and restart Alcove. Enrichers run automatically during ingest before indexing.",
+}
 
 
 def _allowed_tokens() -> set[str]:
     raw = os.getenv("ALCOVE_PLUGIN_ALLOWLIST", "")
     return {token.strip().lower() for token in raw.split(",") if token.strip()}
-
-
-def _entry_points_for(group: str):
-    tokens = _allowed_tokens()
-    discovered = entry_points(group=group)
-    if not tokens:
-        return discovered
-    return [ep for ep in discovered if _plugin_allowed(ep, tokens)]
 
 
 def _plugin_allowed(ep, tokens: set[str]) -> bool:
@@ -53,6 +58,14 @@ def _plugin_allowed(ep, tokens: set[str]) -> bool:
         or module_root in tokens
         or package_root in tokens
     )
+
+
+def _entry_points_for(group: str):
+    tokens = _allowed_tokens()
+    discovered = entry_points(group=group)
+    if not tokens:
+        return discovered
+    return [ep for ep in discovered if _plugin_allowed(ep, tokens)]
 
 
 def _distribution_version(module_path: str) -> str | None:
@@ -90,12 +103,7 @@ def discover_enrichers() -> Dict[str, callable]:
 def list_plugins() -> List[dict]:
     """List all discovered Alcove plugins across all groups."""
     plugins = []
-    for group, label in [
-        (EXTRACTORS_GROUP, "extractor"),
-        (BACKENDS_GROUP, "backend"),
-        (EMBEDDERS_GROUP, "embedder"),
-        (ENRICHERS_GROUP, "enricher"),
-    ]:
+    for group, label in _PLUGIN_GROUPS:
         for ep in _entry_points_for(group):
             plugins.append({
                 "name": ep.name,
@@ -105,3 +113,38 @@ def list_plugins() -> List[dict]:
                 "distribution_version": _distribution_version(ep.value),
             })
     return plugins
+
+
+def _plugin_package_meta(ep) -> dict:
+    result = {"description": "", "version": "", "package": ""}
+    try:
+        dist = getattr(ep, "dist", None)
+        if dist is None:
+            return result
+        meta = dist.metadata
+        result["description"] = meta.get("Summary", "") or ""
+        result["version"] = meta.get("Version", "") or ""
+        result["package"] = meta.get("Name", "") or ""
+    except Exception:
+        return result
+    return result
+
+
+def get_plugin_detail(name: str) -> dict | None:
+    for group, label in _PLUGIN_GROUPS:
+        for ep in _entry_points_for(group):
+            if ep.name != name:
+                continue
+            pkg = _plugin_package_meta(ep)
+            return {
+                "name": ep.name,
+                "type": label,
+                "module": ep.value,
+                "group": group,
+                "description": pkg["description"],
+                "version": pkg["version"],
+                "package": pkg["package"],
+                "activation": _ACTIVATION_INSTRUCTIONS.get(label, ""),
+                "distribution_version": _distribution_version(ep.value),
+            }
+    return None

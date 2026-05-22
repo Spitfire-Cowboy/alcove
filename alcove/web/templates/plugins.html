@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="browse-hero" aria-labelledby="plugins-heading">
+    <div>
+      <p class="section-kicker">Extensions</p>
+      <h2 id="plugins-heading">Installed plugins</h2>
+      <p>
+        {% if total == 1 %}
+        1 plugin is installed.
+        {% else %}
+        {{ total }} plugins are installed.
+        {% endif %}
+      </p>
+    </div>
+    <form class="browse-search" method="GET" action="{{ base_url }}/plugins" role="search">
+      <label class="sr-only" for="plugins-search-input">Search installed plugins</label>
+      <input id="plugins-search-input" type="text" name="q" value="{{ query | e }}" placeholder="Search plugins">
+      {% if type_filter %}
+      <input type="hidden" name="type" value="{{ type_filter | e }}">
+      {% endif %}
+      <button class="search-btn" type="submit">Search</button>
+    </form>
+  </section>
+
+  {% if error %}
+  <div class="welcome-banner" role="status">
+    <h2>Plugin not found</h2>
+    <p>{{ error }}</p>
+  </div>
+  {% endif %}
+
+  <section class="browse-panel" aria-labelledby="plugin-type-filter-heading">
+    <div class="browse-panel-heading">
+      <h3 id="plugin-type-filter-heading">Filter by type</h3>
+    </div>
+    <div class="browse-chips">
+      <a class="browse-chip{% if not type_filter %} browse-chip-static{% endif %}" href="{{ base_url }}/plugins{% if query %}?q={{ query | urlencode }}{% endif %}">All</a>
+      {% for plugin_type in ["extractor", "backend", "embedder"] %}
+      <a class="browse-chip{% if type_filter == plugin_type %} browse-chip-static{% endif %}" href="{{ base_url }}/plugins?type={{ plugin_type }}{% if query %}&amp;q={{ query | urlencode }}{% endif %}">
+        <span>{{ plugin_type | e }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if plugins %}
+  <section class="browse-panel" aria-labelledby="plugins-list-heading">
+    <div class="browse-panel-heading">
+      <h3 id="plugins-list-heading">Plugin listing</h3>
+    </div>
+    <div class="browse-list">
+      {% for plugin in plugins %}
+      <div class="browse-list-item">
+        <a class="browse-list-title" href="{{ base_url }}/plugins/{{ plugin.name | urlencode }}">{{ plugin.name | e }}</a>
+        <span class="browse-list-meta">{{ plugin.type | e }} &middot; {{ plugin.module | e }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% else %}
+  <div class="welcome-banner" role="status">
+    <h2>No plugins found</h2>
+    <p>Install Alcove plugin packages to extend extractors, embedders, and backends.</p>
+  </div>
+  {% endif %}
+
+  <a class="back-link" href="{{ base_url }}/">&#8592; Back to search</a>
+{% endblock %}
