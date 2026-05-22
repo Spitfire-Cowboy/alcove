@@ -19,6 +19,7 @@ from .extractors import (
     extract_odt,
     extract_pdf,
     extract_pptx,
+    extract_rtf,
     extract_rst,
     extract_tsv,
     extract_txt,
@@ -42,6 +43,7 @@ _BUILTIN_EXTRACTORS = {
     ".docx": extract_docx,
     ".odt": extract_odt,
     ".pptx": extract_pptx,
+    ".rtf": extract_rtf,
     ".xlsx": extract_xlsx,
 }
 

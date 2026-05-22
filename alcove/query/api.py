@@ -41,7 +41,7 @@ SUPPORTED_EXTENSIONS = {
     ".md", ".rst",
     ".csv", ".tsv",
     ".json", ".jsonl",
-    ".docx",
+    ".docx", ".rtf",
 }
 
 
