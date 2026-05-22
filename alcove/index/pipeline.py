@@ -19,6 +19,8 @@ def _metadata_value(value):
 
 
 def run(chunks_file: str | None = None, collection: str = "default") -> int:
+    from alcove.provenance import record_index_provenance
+
     chunks_file = chunks_file or os.getenv("CHUNKS_FILE", "data/processed/chunks.jsonl")
 
     embedder = get_embedder()
@@ -44,6 +46,12 @@ def run(chunks_file: str | None = None, collection: str = "default") -> int:
 
     embeddings = embedder.embed(docs)
     backend.add(ids=ids, embeddings=embeddings, documents=docs, metadatas=metas)
+    embedding_dimension = len(embeddings[0]) if embeddings and embeddings[0] else None
+    record_index_provenance(
+        collection=collection,
+        chunk_count=len(ids),
+        embedding_dimension=embedding_dimension,
+    )
     return len(ids)
 
 

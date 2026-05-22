@@ -91,13 +91,14 @@ available.
 
 ## Plugin system
 
-Plugins use Python entry points. Three extension groups are shipped:
+Plugins use Python entry points. Four extension groups are shipped:
 
 | Group | Purpose | Example entry point |
 |-------|---------|---------------------|
 | `alcove.extractors` | Add file format support | `rtf = my_plugin:extract_rtf` |
 | `alcove.backends` | Add vector store backends | `sqlite_vec = my_plugin:SQLiteVecBackend` |
 | `alcove.embedders` | Add embedding models | `local_model = my_plugin:LocalEmbedder` |
+| `alcove.enrichers` | Add post-extraction metadata annotation | `doctype = my_plugin:enrich` |
 
 To create a plugin, add an entry-point section to your package:
 
@@ -106,9 +107,13 @@ To create a plugin, add an entry-point section to your package:
 rtf = "my_plugin:extract_rtf"
 ```
 
+Enrichers run after text extraction and before indexing. They receive the extracted document text plus a metadata dict and return additional metadata fields to merge into every emitted chunk record for that source document.
+
 Plugins are discovered at startup and merged with built-ins. If a plugin and a built-in use the same name, the plugin wins.
 
-Plugins can change the trust boundary. A cloud embedder or hosted backend can send data off-machine if an operator installs and selects it. That is outside the default Alcove boundary and must be documented by the plugin.
+Plugins are trusted local code, not sandboxed configuration. An extractor can read files, an embedder can make network calls, and a backend can change where index data is stored. A cloud embedder or hosted backend can send data off-machine if an operator installs and selects it. That is outside the default Alcove boundary and must be documented by the plugin.
+
+Operators can opt into an allowlist with `ALCOVE_PLUGIN_ALLOWLIST`. When set, Alcove only loads plugin entry points whose name or package root matches the comma-separated allowlist tokens.
 
 ## Boundary
 
