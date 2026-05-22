@@ -23,11 +23,11 @@ def _run_pipeline(chunks_file: Path, *, collection: str = "default") -> tuple[in
     class FakeEmbedder:
         dim = 4
 
-        def embed(self, docs):
+        def embed(self, docs) -> list[list[float]]:
             return [[0.1, 0.2, 0.3, 0.4] for _ in docs]
 
     class FakeBackend:
-        def add(self, ids, embeddings, documents, metadatas):
+        def add(self, ids, embeddings, documents, metadatas) -> None:
             captured["ids"] = ids
             captured["embeddings"] = embeddings
             captured["documents"] = documents
@@ -42,6 +42,16 @@ def _run_pipeline(chunks_file: Path, *, collection: str = "default") -> tuple[in
         count = run(chunks_file=str(chunks_file), collection=collection)
 
     return count, captured
+
+
+def test_pipeline_handles_empty_input(tmp_path):
+    chunks_file = _make_chunks_jsonl(tmp_path, [])
+
+    count, captured = _run_pipeline(chunks_file)
+
+    assert count == 0
+    assert captured.get("ids", []) == []
+    assert captured.get("metadatas", []) == []
 
 
 def test_pipeline_preserves_scalar_metadata_fields(tmp_path):
@@ -177,6 +187,7 @@ def test_pipeline_keeps_multiple_records_distinct(tmp_path):
     count, captured = _run_pipeline(chunks_file)
 
     assert count == 2
+    assert captured["ids"] == ["doc-1:0", "doc-2:0"]
     assert captured["metadatas"][0]["collection"] == "alpha"
     assert captured["metadatas"][1]["collection"] == "beta"
     assert captured["documents"] == ["first", "second"]
