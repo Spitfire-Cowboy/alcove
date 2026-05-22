@@ -3,9 +3,9 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
-from alcove.query.api import app
+import alcove.query.api as api_module
 
-client = TestClient(app)
+client = TestClient(api_module.app)
 
 
 def test_health():
