@@ -48,6 +48,7 @@ If you are an agent querying an Alcove instance:
 - `POST /query` with `{ "query": "...", "k": 3 }` -- returns matching document chunks
 - `POST /ingest` -- file upload (multipart)
 - `GET /health` -- readiness check
+- `GET /.well-known/alcove.json` -- machine-readable capability descriptor
 
 **What you will get back:** Document chunks from the corpus that match your query. These are real text from real documents, not generated content.
 

@@ -14,8 +14,10 @@ from pydantic import BaseModel
 from starlette.templating import Jinja2Templates
 import uvicorn
 
+from alcove import __version__
 from alcove.plugins import get_plugin_detail, list_plugins
 from alcove.web import TEMPLATES_DIR, STATIC_DIR
+from alcove.ingest.pipeline import _get_extractors
 from .browse import browse_corpus_stats, browse_document_detail
 from .retriever import query_hybrid, query_keyword, query_text
 
@@ -53,9 +55,94 @@ class QueryIn(BaseModel):
     mode: str = "semantic"
 
 
+def _descriptor_payload() -> dict:
+    """Return a machine-readable capability descriptor for this deployment."""
+    base = _root_path() or ""
+    ingest_enabled = not bool(os.getenv("ALCOVE_DEMO_ROOT", ""))
+    plugins = list_plugins()
+    extractor_exts = sorted(_get_extractors().keys())
+    return {
+        "alcove_descriptor_version": "1",
+        "instance": {
+            "name": os.getenv("ALCOVE_INSTANCE_NAME", "Alcove"),
+            "version": __version__,
+            "deployment_mode": os.getenv("ALCOVE_DEPLOYMENT_MODE", "local"),
+            "root_path": base,
+        },
+        "surfaces": {
+            "html_search": True,
+            "json_query": True,
+            "collections": True,
+            "ingest": ingest_enabled,
+            "browse": True,
+            "plugins": True,
+        },
+        "paths": {
+            "health": f"{base}/health",
+            "root": f"{base}/",
+            "search_html": f"{base}/search",
+            "query_json": f"{base}/query",
+            "collections": f"{base}/collections",
+            "ingest": f"{base}/ingest",
+            "browse": f"{base}/browse",
+            "browse_document": f"{base}/browse/document/{{document_id}}",
+            "plugins_json": f"{base}/api/plugins",
+            "api_capabilities": f"{base}/api/capabilities",
+            "capabilities": f"{base}/capabilities",
+            "well_known": f"{base}/.well-known/alcove.json",
+        },
+        "auth": {
+            "built_in_http_auth": False,
+            "operator_managed": True,
+            "notes": "Alcove does not ship built-in HTTP auth; private deployments should put auth in front of Alcove.",
+        },
+        "query": {
+            "methods": ["GET /search", "POST /query"],
+            "modes": ["semantic", "keyword", "hybrid"],
+            "collections_supported": True,
+            "html_query_param": "q",
+            "json_request_fields": {
+                "query": "string",
+                "k": "int",
+                "collections": "string[] | null",
+                "mode": "semantic | keyword | hybrid",
+            },
+            "json_response_format": "alcove-query-raw-v1",
+        },
+        "ingest": {
+            "web_upload_enabled": ingest_enabled,
+            "web_upload_extensions": sorted(SUPPORTED_EXTENSIONS),
+            "extractor_extensions": extractor_exts,
+        },
+        "plugins": {
+            "count": len(plugins),
+            "types": sorted({plugin["type"] for plugin in plugins}),
+        },
+        "result_shapes": {
+            "json_query_fields": ["documents", "metadatas", "distances"],
+            "html_search_fields": ["source", "collection", "score", "text"],
+        },
+    }
+
+
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/capabilities")
+def capabilities():
+    return _descriptor_payload()
+
+
+@app.get("/api/capabilities")
+def api_capabilities():
+    return _descriptor_payload()
+
+
+@app.get("/.well-known/alcove.json")
+def well_known_alcove():
+    return _descriptor_payload()
 
 
 @app.get("/", response_class=HTMLResponse)

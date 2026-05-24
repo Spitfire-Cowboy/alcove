@@ -14,6 +14,39 @@ def test_health():
     assert r.json() == {"ok": True}
 
 
+def test_capabilities_descriptor():
+    r = client.get("/api/capabilities")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["alcove_descriptor_version"] == "1"
+    assert data["instance"]["name"] == "Alcove"
+    assert data["instance"]["version"]
+    assert data["surfaces"]["json_query"] is True
+    assert data["surfaces"]["html_search"] is True
+    assert data["paths"]["query_json"] == "/query"
+    assert data["paths"]["api_capabilities"] == "/api/capabilities"
+    assert ".txt" in data["ingest"]["web_upload_extensions"]
+    assert ".pptx" in data["ingest"]["extractor_extensions"]
+
+
+def test_well_known_descriptor_matches_api_capabilities():
+    api_r = client.get("/api/capabilities")
+    wk_r = client.get("/.well-known/alcove.json")
+    shortcut_r = client.get("/capabilities")
+
+    assert wk_r.status_code == 200
+    assert shortcut_r.status_code == 200
+    assert wk_r.json() == api_r.json() == shortcut_r.json()
+
+
+def test_capabilities_descriptor_respects_demo_mode(monkeypatch):
+    monkeypatch.setenv("ALCOVE_DEMO_ROOT", "/tmp/readonly")
+    r = client.get("/api/capabilities")
+    assert r.status_code == 200
+    assert r.json()["surfaces"]["ingest"] is False
+    assert r.json()["ingest"]["web_upload_enabled"] is False
+
+
 def test_root_returns_html():
     r = client.get("/")
     assert r.status_code == 200
