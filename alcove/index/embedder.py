@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+from functools import lru_cache
 from typing import List
 
 
@@ -48,14 +49,20 @@ _BUILTIN_EMBEDDERS = {
 }
 
 
-def get_embedder():
-    """Return embedder instance based on EMBEDDER env var."""
+@lru_cache(maxsize=4)
+def _get_embedder_cached(choice: str):
+    """Build and cache embedder instances per configured embedder choice."""
     from alcove.plugins import discover_embedders
 
-    choice = os.getenv("EMBEDDER", "hash")
     embedders = dict(_BUILTIN_EMBEDDERS)
     embedders.update(discover_embedders())
     cls = embedders.get(choice)
     if cls is None:
         raise ValueError(f"Unknown embedder: {choice!r}.")
     return cls()
+
+
+def get_embedder():
+    """Return embedder instance based on EMBEDDER env var."""
+    choice = os.getenv("EMBEDDER", "hash")
+    return _get_embedder_cached(choice)

@@ -29,9 +29,20 @@ def _root_path() -> str:
     return "" if not raw else "/" + raw
 
 
+def _brand_context() -> dict:
+    """Return safe brand display settings from environment variables."""
+    title = (os.getenv("ALCOVE_TITLE", "Alcove") or "").strip() or "Alcove"
+    tagline = (os.getenv("ALCOVE_TAGLINE", "Local-first retrieval") or "").strip() or "Local-first retrieval"
+    accent = (os.getenv("ALCOVE_ACCENT_COLOR", "#7c6cff") or "").strip()
+    if not re.fullmatch(r"#[0-9A-Fa-f]{6}", accent):
+        accent = "#7c6cff"
+    return {"title": title, "tagline": tagline, "accent_color": accent}
+
+
 def _tpl(ctx: dict) -> dict:
     """Merge template context with the base_url global."""
     ctx.setdefault("base_url", _root_path())
+    ctx.setdefault("brand", _brand_context())
     return ctx
 
 SUPPORTED_EXTENSIONS = {
