@@ -46,6 +46,7 @@ If you are an agent querying an Alcove instance:
 
 **API endpoints:**
 - `POST /query` with `{ "query": "...", "k": 3 }` -- returns matching document chunks
+- `POST /api/search` with `{ "query": "...", "k": 3 }` -- returns normalized `alcove-default` client schema
 - `POST /ingest` -- file upload (multipart)
 - `GET /health` -- readiness check
 - `GET /.well-known/alcove.json` -- machine-readable capability descriptor

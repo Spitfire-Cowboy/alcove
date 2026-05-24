@@ -96,6 +96,7 @@ alcove serve --host 127.0.0.1 --port 8000
 |----------|--------|-------------|
 | `/` | GET | Web UI: search and file upload |
 | `/query` | POST | Search JSON: `{ "query": "...", "k": 3, "mode": "hybrid" }` |
+| `/api/search` | POST | Canonical `alcove-default` client schema for search results |
 | `/ingest` | POST | File upload (multipart) |
 | `/collections` | GET | Collection names and document counts |
 | `/health` | GET | Readiness check |

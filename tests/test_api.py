@@ -65,6 +65,42 @@ def test_query_post_returns_json():
     assert isinstance(data, dict)
 
 
+def test_api_search_returns_default_schema():
+    r = client.post("/api/search", json={"query": "test", "k": 1, "mode": "hybrid"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["schema"] == "alcove-default"
+    assert data["schema_version"] == "1"
+    assert data["query"] == "test"
+    assert data["mode"] == "hybrid"
+    assert isinstance(data["results"], list)
+    assert data["capabilities"]["json_query"] is True
+
+
+def test_api_search_normalizes_raw_query_shape(monkeypatch):
+    monkeypatch.setattr(
+        api_module,
+        "_dispatch_query",
+        lambda q, k, mode="semantic", collections=None: {
+            "documents": [["Excerpt text"]],
+            "metadatas": [[{"source": "data/raw/demo.txt", "collection": "demo", "title": "Demo Title", "url": "https://example.com/demo"}]],
+            "distances": [[0.25]],
+        },
+    )
+    r = client.post("/api/search", json={"query": "demo", "k": 1})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total"] == 1
+    result = data["results"][0]
+    assert result["id"] == "data/raw/demo.txt:0"
+    assert result["title"] == "Demo Title"
+    assert result["excerpt"] == "Excerpt text"
+    assert result["source"] == "data/raw/demo.txt"
+    assert result["source_url"] == "https://example.com/demo"
+    assert result["collection"] == "demo"
+    assert result["score"] == 0.75
+
+
 def test_ingest_skips_unsupported_format():
     """Unsupported file formats are gracefully skipped (200 with status=skipped), not rejected."""
     r = client.post(
