@@ -12,6 +12,8 @@
     {% set _fname = r.source.split('/')|last %}
     {% set ext = _fname.rsplit('.', 1)[1].upper() if '.' in _fname else '?' %}
     {% set score_pct = (r.score * 100) | round | int %}
+    {% if score_pct < 0 %}{% set score_pct = 0 %}{% endif %}
+    {% if score_pct > 100 %}{% set score_pct = 100 %}{% endif %}
     {% set card_id = "card-meta-" ~ loop.index %}
     <div class="result-card" aria-describedby="{{ card_id }}">
       <div class="result-meta" id="{{ card_id }}">

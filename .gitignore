@@ -16,3 +16,4 @@ data/processed/seed_index.json
 !data/processed/.gitkeep
 !data/raw/.gitkeep
 .DS_Store
+CLAUDE.md

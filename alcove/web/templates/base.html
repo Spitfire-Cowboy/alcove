@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alcove</title>
+  <title>{% block page_title %}{{ brand.title | e }}{% endblock %}</title>
   <script>
     (function() {
       var t = localStorage.getItem('alcove-theme');
@@ -14,6 +14,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ base_url }}/static/style.css">
+  <style>
+    :root {
+      --accent: {{ brand.accent_color | e }};
+    }
+  </style>
 </head>
 <body>
   <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -27,14 +32,9 @@
       <div class="container">
         <div class="logo-row">
           <div class="logo-mark" aria-hidden="true">A</div>
-          <h1 class="site-title">Alcove</h1>
+          <h1 class="site-title">{{ brand.title | e }}</h1>
         </div>
-        <p class="site-tagline">Local-first retrieval</p>
-        <nav class="site-nav" aria-label="Primary">
-          <a href="{{ base_url }}/">Search</a>
-          <a href="{{ base_url }}/browse">Browse</a>
-          <a href="{{ base_url }}/plugins">Plugins</a>
-        </nav>
+        <p class="site-tagline">{{ brand.tagline | e }}</p>
       </div>
     </header>
 
