@@ -101,6 +101,7 @@ alcove serve --host 127.0.0.1 --port 8000
 | `/collections` | GET | Collection names and document counts |
 | `/health` | GET | Readiness check |
 | `/api/capabilities` | GET | Machine-readable deployment capability descriptor |
+| `/capabilities` | GET | Machine-readable deployment capability descriptor alias |
 | `/.well-known/alcove.json` | GET | Well-known capability descriptor for clients |
 
 Bind to a non-localhost address only after reviewing [Security: Operator Responsibilities](SECURITY.md#operator-responsibilities). Alcove has no built-in authentication.

@@ -26,7 +26,7 @@ Alcove v0.4.0 ships a working local pipeline:
 - Local indexing with ChromaDB by default, with zvec available as an optional backend.
 - A deterministic hash embedder by default, plus opt-in sentence-transformers and Ollama embedders for real semantic similarity.
 - CLI search and a FastAPI web service with search, upload, health, collection-list, and browse endpoints.
-- A machine-readable capabilities descriptor at `/.well-known/alcove.json` and `/api/capabilities` for client discovery.
+- A machine-readable capabilities descriptor at `/.well-known/alcove.json`, `/capabilities`, and `/api/capabilities` for client discovery.
 - A canonical client result schema at `POST /api/search` alongside the raw `POST /query` response.
 - Semantic, keyword (BM25), and hybrid search modes.
 - Named collection metadata and collection filtering.
