@@ -67,9 +67,13 @@ def _default_result_schema(
     collections: Optional[List[str]],
     raw: dict,
 ) -> dict:
-    documents = raw.get("documents", [[]])[0]
-    metadatas = raw.get("metadatas", [[]])[0]
-    distances = raw.get("distances", [[]])[0]
+    document_buckets = raw.get("documents") or []
+    metadata_buckets = raw.get("metadatas") or []
+    distance_buckets = raw.get("distances") or []
+
+    documents = document_buckets[0] if len(document_buckets) > 0 else []
+    metadatas = metadata_buckets[0] if len(metadata_buckets) > 0 else []
+    distances = distance_buckets[0] if len(distance_buckets) > 0 else []
     results = []
 
     for index, doc in enumerate(documents):
@@ -291,7 +295,8 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = "", mod
     results: list = []
     if q.strip():
         raw = _dispatch_query(q, k, mode=mode, collections=coll_list)
-        documents = raw.get("documents", [[]])[0]
+        document_buckets = raw.get("documents") or []
+        documents = document_buckets[0] if len(document_buckets) > 0 else []
         metadatas = raw.get("metadatas", [[]])[0]
         distances = raw.get("distances", [[]])[0]
 

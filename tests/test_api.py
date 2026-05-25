@@ -78,14 +78,17 @@ def test_api_search_returns_default_schema():
 
 
 def test_api_search_normalizes_raw_query_shape(monkeypatch):
-    monkeypatch.setattr(
-        api_module,
-        "_dispatch_query",
-        lambda q, k, mode="semantic", collections=None: {
+    def stub_dispatch_query(_query, _k, **_kwargs):
+        return {
             "documents": [["Excerpt text"]],
             "metadatas": [[{"source": "data/raw/demo.txt", "collection": "demo", "title": "Demo Title", "url": "https://example.com/demo"}]],
             "distances": [[0.25]],
-        },
+        }
+
+    monkeypatch.setattr(
+        api_module,
+        "_dispatch_query",
+        stub_dispatch_query,
     )
     r = client.post("/api/search", json={"query": "demo", "k": 1})
     assert r.status_code == 200
@@ -99,6 +102,20 @@ def test_api_search_normalizes_raw_query_shape(monkeypatch):
     assert result["source_url"] == "https://example.com/demo"
     assert result["collection"] == "demo"
     assert result["score"] == 0.75
+
+
+def test_api_search_handles_empty_buckets(monkeypatch):
+    def stub_empty_dispatch(_query, _k, **_kwargs):
+        return {"documents": [], "metadatas": [], "distances": []}
+
+    monkeypatch.setattr(api_module, "_dispatch_query", stub_empty_dispatch)
+
+    r = client.post("/api/search", json={"query": "demo", "k": 1})
+
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total"] == 0
+    assert data["results"] == []
 
 
 def test_ingest_skips_unsupported_format():
