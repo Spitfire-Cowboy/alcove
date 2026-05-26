@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "setup": "./scripts/bootstrap.sh",
+    "run": "source .venv/bin/activate && alcove serve --host 127.0.0.1 --port ${CONDUCTOR_PORT:-8000}"
+  },
+  "runScriptMode": "concurrent"
+}
