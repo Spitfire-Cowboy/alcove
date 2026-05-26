@@ -97,6 +97,16 @@ Network use is explicit: `alcove seed-demo` fetches the public sample corpus, an
 
 Alcove does not require authentication. The local API is open to anyone who can reach the port, so keep it bound to `127.0.0.1` unless you put authentication in front of it. See [Operations](docs/OPERATIONS.md) and [Security](docs/SECURITY.md).
 
+## Conductor workspaces
+
+Alcove now ships a shared Conductor config:
+
+- `conductor.json` bootstraps a workspace with `./scripts/bootstrap.sh` and runs the local API on `CONDUCTOR_PORT`.
+- `.worktreeinclude` copies local `.env*` files into new workspaces when present.
+- `runScriptMode` stays `concurrent` because each workspace can bind its own port cleanly.
+
+This repo is a good fit for normal workspace-local runs. Use Spotlight only if you intentionally want one heavyweight root-local stack to hot-swap tracked workspace changes.
+
 ## Common commands
 
 ```bash
