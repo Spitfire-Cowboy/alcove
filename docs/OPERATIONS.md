@@ -96,9 +96,13 @@ alcove serve --host 127.0.0.1 --port 8000
 |----------|--------|-------------|
 | `/` | GET | Web UI: search and file upload |
 | `/query` | POST | Search JSON: `{ "query": "...", "k": 3, "mode": "hybrid" }` |
+| `/api/search` | POST | Canonical `alcove-default` client schema for search results |
 | `/ingest` | POST | File upload (multipart) |
 | `/collections` | GET | Collection names and document counts |
 | `/health` | GET | Readiness check |
+| `/api/capabilities` | GET | Machine-readable deployment capability descriptor |
+| `/capabilities` | GET | Machine-readable deployment capability descriptor alias |
+| `/.well-known/alcove.json` | GET | Well-known capability descriptor for clients |
 
 Bind to a non-localhost address only after reviewing [Security: Operator Responsibilities](SECURITY.md#operator-responsibilities). Alcove has no built-in authentication.
 

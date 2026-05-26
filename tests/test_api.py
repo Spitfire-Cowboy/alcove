@@ -14,6 +14,39 @@ def test_health():
     assert r.json() == {"ok": True}
 
 
+def test_capabilities_descriptor():
+    r = client.get("/api/capabilities")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["alcove_descriptor_version"] == "1"
+    assert data["instance"]["name"] == "Alcove"
+    assert data["instance"]["version"]
+    assert data["surfaces"]["json_query"] is True
+    assert data["surfaces"]["html_search"] is True
+    assert data["paths"]["query_json"] == "/query"
+    assert data["paths"]["api_capabilities"] == "/api/capabilities"
+    assert ".txt" in data["ingest"]["web_upload_extensions"]
+    assert ".pptx" in data["ingest"]["extractor_extensions"]
+
+
+def test_well_known_descriptor_matches_api_capabilities():
+    api_r = client.get("/api/capabilities")
+    wk_r = client.get("/.well-known/alcove.json")
+    shortcut_r = client.get("/capabilities")
+
+    assert wk_r.status_code == 200
+    assert shortcut_r.status_code == 200
+    assert wk_r.json() == api_r.json() == shortcut_r.json()
+
+
+def test_capabilities_descriptor_respects_demo_mode(monkeypatch):
+    monkeypatch.setenv("ALCOVE_DEMO_ROOT", "/tmp/readonly")
+    r = client.get("/api/capabilities")
+    assert r.status_code == 200
+    assert r.json()["surfaces"]["ingest"] is False
+    assert r.json()["ingest"]["web_upload_enabled"] is False
+
+
 def test_root_returns_html():
     r = client.get("/")
     assert r.status_code == 200
@@ -30,6 +63,59 @@ def test_query_post_returns_json():
     assert r.status_code == 200
     data = r.json()
     assert isinstance(data, dict)
+
+
+def test_api_search_returns_default_schema():
+    r = client.post("/api/search", json={"query": "test", "k": 1, "mode": "hybrid"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["schema"] == "alcove-default"
+    assert data["schema_version"] == "1"
+    assert data["query"] == "test"
+    assert data["mode"] == "hybrid"
+    assert isinstance(data["results"], list)
+    assert data["capabilities"]["json_query"] is True
+
+
+def test_api_search_normalizes_raw_query_shape(monkeypatch):
+    def stub_dispatch_query(_query, _k, **_kwargs):
+        return {
+            "documents": [["Excerpt text"]],
+            "metadatas": [[{"source": "data/raw/demo.txt", "collection": "demo", "title": "Demo Title", "url": "https://example.com/demo"}]],
+            "distances": [[0.25]],
+        }
+
+    monkeypatch.setattr(
+        api_module,
+        "_dispatch_query",
+        stub_dispatch_query,
+    )
+    r = client.post("/api/search", json={"query": "demo", "k": 1})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total"] == 1
+    result = data["results"][0]
+    assert result["id"] == "data/raw/demo.txt:0"
+    assert result["title"] == "Demo Title"
+    assert result["excerpt"] == "Excerpt text"
+    assert result["source"] == "data/raw/demo.txt"
+    assert result["source_url"] == "https://example.com/demo"
+    assert result["collection"] == "demo"
+    assert result["score"] == 0.75
+
+
+def test_api_search_handles_empty_buckets(monkeypatch):
+    def stub_empty_dispatch(_query, _k, **_kwargs):
+        return {"documents": [], "metadatas": [], "distances": []}
+
+    monkeypatch.setattr(api_module, "_dispatch_query", stub_empty_dispatch)
+
+    r = client.post("/api/search", json={"query": "demo", "k": 1})
+
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total"] == 0
+    assert data["results"] == []
 
 
 def test_ingest_skips_unsupported_format():

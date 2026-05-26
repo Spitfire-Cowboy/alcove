@@ -14,8 +14,10 @@ from pydantic import BaseModel
 from starlette.templating import Jinja2Templates
 import uvicorn
 
+from alcove import __version__
 from alcove.plugins import get_plugin_detail, list_plugins
 from alcove.web import TEMPLATES_DIR, STATIC_DIR
+from alcove.ingest.pipeline import _get_extractors
 from .browse import browse_corpus_stats, browse_document_detail
 from .retriever import query_hybrid, query_keyword, query_text
 
@@ -53,9 +55,160 @@ class QueryIn(BaseModel):
     mode: str = "semantic"
 
 
+def _score_from_distance(dist: float) -> float:
+    return round(1.0 - dist, 3) if dist <= 1.0 else round(dist, 3)
+
+
+def _default_result_schema(
+    *,
+    query: str,
+    k: int,
+    mode: str,
+    collections: Optional[List[str]],
+    raw: dict,
+) -> dict:
+    document_buckets = raw.get("documents") or []
+    metadata_buckets = raw.get("metadatas") or []
+    distance_buckets = raw.get("distances") or []
+
+    documents = document_buckets[0] if len(document_buckets) > 0 else []
+    metadatas = metadata_buckets[0] if len(metadata_buckets) > 0 else []
+    distances = distance_buckets[0] if len(distance_buckets) > 0 else []
+    results = []
+
+    for index, doc in enumerate(documents):
+        meta = metadatas[index] if index < len(metadatas) and isinstance(metadatas[index], dict) else {}
+        dist = distances[index] if index < len(distances) else None
+        source = str(meta.get("source", "unknown"))
+        source_url = meta.get("source_url") or meta.get("url")
+        title = str(meta.get("title") or Path(source).name or source)
+        collection = str(meta.get("collection", "default"))
+        metadata = {str(key): str(value) for key, value in meta.items()}
+        result_id = str(meta.get("id") or meta.get("chunk_id") or f"{source}:{index}")
+        results.append(
+            {
+                "id": result_id,
+                "title": title,
+                "excerpt": doc,
+                "source": source,
+                "source_url": str(source_url) if source_url is not None else None,
+                "collection": collection,
+                "score": _score_from_distance(dist) if isinstance(dist, (int, float)) else None,
+                "metadata": metadata,
+            }
+        )
+
+    return {
+        "schema": "alcove-default",
+        "schema_version": "1",
+        "query": query,
+        "mode": mode,
+        "k": k,
+        "collections": collections or [],
+        "total": len(results),
+        "results": results,
+        "capabilities": {
+            "json_query": True,
+            "collections_supported": True,
+            "modes": ["semantic", "keyword", "hybrid"],
+        },
+    }
+
+
+def _descriptor_payload() -> dict:
+    """Return a machine-readable capability descriptor for this deployment."""
+    base = _root_path() or ""
+    ingest_enabled = not bool(os.getenv("ALCOVE_DEMO_ROOT", ""))
+    plugins = list_plugins()
+    extractor_exts = sorted(_get_extractors().keys())
+    return {
+        "alcove_descriptor_version": "1",
+        "instance": {
+            "name": os.getenv("ALCOVE_INSTANCE_NAME", "Alcove"),
+            "version": __version__,
+            "deployment_mode": os.getenv("ALCOVE_DEPLOYMENT_MODE", "local"),
+            "root_path": base,
+        },
+        "surfaces": {
+            "html_search": True,
+            "json_query": True,
+            "collections": True,
+            "ingest": ingest_enabled,
+            "browse": True,
+            "plugins": True,
+        },
+        "paths": {
+            "health": f"{base}/health",
+            "root": f"{base}/",
+            "search_html": f"{base}/search",
+            "query_json": f"{base}/query",
+            "collections": f"{base}/collections",
+            "ingest": f"{base}/ingest",
+            "browse": f"{base}/browse",
+            "browse_document": f"{base}/browse/document/{{document_id}}",
+            "plugins_json": f"{base}/api/plugins",
+            "api_capabilities": f"{base}/api/capabilities",
+            "capabilities": f"{base}/capabilities",
+            "well_known": f"{base}/.well-known/alcove.json",
+        },
+        "auth": {
+            "built_in_http_auth": False,
+            "operator_managed": True,
+            "notes": "Alcove does not ship built-in HTTP auth; private deployments should put auth in front of Alcove.",
+        },
+        "query": {
+            "methods": ["GET /search", "POST /query"],
+            "modes": ["semantic", "keyword", "hybrid"],
+            "collections_supported": True,
+            "html_query_param": "q",
+            "json_request_fields": {
+                "query": "string",
+                "k": "int",
+                "collections": "string[] | null",
+                "mode": "semantic | keyword | hybrid",
+            },
+            "json_response_format": "alcove-query-raw-v1",
+            "default_schema_endpoint": f"{base}/api/search",
+        },
+        "ingest": {
+            "web_upload_enabled": ingest_enabled,
+            "web_upload_extensions": sorted(SUPPORTED_EXTENSIONS),
+            "extractor_extensions": extractor_exts,
+        },
+        "plugins": {
+            "count": len(plugins),
+            "types": sorted({plugin["type"] for plugin in plugins}),
+        },
+        "result_shapes": {
+            "default_schema": {
+                "name": "alcove-default",
+                "version": "1",
+                "fields": ["id", "title", "excerpt", "source", "source_url", "collection", "score", "metadata"],
+            },
+            "json_query_fields": ["documents", "metadatas", "distances"],
+            "html_search_fields": ["source", "collection", "score", "text"],
+        },
+    }
+
+
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/capabilities")
+def capabilities():
+    return _descriptor_payload()
+
+
+@app.get("/api/capabilities")
+def api_capabilities():
+    return _descriptor_payload()
+
+
+@app.get("/.well-known/alcove.json")
+def well_known_alcove():
+    return _descriptor_payload()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -142,7 +295,8 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = "", mod
     results: list = []
     if q.strip():
         raw = _dispatch_query(q, k, mode=mode, collections=coll_list)
-        documents = raw.get("documents", [[]])[0]
+        document_buckets = raw.get("documents") or []
+        documents = document_buckets[0] if len(document_buckets) > 0 else []
         metadatas = raw.get("metadatas", [[]])[0]
         distances = raw.get("distances", [[]])[0]
 
@@ -166,6 +320,18 @@ def search(request: Request, q: str = "", k: int = 5, collections: str = "", mod
 @app.post("/query")
 def query(inp: QueryIn):
     return _dispatch_query(inp.query, inp.k, mode=inp.mode, collections=inp.collections)
+
+
+@app.post("/api/search")
+def api_search(inp: QueryIn):
+    raw = _dispatch_query(inp.query, inp.k, mode=inp.mode, collections=inp.collections)
+    return _default_result_schema(
+        query=inp.query,
+        k=inp.k,
+        mode=inp.mode,
+        collections=inp.collections,
+        raw=raw,
+    )
 
 
 @app.get("/api/plugins")
