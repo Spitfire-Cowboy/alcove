@@ -2,12 +2,13 @@
 
 This roadmap separates the published package from planned design work. Public docs should not describe roadmap items as available in a package release until they are tagged and published.
 
-## Current package release (v0.4.0)
+## Current package release (v0.5.0)
 
-The published 0.4.0 package ships a working local retrieval pipeline:
+The published 0.5.0 package ships a working local retrieval pipeline:
 
 - Ingest, index, and query stages over local disk.
-- Twelve document formats: PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, PPTX, RST, TSV, and plain text.
+- Fifteen document formats: PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX,
+  PPTX, RTF, ODT, XLSX, RST, TSV, and plain text.
 - Hash, sentence-transformers, and Ollama embedders.
 - ChromaDB and zvec vector backends.
 - CLI search, status, collection listing, plugin listing, and seed-demo commands.
@@ -17,12 +18,15 @@ The published 0.4.0 package ships a working local retrieval pipeline:
 - STDIO MCP retrieval tools for local search and collection listing.
 - Local signing helpers and index signing tooling.
 - Runtime deployment controls.
+- Machine-readable client capability discovery.
+- Plugin discovery filters, detail surfaces, and metadata enrichers.
+- Dependency-integrity verification and batched ChromaDB upserts.
 - Release packaging checks.
 - Desktop packaging preparation docs and guardrails; no supported desktop bundle ships yet.
 - Python entry-point plugins for extractors, embedders, and vector backends.
 - Docker runtime, CI, accessibility improvements, and Apache 2.0 licensing.
 
-See [the 0.4.0 release notes](RELEASE_0_4_0_PLAN.md) for scope details and release verification.
+See [the 0.5.0 release notes](RELEASE_0_5_0_PLAN.md) for scope details and release verification.
 
 ## Pending feature map
 
@@ -42,7 +46,9 @@ These buckets track design and future work without tying public docs to private 
 
 **Desktop packaging preparation.** Keep Briefcase metadata public and minimal, document that no desktop app bundle ships yet, and add checks that prevent accidental private paths, hostnames, or release claims from entering packaging files. The first milestone is packaging readiness, not an app-shaped wrapper around an unfinished experience.
 
-**More file formats.** RTF, ODT, and XLSX are good extractor-plugin candidates. PPTX support ships in 0.4.0. The current plugin API already supports third-party extractors.
+**More file formats.** RTF, ODT, and XLSX ship in 0.5.0, and PPTX support
+ships in 0.4.0. Additional formats remain good extractor-plugin candidates;
+the current plugin API already supports third-party extractors.
 
 **Browse mode.** Browse mode ships in 0.4.0. Next steps are deeper directory-aware browsing while keeping the surface retrieval-only.
 

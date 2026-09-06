@@ -20,22 +20,22 @@ def test_release_checklist_exists_and_has_core_sections() -> None:
         assert section in text
     assert ".github/workflows/release.yml" in text
     assert ".github/workflows/publish.yml" in text
-    assert "RELEASE_0_4_0_PLAN.md" in text
+    assert "RELEASE_0_5_0_PLAN.md" in text
 
 
-def test_release_0_4_0_docs_are_release_ready() -> None:
-    plan = _read("docs/RELEASE_0_4_0_PLAN.md")
+def test_current_release_docs_are_release_ready() -> None:
+    plan = _read("docs/RELEASE_0_5_0_PLAN.md")
     changelog = _read("CHANGELOG.md")
     roadmap = _read("docs/ROADMAP.md")
     pyproject = _read("pyproject.toml")
 
     assert "Status: release-prep complete." in plan
-    assert "Target tag: `v0.4.0`." in plan
-    assert "Current package version: 0.4.0." in plan
+    assert "Target tag: `v0.5.0`." in plan
+    assert "Current package version: 0.5.0." in plan
     assert "## Release Scope" in plan
-    assert "## [0.4.0] - 2026-05-12" in changelog
-    assert "Current package release (v0.4.0)" in roadmap
-    assert 'version = "0.4.0"' in pyproject
+    assert "## [0.5.0] - 2026-09-06" in changelog
+    assert "Current package release (v0.5.0)" in roadmap
+    assert 'version = "0.5.0"' in pyproject
     assert 'version = "1.0.0"' not in pyproject
     assert "planning only" not in plan
     assert "not released, not tagged" not in changelog
@@ -50,7 +50,7 @@ def test_release_plan_checker_passes() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    assert "0.4.0 release checks passed" in result.stdout
+    assert "0.5.0 release checks passed" in result.stdout
 
 
 def test_canonical_public_repo_slug_in_metadata_and_docs() -> None:
@@ -88,6 +88,7 @@ def test_public_docs_avoid_private_operational_markers() -> None:
         "CHANGELOG.md",
         "docs/ROADMAP.md",
         "docs/RELEASE_0_4_0_PLAN.md",
+        "docs/RELEASE_0_5_0_PLAN.md",
         "docs/RELEASE_CHECKLIST.md",
         "docs/SECURITY.md",
         "docs/index.html",
