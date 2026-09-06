@@ -23,7 +23,7 @@ The published 0.5.0 package ships a working local retrieval pipeline:
 - Dependency-integrity verification and batched ChromaDB upserts.
 - Release packaging checks.
 - Desktop packaging preparation docs and guardrails; no supported desktop bundle ships yet.
-- Python entry-point plugins for extractors, embedders, and vector backends.
+- Python entry-point plugins for extractors, enrichers, embedders, and vector backends.
 - Docker runtime, CI, accessibility improvements, and Apache 2.0 licensing.
 
 See [the 0.5.0 release notes](RELEASE_0_5_0_PLAN.md) for scope details and release verification.
@@ -39,7 +39,7 @@ These buckets track design and future work without tying public docs to private 
 | Streaming ingest | Planned | Ingest is batch-oriented today. Watch/re-index loops are roadmap work. |
 | Cross-modal indexing | Plugin candidate | Text document extraction ships today. Audio, image, video, OCR, and transcription belong in plugins or future releases. |
 | Multilingual model selection | Exploratory | Operators can choose sentence-transformers through `EMBEDDER`. Per-model multilingual CLI flags and automatic prefix handling are not a shipped public contract. |
-| Richer plugin lifecycle | Planned | Extractor, embedder, and backend entry points ship today. Lifecycle hooks, query transforms, and custom ranking are roadmap work. |
+| Richer plugin lifecycle | Planned | Extractor, enricher, embedder, and backend entry points ship today. Lifecycle hooks, query transforms, and custom ranking are roadmap work. |
 | Federation | Research | A single local instance ships today. Multi-instance query surfaces without raw-data sharing remain long-term work. |
 
 ## Near-term
@@ -80,15 +80,13 @@ the current plugin API already supports third-party extractors.
 
 ## Plugin candidates
 
-The shipped plugin API exposes three extension points: extractors (`alcove.extractors`), embedders (`alcove.embedders`), and vector backends (`alcove.backends`). Candidate plugins should document whether they preserve Alcove's local-first boundary.
+The shipped plugin API exposes four extension points: extractors (`alcove.extractors`), enrichers (`alcove.enrichers`), embedders (`alcove.embedders`), and vector backends (`alcove.backends`). Candidate plugins should document whether they preserve Alcove's local-first boundary.
 
 ### Extractor candidates
 
 | Candidate | Library | Notes |
 |-----------|---------|-------|
-| RTF | `striprtf` | Legacy text documents. |
-| ODT / ODP / ODS | `odfpy` | OpenDocument text, slides, and sheets. |
-| XLSX | `openpyxl` | Spreadsheet text and tabular metadata. |
+| ODP / ODS | `odfpy` | OpenDocument slides and sheets. |
 | Audio transcription | `faster-whisper` | Local transcription when models are installed locally. |
 | Image OCR | `pytesseract` or local vision models | Extract searchable text from images. |
 

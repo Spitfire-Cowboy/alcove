@@ -38,6 +38,9 @@ Supported formats:
 | JSONL | `.jsonl` | none |
 | DOCX | `.docx` | python-docx (optional extra) |
 | PPTX | `.pptx` | python-pptx (optional extra) |
+| RTF | `.rtf` | striprtf (optional extra) |
+| ODT | `.odt` | odfpy (optional extra) |
+| XLSX | `.xlsx` | openpyxl (optional extra) |
 
 ## Index
 
