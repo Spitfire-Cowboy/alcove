@@ -59,7 +59,7 @@ collection at the collection level. An entry might look like:
 }
 ```
 
-The checked-in schema is a design artifact. The shipped v0.4.0 runtime does not update a
+The checked-in schema is a design artifact. The shipped v0.5.0 runtime does not update a
 manifest after each ingest run.
 
 ---

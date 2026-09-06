@@ -1,6 +1,6 @@
 # Manifest Format & Registry Discovery
 
-Status: draft design. The shipped v0.4.0 runtime discovers installed plugins through
+Status: draft design. The shipped v0.5.0 runtime discovers installed plugins through
 Python entry points. It does not yet read `alcove.json`, consult remote registries, or
 discover network indexes from a registry.
 

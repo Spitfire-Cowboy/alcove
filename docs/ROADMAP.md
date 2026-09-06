@@ -2,12 +2,13 @@
 
 This roadmap separates the published package from planned design work. Public docs should not describe roadmap items as available in a package release until they are tagged and published.
 
-## Current package release (v0.4.0)
+## Current package release (v0.5.0)
 
-The published 0.4.0 package ships a working local retrieval pipeline:
+The published 0.5.0 package ships a working local retrieval pipeline:
 
 - Ingest, index, and query stages over local disk.
-- Twelve document formats: PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, PPTX, RST, TSV, and plain text.
+- Fifteen document formats: PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX,
+  PPTX, RTF, ODT, XLSX, RST, TSV, and plain text.
 - Hash, sentence-transformers, and Ollama embedders.
 - ChromaDB and zvec vector backends.
 - CLI search, status, collection listing, plugin listing, and seed-demo commands.
@@ -17,12 +18,15 @@ The published 0.4.0 package ships a working local retrieval pipeline:
 - STDIO MCP retrieval tools for local search and collection listing.
 - Local signing helpers and index signing tooling.
 - Runtime deployment controls.
+- Machine-readable client capability discovery.
+- Plugin discovery filters, detail surfaces, and metadata enrichers.
+- Dependency-integrity verification and batched ChromaDB upserts.
 - Release packaging checks.
 - Desktop packaging preparation docs and guardrails; no supported desktop bundle ships yet.
-- Python entry-point plugins for extractors, embedders, and vector backends.
+- Python entry-point plugins for extractors, enrichers, embedders, and vector backends.
 - Docker runtime, CI, accessibility improvements, and Apache 2.0 licensing.
 
-See [the 0.4.0 release notes](RELEASE_0_4_0_PLAN.md) for scope details and release verification.
+See [the 0.5.0 release notes](RELEASE_0_5_0_PLAN.md) for scope details and release verification.
 
 ## Pending feature map
 
@@ -35,14 +39,16 @@ These buckets track design and future work without tying public docs to private 
 | Streaming ingest | Planned | Ingest is batch-oriented today. Watch/re-index loops are roadmap work. |
 | Cross-modal indexing | Plugin candidate | Text document extraction ships today. Audio, image, video, OCR, and transcription belong in plugins or future releases. |
 | Multilingual model selection | Exploratory | Operators can choose sentence-transformers through `EMBEDDER`. Per-model multilingual CLI flags and automatic prefix handling are not a shipped public contract. |
-| Richer plugin lifecycle | Planned | Extractor, embedder, and backend entry points ship today. Lifecycle hooks, query transforms, and custom ranking are roadmap work. |
+| Richer plugin lifecycle | Planned | Extractor, enricher, embedder, and backend entry points ship today. Lifecycle hooks, query transforms, and custom ranking are roadmap work. |
 | Federation | Research | A single local instance ships today. Multi-instance query surfaces without raw-data sharing remain long-term work. |
 
 ## Near-term
 
 **Desktop packaging preparation.** Keep Briefcase metadata public and minimal, document that no desktop app bundle ships yet, and add checks that prevent accidental private paths, hostnames, or release claims from entering packaging files. The first milestone is packaging readiness, not an app-shaped wrapper around an unfinished experience.
 
-**More file formats.** RTF, ODT, and XLSX are good extractor-plugin candidates. PPTX support ships in 0.4.0. The current plugin API already supports third-party extractors.
+**More file formats.** RTF, ODT, and XLSX ship in 0.5.0, and PPTX support
+ships in 0.4.0. Additional formats remain good extractor-plugin candidates;
+the current plugin API already supports third-party extractors.
 
 **Browse mode.** Browse mode ships in 0.4.0. Next steps are deeper directory-aware browsing while keeping the surface retrieval-only.
 
@@ -74,15 +80,13 @@ These buckets track design and future work without tying public docs to private 
 
 ## Plugin candidates
 
-The shipped plugin API exposes three extension points: extractors (`alcove.extractors`), embedders (`alcove.embedders`), and vector backends (`alcove.backends`). Candidate plugins should document whether they preserve Alcove's local-first boundary.
+The shipped plugin API exposes four extension points: extractors (`alcove.extractors`), enrichers (`alcove.enrichers`), embedders (`alcove.embedders`), and vector backends (`alcove.backends`). Candidate plugins should document whether they preserve Alcove's local-first boundary.
 
 ### Extractor candidates
 
 | Candidate | Library | Notes |
 |-----------|---------|-------|
-| RTF | `striprtf` | Legacy text documents. |
-| ODT / ODP / ODS | `odfpy` | OpenDocument text, slides, and sheets. |
-| XLSX | `openpyxl` | Spreadsheet text and tabular metadata. |
+| ODP / ODS | `odfpy` | OpenDocument slides and sheets. |
 | Audio transcription | `faster-whisper` | Local transcription when models are installed locally. |
 | Image OCR | `pytesseract` or local vision models | Extract searchable text from images. |
 

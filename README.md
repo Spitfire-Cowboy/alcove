@@ -20,9 +20,10 @@ It is retrieval, not generation. Alcove does not summarize, answer questions, ho
 
 ## What ships today
 
-Alcove v0.4.0 ships a working local pipeline:
+Alcove v0.5.0 ships a working local pipeline:
 
-- Recursive ingest for PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX, PPTX, RST, TSV, and plain text.
+- Recursive ingest for PDF, EPUB, HTML, Markdown, CSV, JSON, JSONL, DOCX,
+  PPTX, RTF, ODT, XLSX, RST, TSV, and plain text.
 - Local indexing with ChromaDB by default, with zvec available as an optional backend.
 - A deterministic hash embedder by default, plus opt-in sentence-transformers and Ollama embedders for real semantic similarity.
 - CLI search and a FastAPI web service with search, upload, health, collection-list, and browse endpoints.

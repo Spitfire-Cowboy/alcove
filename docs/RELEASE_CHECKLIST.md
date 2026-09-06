@@ -11,7 +11,9 @@ Use this checklist for public Alcove releases.
 5. Verify package metadata and public links point to `Spitfire-Cowboy/alcove`.
 6. Run `python3 scripts/check_release_packaging.py`.
 
-For a feature-batch release such as 0.4.0, start from the public [0.4.0 release notes](RELEASE_0_4_0_PLAN.md). Keep candidate work separate from shipped behavior until the release commit is ready.
+For a feature-batch release, start from the current public release notes, such
+as the [0.5.0 release notes](RELEASE_0_5_0_PLAN.md). Keep candidate work
+separate from shipped behavior until the release commit is ready.
 
 ## Release
 

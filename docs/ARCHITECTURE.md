@@ -38,6 +38,9 @@ Supported formats:
 | JSONL | `.jsonl` | none |
 | DOCX | `.docx` | python-docx (optional extra) |
 | PPTX | `.pptx` | python-pptx (optional extra) |
+| RTF | `.rtf` | striprtf (optional extra) |
+| ODT | `.odt` | odfpy (optional extra) |
+| XLSX | `.xlsx` | openpyxl (optional extra) |
 
 ## Index
 
@@ -125,7 +128,10 @@ See [Security](SECURITY.md) for the full security model.
 
 ## Release boundary
 
-The published 0.4.0 package includes the STDIO MCP server, browse mode, Ollama embeddings, PPTX extraction, local signing helpers, runtime deployment controls, and desktop packaging preparation.
+The published 0.5.0 package includes the STDIO MCP server, browse mode, Ollama
+embeddings, fifteen document formats, capability discovery, plugin filtering
+and metadata enrichers, local signing helpers, runtime deployment controls,
+dependency-integrity checks, and desktop packaging preparation.
 
 Manifest-based registry discovery, richer provenance workflows, streaming ingest, multilingual model-selection UX, and cross-modal indexing remain design or roadmap work unless a shipped CLI command, API endpoint, or module implements them. The status map lives in [Roadmap](ROADMAP.md#pending-feature-map).
 
@@ -135,4 +141,5 @@ The hash embedder ships as the default because it requires zero downloads and wo
 
 ChromaDB is the default backend for compatibility and ecosystem support. zvec is available for operators who want a lighter optional backend.
 
-The implementation is deliberately thin. The v0.4.0 goal is a correct local retrieval pipeline with clear extension points, not a managed platform.
+The implementation is deliberately thin. The v0.5.0 goal is a correct local
+retrieval pipeline with clear extension points, not a managed platform.

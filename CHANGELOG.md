@@ -4,6 +4,19 @@ All notable changes to alcove-search.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-06
+
+- Add RTF, ODT, and XLSX extractors while preserving source metadata through
+  JSONL ingest and indexing.
+- Add machine-readable capability discovery for clients.
+- Add plugin discovery filters, plugin detail surfaces, and metadata enricher
+  entry points with explicit trust boundaries.
+- Batch ChromaDB upserts for larger indexes and show the active index target
+  and network mode in status output.
+- Add dependency-integrity verification and widen cryptography support through
+  the patched 50.x line.
+- Refresh public project sponsorship and documentation-site analytics.
+
 ## [0.4.0] - 2026-05-12
 
 - Consolidate public README, architecture, operations, and roadmap docs around the published 0.4.0 package scope.
